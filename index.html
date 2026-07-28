@@ -3473,12 +3473,8 @@ const P2P = {
   /* ---------- HOSTITEL: vyrob pozvánku pro jednoho kamaráda ---------- */
   async pozvanka(slot){
     const pc = new RTCPeerConnection(LEDOVCE);
-    const kanal = pc.createDataChannel("nunisci", {ordered:false, maxRetransmits:0});
-    const spoj = {slot, pc, kanal, stav:"ceka", hracId:null};
-    kanal.binaryType = "arraybuffer";
-    kanal.onopen = ()=>{ spoj.stav="spojeno"; P2P.pripojen(spoj); };
-    kanal.onclose = ()=>{ spoj.stav="odpojeno"; P2P.odpojen(spoj); };
-    kanal.onmessage = ev => P2P.zprava(spoj, ev.data);
+    const spoj = {slot, pc, kanal:null, kanalStav:null, stav:"ceka", hracId:null, rucni:true};
+    udelejKanaly(pc, spoj);
     pc.onconnectionstatechange = ()=>{
       if(pc.connectionState==="failed"||pc.connectionState==="disconnected"){ spoj.stav="odpojeno"; P2P.odpojen(spoj); }
     };
@@ -3504,14 +3500,8 @@ const P2P = {
     const d = await rozbal(kod);
     if(d.t!=="n") throw new Error("Tohle není pozvánka do hry.");
     const pc = new RTCPeerConnection(LEDOVCE);
-    const spoj = {pc, kanal:null, stav:"ceka"};
-    pc.ondatachannel = ev=>{
-      const k = ev.channel; k.binaryType="arraybuffer";
-      spoj.kanal = k;
-      k.onopen = ()=>{ spoj.stav="spojeno"; P2P.pripojen(spoj); };
-      k.onclose = ()=>{ spoj.stav="odpojeno"; P2P.odpojen(spoj); };
-      k.onmessage = e2 => P2P.zprava(spoj, e2.data);
-    };
+    const spoj = {pc, kanal:null, kanalStav:null, stav:"ceka"};
+    pc.ondatachannel = ev => zapojKanaly(spoj, ev.channel);
     await pc.setRemoteDescription({type:"offer", sdp:d.s});
     await pc.setLocalDescription(await pc.createAnswer());
     await this.pockejIce(pc);
@@ -3531,17 +3521,21 @@ const P2P = {
   },
 
   /* ---------- posílání ---------- */
+  /* obrázek světa jede rychlým kanálem, všechno ostatní spolehlivým */
   posliVsem(m, kromě){
-    const data = (m instanceof ArrayBuffer)? m : JSON.stringify(m);
+    const bin = (m instanceof ArrayBuffer);
+    const data = bin? m : JSON.stringify(m);
     for(const s of this.spoje){
-      if(s===kromě || !s.kanal || s.kanal.readyState!=="open") continue;
-      try{ s.kanal.send(data); }catch(e){}
+      if(s===kromě) continue;
+      const k = (bin && s.kanalStav && s.kanalStav.readyState==="open") ? s.kanalStav : s.kanal;
+      if(!k || k.readyState!=="open") continue;
+      try{ k.send(data); }catch(e){}
     }
   },
   posliHostovi(m){
     const s = this.mojeSpojeni;
     if(s && s.kanal && s.kanal.readyState==="open"){
-      try{ s.kanal.send(JSON.stringify(m)); }catch(e){}
+      try{ s.kanal.send(JSON.stringify(m)); }catch(e){}   // rozkazy vždy spolehlivě
     }
   },
   zivychSpoju(){ return this.spoje.filter(s=>s.stav==="spojeno").length; },
@@ -3985,13 +3979,26 @@ const MAJAK = {
   }
 };
 
-/* ---- společné zapojení jednoho spojení ---- */
-function zapojKanal(spoj, kanal){
+/* ---- zapojení kanálů ----
+   "rozkazy" = SPOLEHLIVÝ kanál (rozkazy, start hry, lobby) – nesmí se nic ztratit
+   "stav"    = rychlý nespolehlivý kanál (obrázek světa 6× za vteřinu)
+   Dřív jelo všechno po tom nespolehlivém a přes internet se rozkazy ztrácely. */
+function zapojKanaly(spoj, kanal){
   kanal.binaryType = "arraybuffer";
-  spoj.kanal = kanal;
-  kanal.onopen = ()=>{ spoj.stav="spojeno"; P2P.pripojen(spoj); };
-  kanal.onclose = ()=>{ spoj.stav="odpojeno"; P2P.odpojen(spoj); };
+  if(kanal.label==="stav") spoj.kanalStav = kanal; else spoj.kanal = kanal;
+  kanal.onopen = ()=>{
+    if(spoj.kanal && spoj.kanal.readyState==="open" && spoj.stav!=="spojeno"){
+      spoj.stav="spojeno"; P2P.pripojen(spoj);
+    }
+  };
+  kanal.onclose = ()=>{
+    if(kanal.label!=="stav" && spoj.stav!=="odpojeno"){ spoj.stav="odpojeno"; P2P.odpojen(spoj); }
+  };
   kanal.onmessage = ev => P2P.zprava(spoj, ev.data);
+}
+function udelejKanaly(pc, spoj){
+  zapojKanaly(spoj, pc.createDataChannel("rozkazy"));                              // spolehlivý
+  zapojKanaly(spoj, pc.createDataChannel("stav", {ordered:false, maxRetransmits:0})); // rychlý
 }
 
 /* ============================================================
@@ -4023,7 +4030,7 @@ P2P.majakHost = function(m){
     const pc = new RTCPeerConnection(LEDOVCE);
     const spoj = {pc, kanal:null, stav:"ceka", peer:src, spojId, slot:this.spoje.length+1};
     this.spoje.push(spoj);
-    pc.ondatachannel = ev => zapojKanal(spoj, ev.channel);
+    pc.ondatachannel = ev => zapojKanaly(spoj, ev.channel);
     pc.onicecandidate = ev => { if(ev.candidate) MAJAK.posli(src, "CANDIDATE", {candidate:ev.candidate}, spojId); };
     pc.onconnectionstatechange = ()=>{
       if(pc.connectionState==="failed"||pc.connectionState==="disconnected"){ spoj.stav="odpojeno"; this.odpojen(spoj); }
@@ -4062,9 +4069,9 @@ P2P.pripojKodem = function(kod){
       const cil = "nun-"+kod;
 
       const pc = new RTCPeerConnection(LEDOVCE);
-      const spoj = {pc, kanal:null, stav:"ceka", peer:cil};
+      const spoj = {pc, kanal:null, kanalStav:null, stav:"ceka", peer:cil};
       this.mojeSpojeni = spoj;
-      zapojKanal(spoj, pc.createDataChannel("nunisci", {ordered:false, maxRetransmits:0}));
+      udelejKanaly(pc, spoj);
       pc.onicecandidate = ev => { if(ev.candidate) MAJAK.posli(cil, "CANDIDATE", {candidate:ev.candidate}, spojId); };
 
       let odpovedeno = false;
