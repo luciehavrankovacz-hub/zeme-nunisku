@@ -1,0 +1,3916 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Země Ňuňísků</title>
+<style>
+:root{
+  --pismo:"Palatino Linotype","Book Antiqua",Palatino,Georgia,"Times New Roman",serif;
+  --zlata:#d9ab52; --zlata2:#8a6a2b; --zlata3:#f4dda0;
+  --drevo1:#6b5228; --drevo2:#3d2d13; --drevo3:#241a0a;
+  --pergamen:#efdfba; --inkoust:#3a2a12;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#0b0906;
+  font-family:var(--pismo);color:#f0e6d2;user-select:none;-webkit-user-select:none}
+button{font-family:inherit;cursor:pointer;border:none;color:inherit}
+input,textarea,select{font-family:inherit}
+/* staré dřevo s letokruhy a kováním */
+.drevo{background-image:
+  repeating-linear-gradient(90deg,rgba(0,0,0,.13) 0 2px,transparent 2px 11px),
+  repeating-linear-gradient(90deg,rgba(255,222,160,.05) 0 1px,transparent 1px 17px),
+  linear-gradient(180deg,var(--drevo1),var(--drevo2))}
+.nyty::before,.nyty::after{content:"";position:absolute;top:6px;bottom:6px;width:5px;
+  background:radial-gradient(circle at 50% 12%,#e8d7a8 0 1.6px,#8a7440 2px,transparent 2.6px) 0 0/5px 15px repeat-y;
+  opacity:.75;pointer-events:none}
+.nyty::before{left:5px} .nyty::after{right:5px}
+
+/* ============ SPOLEČNÉ ODDĚLOVAČE ============ */
+.zlatyRam{border:3px solid #b8934a;border-radius:10px;
+  background:linear-gradient(180deg,#3a3020,#241d12);
+  box-shadow:inset 0 0 0 2px #6d5628, 0 6px 18px rgba(0,0,0,.55)}
+.aoeBtn{position:relative;display:block;width:100%;padding:13px 26px;text-align:left;
+  font-size:20px;font-weight:bold;letter-spacing:2.5px;color:var(--zlata3);
+  background-image:
+    repeating-linear-gradient(90deg,rgba(0,0,0,.13) 0 2px,transparent 2px 11px),
+    linear-gradient(180deg,#5c4623,#33260f);
+  border:3px solid var(--zlata2);border-radius:4px;
+  box-shadow:inset 0 0 0 1px rgba(217,171,82,.55), inset 0 3px 0 rgba(255,225,160,.18),
+             0 4px 0 #1c1408, 0 8px 16px rgba(0,0,0,.55);
+  text-shadow:0 2px 2px rgba(0,0,0,.85);transition:.12s}
+.aoeBtn:hover{background-image:
+    repeating-linear-gradient(90deg,rgba(0,0,0,.11) 0 2px,transparent 2px 11px),
+    linear-gradient(180deg,#75592c,#412f14);
+  border-color:var(--zlata);color:#fff6dd}
+.aoeBtn:hover::before{content:"❧";position:absolute;left:7px;top:50%;transform:translateY(-50%);
+  font-size:15px;color:var(--zlata);text-shadow:none}
+.aoeBtn:active{transform:translateY(3px);box-shadow:inset 0 0 0 1px rgba(217,171,82,.5),0 1px 0 #1c1408}
+.aoeBtn .pod{display:block;font-size:12px;font-weight:normal;letter-spacing:.2px;opacity:.72;
+  margin-top:3px;text-transform:none;font-style:italic}
+.aoeBtn.maly{padding:9px 20px;font-size:16px}
+.aoeBtn:disabled{filter:grayscale(.8);opacity:.5;cursor:not-allowed}
+/* zdobený předěl */
+.ozdoba{display:flex;align-items:center;gap:8px;color:var(--zlata);opacity:.75;font-size:13px}
+.ozdoba::before,.ozdoba::after{content:"";flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,var(--zlata2),transparent)}
+
+/* ============ HLAVNÍ MENU ============ */
+#menu{position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;
+  background:#10141c;overflow:hidden}
+#menu.pryc{display:none}
+#splash{position:absolute;inset:0;width:100%;height:100%}
+#splash > svg{width:100%;height:100%;display:block}
+#menuStin{position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(18,11,4,.88) 0%,rgba(18,11,4,.5) 32%,rgba(18,11,4,0) 56%),
+    linear-gradient(0deg,rgba(18,11,4,.72),transparent 40%),
+    radial-gradient(ellipse 130% 100% at 50% 48%,transparent 52%,rgba(24,13,3,.5) 100%)}
+/* nádech starého pergamenu – jen lehce, ať scéna nezčerná */
+#menuPatina{position:absolute;inset:0;pointer-events:none;opacity:.55;
+  background:
+    repeating-linear-gradient(23deg,rgba(120,80,30,.06) 0 2px,transparent 2px 5px),
+    radial-gradient(ellipse 60% 50% at 74% 62%,rgba(255,200,120,.20),transparent 72%),
+    linear-gradient(0deg,rgba(200,150,70,.12),rgba(160,115,45,.05));
+  mix-blend-mode:overlay}
+
+#ucetBar{position:absolute;top:0;right:0;padding:12px 14px;z-index:6;display:flex;gap:8px;align-items:center}
+#ucetBtn{position:relative;display:flex;align-items:center;gap:10px;padding:7px 16px 7px 9px;
+  background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.12) 0 2px,transparent 2px 11px),
+    linear-gradient(180deg,#5c4623,#2c2113);
+  border:3px solid var(--zlata2);border-radius:5px;
+  box-shadow:inset 0 0 0 1px rgba(217,171,82,.5),0 4px 12px rgba(0,0,0,.55);
+  font-size:16px;font-weight:bold;letter-spacing:1px;color:var(--zlata3);max-width:70vw}
+#ucetBtn:hover{border-color:var(--zlata)}
+#ucetBtn .ikonaBox{width:42px;height:42px;border-radius:4px;overflow:hidden;flex:none;
+  background:#241a0a;border:2px solid var(--zlata2);display:flex;align-items:center;justify-content:center}
+#ucetBtn .ikonaBox svg{width:120%;height:120%;margin-top:4px}
+#ucetBtn .jmenoTxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+#menuObsah{position:relative;z-index:5;display:flex;flex-direction:column;justify-content:center;
+  height:100%;padding:0 0 0 46px;max-width:430px}
+#logo{margin-bottom:28px}
+#logo .hornilista{margin-bottom:9px}
+#logo h1{font-size:clamp(30px,5.4vw,62px);line-height:1;letter-spacing:5px;font-weight:bold;
+  background:linear-gradient(180deg,#fff6d8 0%,#f0d18a 32%,#c2913c 58%,#8f6420 84%,#e6c887 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.75)) drop-shadow(0 4px 2px rgba(0,0,0,.55))
+         drop-shadow(0 0 22px rgba(217,171,82,.35))}
+#logo h1 .mala{display:block;font-size:.52em;letter-spacing:9px;margin-bottom:2px}
+#logo .pod{font-size:13px;letter-spacing:6px;opacity:.7;margin-top:10px;text-transform:uppercase;
+  color:var(--zlata3);font-style:italic}
+#menuTlacitka{display:flex;flex-direction:column;gap:11px}
+#menuPata{position:absolute;left:46px;bottom:16px;z-index:5;font-size:11.5px;opacity:.45}
+
+/* ============ MODÁLNÍ OKNA (papír) ============ */
+.prekryv{position:fixed;inset:0;z-index:450;display:none;align-items:center;justify-content:center;
+  background:rgba(6,9,14,.78);backdrop-filter:blur(3px);padding:14px;overflow-y:auto}
+.prekryv.zap{display:flex}
+.papir{position:relative;background:
+    repeating-linear-gradient(0deg,rgba(120,90,50,.05) 0 26px,rgba(120,90,50,.09) 26px 27px),
+    linear-gradient(160deg,#f2e4c4,#e2cfa4 60%,#d6bf8e);
+  color:#3a2d18;padding:24px 26px;max-width:100%;width:min(940px,96vw);
+  box-shadow:0 18px 50px rgba(0,0,0,.7);
+  clip-path:polygon(0.6% 1.2%,4% 0.2%,9% 1.6%,15% 0.3%,22% 1.4%,29% 0.2%,36% 1.5%,44% 0.4%,52% 1.6%,60% 0.3%,68% 1.4%,76% 0.2%,84% 1.5%,92% 0.4%,97% 1.4%,99.5% 0.6%,
+    99% 6%,99.8% 14%,99% 24%,99.7% 35%,99% 47%,99.8% 60%,99% 72%,99.7% 84%,99.2% 94%,99.6% 99%,
+    94% 98.6%,87% 99.7%,79% 98.5%,70% 99.6%,61% 98.4%,52% 99.6%,43% 98.5%,34% 99.7%,25% 98.6%,16% 99.6%,8% 98.7%,2% 99.4%,0.4% 98.6%,
+    1% 92%,0.2% 82%,1% 70%,0.3% 58%,1% 45%,0.2% 33%,0.9% 22%,0.3% 12%);
+  max-height:94vh;overflow-y:auto}
+.papir h2{font-size:27px;letter-spacing:3px;color:#6b4413;text-shadow:0 1px 0 rgba(255,255,255,.55)}
+.papir h2::first-letter{font-size:1.5em;color:#9c2f1e;text-shadow:0 1px 0 rgba(255,255,255,.6)}
+.papir .podnadpis{font-size:13px;opacity:.75;margin-top:3px;font-style:italic}
+/* zdobené rohy pergamenu */
+.papir::before,.papir::after{content:"⚜";position:absolute;font-size:17px;color:rgba(122,74,18,.42)}
+.papir::before{left:14px;top:10px}
+.papir::after{right:14px;top:10px}
+.papirHlava{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;
+  border-bottom:2px dashed rgba(92,63,24,.4);padding-bottom:12px;margin-bottom:14px}
+.kodBox{margin-left:auto;text-align:center;background:rgba(92,63,24,.1);
+  border:2px dashed #8a6a33;border-radius:10px;padding:6px 16px}
+.kodBox .lbl{font-size:10.5px;letter-spacing:2px;opacity:.7}
+.kodBox .kod{font-size:32px;font-weight:bold;letter-spacing:7px;color:#7a4a12;font-family:"Courier New",monospace}
+.papirBtn{background:linear-gradient(180deg,#8a6a33,#5c451f);color:#ffeec4;border:2px solid #4a3616;
+  border-radius:7px;padding:8px 14px;font-size:14px;font-weight:bold;box-shadow:0 3px 0 #3a2a11}
+.papirBtn:hover{background:linear-gradient(180deg,#a07c3e,#6d5325)}
+.papirBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #3a2a11}
+.papirBtn.zeleny{background:linear-gradient(180deg,#4e8f3e,#356529);box-shadow:0 3px 0 #234519;border-color:#234519}
+.papirBtn.zeleny:hover{background:linear-gradient(180deg,#5ea549,#3d7530)}
+.papirBtn.velky{font-size:19px;padding:13px 34px;letter-spacing:1px}
+.papirBtn.sedy{background:linear-gradient(180deg,#8d8577,#6b6459);box-shadow:0 3px 0 #4d473e;border-color:#4d473e}
+
+/* seznam hráčů v lobby */
+.hraciHlava,.hracRadek{display:grid;gap:6px;align-items:center;
+  grid-template-columns:44px minmax(90px,1.5fr) minmax(96px,1.4fr) 62px 54px 74px 34px}
+.hraciHlava{font-size:10.5px;letter-spacing:1px;opacity:.65;text-transform:uppercase;padding:0 4px 4px}
+.hracRadek{background:rgba(255,255,255,.28);border:1px solid rgba(92,63,24,.28);
+  border-radius:8px;padding:5px;margin-bottom:5px}
+.hracRadek.ja{background:rgba(255,236,180,.6);border-color:#8a6a33;box-shadow:0 0 0 2px rgba(138,106,51,.35)}
+.hracIkona{width:40px;height:40px;border-radius:8px;overflow:hidden;background:#c9b189;border:2px solid #8a6a33;
+  display:flex;align-items:center;justify-content:center}
+.hracIkona svg{width:130%;height:130%;margin-top:5px}
+.hracJm{font-weight:bold;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hracJm small{display:block;font-weight:normal;font-size:10.5px;opacity:.65}
+select.pole,input.pole{width:100%;padding:6px 6px;font-size:13px;border-radius:6px;
+  border:2px solid #8a6a33;background:#f7edd6;color:#3a2d18;font-weight:bold}
+select.pole:disabled,input.pole:disabled{opacity:.55}
+.barvaBtn{width:100%;height:30px;border-radius:6px;border:2px solid #4a3616;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+.odebrat{background:#a8402e;color:#fff;border-radius:6px;border:2px solid #6d2418;font-weight:bold;
+  width:30px;height:30px;font-size:15px;line-height:1}
+.sekce{margin-top:14px}
+.sekce h3{font-size:14px;letter-spacing:2px;color:#5c3f18;text-transform:uppercase;
+  border-bottom:2px dashed rgba(92,63,24,.4);padding-bottom:4px;margin-bottom:8px}
+.mapyMriz{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px}
+.mapaKarta{background:rgba(255,255,255,.3);border:2px solid rgba(92,63,24,.3);border-radius:8px;
+  padding:5px;text-align:center;font-size:11.5px;font-weight:bold;color:#3a2d18;line-height:1.25}
+.mapaKarta:hover{border-color:#8a6a33}
+.mapaKarta.on{background:rgba(255,236,180,.85);border-color:#7a4a12;box-shadow:0 0 0 2px rgba(122,74,18,.35)}
+.mapaKarta canvas{width:100%;height:52px;border-radius:4px;display:block;margin-bottom:3px;border:1px solid rgba(92,63,24,.3)}
+.obtRada{display:flex;flex-wrap:wrap;gap:6px}
+.obtBtn{padding:8px 12px;font-size:13px;font-weight:bold;border-radius:7px;border:2px solid rgba(92,63,24,.35);
+  background:rgba(255,255,255,.3);color:#3a2d18}
+.obtBtn.on{background:#7a4a12;color:#ffe9b8;border-color:#4a2c0a}
+.lobbyPata{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px;
+  border-top:2px dashed rgba(92,63,24,.4);padding-top:12px}
+.pozn{font-size:11.5px;opacity:.72;line-height:1.5}
+.krok{font-size:13px;margin:10px 0 5px;line-height:1.5}
+.kodPole{font-family:"Courier New",monospace;font-size:11px;word-break:break-all;resize:vertical;line-height:1.35}
+.slot{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:rgba(255,255,255,.26);
+  border:1px solid rgba(92,63,24,.3);border-radius:8px;padding:7px;margin-bottom:6px}
+.slot b{font-size:13px;min-width:88px}
+.slot .stavTxt{font-size:11.5px;opacity:.8;min-width:96px}
+.slot .rozbal{width:100%;display:none;flex-direction:column;gap:5px}
+.slot.otevreno .rozbal{display:flex}
+.tecka{width:10px;height:10px;border-radius:50%;background:#a08b6a;flex:none}
+.tecka.on{background:#3fa855;box-shadow:0 0 8px rgba(63,168,85,.8)}
+.tecka.ceka{background:#e8a52a}
+
+/* ikony a jméno – modály */
+.ikonyMriz{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:9px;margin-top:12px}
+.ikonaKarta{background:rgba(255,255,255,.3);border:3px solid rgba(92,63,24,.3);border-radius:12px;
+  padding:6px;text-align:center;font-size:12px;font-weight:bold;color:#3a2d18}
+.ikonaKarta svg{width:74px;height:74px;display:block;margin:0 auto}
+.ikonaKarta.on{background:rgba(255,236,180,.85);border-color:#7a4a12}
+.barvyMriz{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:7px;margin-top:10px}
+.barvaKarta{height:44px;border-radius:9px;border:3px solid rgba(0,0,0,.35);position:relative;
+  box-shadow:inset 0 -5px 0 rgba(0,0,0,.22);font-size:10px;font-weight:bold;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.8);display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px}
+.barvaKarta.on{border-color:#fff;box-shadow:inset 0 -5px 0 rgba(0,0,0,.22),0 0 0 3px #7a4a12}
+.barvaKarta.obsazena{opacity:.3;cursor:not-allowed}
+
+/* ============ HRA ============ */
+#hra{position:fixed;inset:0;display:none;cursor:default;touch-action:none}
+#hra.bezi{display:block}
+#svetOkno{position:absolute;inset:0;overflow:hidden}
+#svet{position:absolute;left:0;top:0;transform-origin:0 0;background-color:#5f9e4f;
+  background-image:
+   radial-gradient(ellipse 520px 340px at 14% 20%,rgba(255,255,255,.09),transparent 68%),
+   radial-gradient(ellipse 460px 320px at 76% 74%,rgba(0,0,0,.07),transparent 68%),
+   url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><rect width='180' height='180' fill='%235f9e4f'/><g fill='%23579649'><ellipse cx='26' cy='40' rx='34' ry='17'/><ellipse cx='128' cy='104' rx='40' ry='20'/><ellipse cx='72' cy='158' rx='30' ry='14'/></g><g fill='%2369a958'><ellipse cx='96' cy='26' rx='30' ry='14'/><ellipse cx='34' cy='118' rx='32' ry='15'/><ellipse cx='158' cy='52' rx='24' ry='12'/></g><g stroke='%234d8a42' stroke-width='2.4' stroke-linecap='round' fill='none'><path d='M18 78 q4 -10 8 -13'/><path d='M24 78 q0 -9 2 -13'/><path d='M64 62 q4 -10 8 -13'/><path d='M112 142 q4 -10 8 -13'/><path d='M118 142 q0 -9 2 -13'/><path d='M150 96 q-4 -10 -8 -13'/><path d='M88 96 q4 -9 7 -12'/></g></svg>");
+  background-size:auto,auto,180px 180px}
+/* starý pergamenový nádech přes celou krajinu */
+#vinjeta{position:fixed;inset:0;z-index:80;pointer-events:none;
+  box-shadow:inset 0 0 240px rgba(34,20,6,.5), inset 0 0 90px rgba(24,14,4,.25);
+  background:radial-gradient(ellipse 80% 70% at 50% 45%,rgba(214,170,96,.10),rgba(120,84,36,.16) 75%,rgba(60,38,12,.24) 100%);
+  mix-blend-mode:multiply}
+.ent{position:absolute;left:0;top:0;will-change:transform}
+.ent svg{display:block;width:100%;height:100%;overflow:visible;pointer-events:none;transform-origin:50% 88%}
+.ent.mrtvy{animation:zmiz .5s forwards}
+@keyframes zmiz{to{opacity:0;transform:scale(.4) rotate(40deg)}}
+.hp{position:absolute;left:50%;transform:translateX(-50%);height:6px;border-radius:4px;
+  background:#20120f;border:1px solid rgba(0,0,0,.55);overflow:hidden;pointer-events:none;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.hp i{display:block;height:100%;border-radius:3px}
+.kroužek{position:absolute;inset:auto;border:3px dashed #9dfbb0;border-radius:50%;pointer-events:none;
+  box-shadow:0 0 12px rgba(140,250,165,.55),inset 0 0 10px rgba(140,250,165,.3);animation:toc 6s linear infinite}
+@keyframes toc{to{transform:rotate(360deg)}}
+.stavba{opacity:.55;filter:saturate(.4)}
+.prubeh{position:absolute;left:50%;transform:translateX(-50%);height:7px;width:56px;background:#111;border-radius:4px;overflow:hidden;border:1px solid #000}
+.prubeh i{display:block;height:100%;background:linear-gradient(180deg,#ffe08a,#f0a63c)}
+.strela{position:absolute;width:14px;height:5px;border-radius:3px;background:linear-gradient(90deg,#fff,#c9a15a);pointer-events:none;z-index:9000}
+.jiskra{position:absolute;pointer-events:none;font-size:15px;font-weight:bold;z-index:9500;
+  text-shadow:0 2px 3px #000;animation:let 1s forwards}
+@keyframes let{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-40px) scale(1.3)}}
+.cast{position:absolute;width:6px;height:6px;border-radius:50%;pointer-events:none;z-index:9400;animation:frc .6s forwards}
+@keyframes frc{to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}}
+#vyber{position:absolute;border:2px solid #8ef0a0;background:rgba(142,240,160,.15);z-index:9999;pointer-events:none;display:none}
+
+#horni{position:fixed;top:0;left:0;right:0;height:52px;z-index:100;display:flex;align-items:center;gap:5px;padding:0 10px;
+  background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.14) 0 2px,transparent 2px 11px),
+    linear-gradient(180deg,rgba(58,44,20,.98),rgba(26,19,9,.95));
+  border-bottom:3px solid var(--zlata2);
+  box-shadow:0 2px 0 rgba(217,171,82,.25), 0 6px 16px rgba(0,0,0,.5)}
+.zdroj{display:flex;align-items:center;gap:6px;background:linear-gradient(180deg,#3b2d14,#241a0a);
+  border:2px solid var(--zlata2);border-radius:4px;box-shadow:inset 0 0 0 1px rgba(217,171,82,.35);
+  padding:3px 10px;font-size:16px;font-weight:bold;min-width:80px;color:var(--zlata3);
+  font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.zdroj span{font-size:18px;display:flex;align-items:center}
+.zdroj span svg{width:20px;height:20px;display:block}
+.zdroj.blik{animation:cerv .5s 2}
+@keyframes cerv{50%{background:#7a2020;border-color:#ff6a5a}}
+#civznak{display:flex;align-items:center;gap:7px;margin-left:auto;background:#2c2416;border:2px solid #6d5628;
+  border-radius:9px;padding:1px 10px 1px 3px;max-width:34vw;overflow:hidden}
+#civznak svg{width:36px;height:36px;flex:none}
+#civznak b{font-size:13px;white-space:nowrap}
+#civznak small{display:block;opacity:.7;font-size:10px;white-space:nowrap}
+.hbtn{background:#3d3220;border:2px solid #6d5628;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:bold;color:#ffe9b8}
+.hbtn:hover{background:#54452a}
+
+#panel{position:fixed;left:0;bottom:0;right:0;height:126px;z-index:100;display:flex;gap:8px;padding:8px 10px;
+  background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.14) 0 2px,transparent 2px 11px),
+    linear-gradient(0deg,rgba(58,44,20,.99),rgba(26,19,9,.96));
+  border-top:3px solid var(--zlata2);
+  box-shadow:0 -2px 0 rgba(217,171,82,.25), 0 -6px 16px rgba(0,0,0,.5)}
+#portret{width:104px;flex:none;background:linear-gradient(180deg,#3b2d14,#241a0a);
+  border:2px solid var(--zlata2);border-radius:4px;box-shadow:inset 0 0 0 1px rgba(217,171,82,.3);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px;color:var(--zlata3)}
+#portret svg{width:60px;height:60px}
+#portret .jm{font-size:12px;font-weight:bold;text-align:center;line-height:1.2}
+#portret .st{font-size:10.5px;opacity:.75}
+#akce{flex:1;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;overflow-y:auto}
+.abtn{background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.1) 0 2px,transparent 2px 11px),
+    linear-gradient(180deg,#54401d,#2c2113);
+  border:2px solid var(--zlata2);border-radius:4px;padding:5px 8px;
+  box-shadow:inset 0 0 0 1px rgba(217,171,82,.28);
+  display:flex;flex-direction:column;align-items:center;gap:1px;min-width:72px;font-size:10.5px;line-height:1.25;
+  text-align:center;color:var(--zlata3)}
+.abtn .ik{font-size:20px;line-height:1.1}
+.abtn .ik svg{width:22px;height:22px;display:block}
+.abtn b{font-size:11.5px;letter-spacing:.4px}
+.abtn .cena{opacity:.9;font-size:10px;white-space:nowrap;display:flex;gap:5px;align-items:center;justify-content:center}
+.abtn .cena svg{width:12px;height:12px;vertical-align:-2px}
+.abtn:hover{border-color:var(--zlata);background-image:linear-gradient(180deg,#6b5228,#3d2d13)}
+.abtn.nelze{opacity:.42;cursor:not-allowed}
+#tip{position:fixed;bottom:136px;left:10px;z-index:120;background:rgba(20,15,8,.95);border:2px solid #8a6a33;
+  border-radius:10px;padding:7px 11px;font-size:12.5px;max-width:330px;display:none;line-height:1.45}
+#minimapa{width:180px;height:112px;flex:none;background:#0d1220;border:2px solid #6d5628;border-radius:10px;
+  position:relative;overflow:hidden;cursor:crosshair;align-self:flex-end}
+#minimapa canvas{display:block;width:100%;height:100%}
+#zprava{position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:200;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:5px;width:min(96vw,620px)}
+.zpr{background:linear-gradient(180deg,rgba(48,36,16,.96),rgba(20,15,8,.96));
+  border:2px solid var(--zlata2);border-radius:4px;padding:7px 18px;font-size:15px;letter-spacing:.5px;
+  box-shadow:inset 0 0 0 1px rgba(217,171,82,.3),0 6px 18px rgba(0,0,0,.55);
+  font-weight:bold;animation:zprA 4s forwards;text-align:center;color:var(--zlata3)}
+.zpr.zle{border-color:#ff6a5a;color:#ffb0a6}
+.zpr.dobre{border-color:#7de08a;color:#c6ffd2}
+@keyframes zprA{0%{opacity:0;transform:translateY(-14px)}10%,80%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-10px)}}
+#skore{position:fixed;top:56px;right:8px;z-index:110;background:rgba(20,15,8,.9);border:2px solid #6d5628;
+  border-radius:9px;padding:5px 8px;font-size:11.5px;min-width:150px;display:none}
+#skore.zap{display:block}
+#skore .rad{display:flex;align-items:center;gap:5px;padding:1.5px 0}
+#skore .tec{width:11px;height:11px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.5)}
+#skore .rad.mrtvy{opacity:.4;text-decoration:line-through}
+#konec{position:fixed;inset:0;z-index:600;display:none;align-items:center;justify-content:center;flex-direction:column;
+  gap:14px;background:rgba(6,9,14,.9);backdrop-filter:blur(3px);text-align:center;padding:20px}
+#konec.zap{display:flex}
+#konec h2{font-size:clamp(32px,7vw,62px);letter-spacing:2px}
+#konec p{font-size:16px;opacity:.9;max-width:520px;line-height:1.6}
+.duha{background:linear-gradient(90deg,#ffe89a,#f0a63c,#ff8a7a,#c99cff,#8ef0a0);-webkit-background-clip:text;background-clip:text;color:transparent}
+#pauza{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;
+  background:rgba(6,9,14,.7);font-size:38px;font-weight:bold;text-align:center}
+#pauza.zap{display:flex}
+
+/* ============ MOBIL / DOTYK ============ */
+#dotyk{position:fixed;right:8px;bottom:140px;z-index:130;display:none;flex-direction:column;gap:7px}
+body.mobil #dotyk{display:flex}
+.dbtn{width:52px;height:52px;border-radius:50%;background:rgba(44,36,22,.92);border:2px solid #8a6a33;
+  font-size:22px;color:#ffe9b8;box-shadow:0 3px 10px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center}
+.dbtn.on{background:#7a4a12;border-color:#ffd98a}
+body.mobil #panel{height:112px}
+body.mobil #minimapa{width:118px;height:88px}
+body.mobil #portret{width:78px}
+body.mobil #portret svg{width:44px;height:44px}
+body.mobil .abtn{min-width:62px;font-size:9.5px;padding:4px 5px}
+body.mobil .abtn .ik{font-size:17px}
+body.mobil #tip{display:none !important}
+@media (max-width:760px){
+  #menuObsah{padding:0 16px;max-width:100%;justify-content:flex-end;padding-bottom:26px}
+  #logo h1{font-size:clamp(26px,8vw,44px)}
+  #menuStin{background:linear-gradient(0deg,rgba(6,8,12,.92) 0%,rgba(6,8,12,.6) 38%,rgba(6,8,12,.15) 70%)}
+  .hraciHlava,.hracRadek{grid-template-columns:38px 1fr 1fr 52px 46px 30px;font-size:11px}
+  .hraciHlava .sl-obt,.hracRadek .sl-obt{display:none}
+  .papir{padding:16px 14px}
+  .papir h2{font-size:20px}
+  .kodBox .kod{font-size:24px;letter-spacing:5px}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= HLAVNÍ MENU ================= -->
+<div id="menu">
+  <div id="splash"></div>
+  <div id="menuStin"></div>
+  <div id="menuPatina"></div>
+
+  <div id="ucetBar">
+    <button id="ucetBtn"><span class="ikonaBox" id="ucetIkona"></span><span class="jmenoTxt" id="ucetJmeno">ENTER YOUR NAME</span></button>
+  </div>
+
+  <div id="menuObsah">
+    <div id="logo">
+      <div class="ozdoba hornilista">✦</div>
+      <h1><span class="mala">ZEMĚ</span>ŇUŇÍSKŮ</h1>
+      <div class="ozdoba" style="margin-top:9px">❧ ⚜ ❧</div>
+      <div class="pod">Kronika dávných časů</div>
+    </div>
+    <div id="menuTlacitka">
+      <button class="aoeBtn" id="bMulti">MULTIPLAYER<span class="pod">Vytvoř hru s kódem – přidají se kamarádi</span></button>
+      <button class="aoeBtn" id="bSingle">SINGLEPLAYER<span class="pod">Hraj sám proti počítačům</span></button>
+      <button class="aoeBtn" id="bJoin">JOIN A GAME<span class="pod">Připoj se ke hře podle kódu</span></button>
+      <button class="aoeBtn maly" id="bNapoveda">JAK SE HRAJE<span class="pod">Ovládání a rady do začátku</span></button>
+    </div>
+  </div>
+  <div id="menuPata">Sepsáno v Zemi Ňuňísků · kronika v5</div>
+</div>
+
+<!-- ================= JMÉNO ================= -->
+<div class="prekryv" id="mJmeno"><div class="papir" style="width:min(460px,96vw)">
+  <div class="papirHlava"><div><h2>TVOJE JMÉNO</h2><div class="podnadpis">Pod tímhle tě uvidí ostatní hráči</div></div></div>
+  <input class="pole" id="poleJmeno" maxlength="16" placeholder="např. Mega Goat" style="font-size:20px;padding:10px">
+  <div class="lobbyPata">
+    <button class="papirBtn zeleny velky" id="jmenoOk">ULOŽIT</button>
+    <button class="papirBtn sedy" data-zavri="mJmeno">ZPĚT</button>
+  </div>
+</div></div>
+
+<!-- ================= IKONA ================= -->
+<div class="prekryv" id="mIkona"><div class="papir" style="width:min(660px,96vw)">
+  <div class="papirHlava"><div><h2>SELECT YOUR ICON</h2><div class="podnadpis">Obrázek, který budeš mít u svého jména</div></div></div>
+  <div class="ikonyMriz" id="ikonyMriz"></div>
+  <div class="lobbyPata"><button class="papirBtn zeleny velky" data-zavri="mIkona">HOTOVO</button></div>
+</div></div>
+
+<!-- ================= JOIN ================= -->
+<div class="prekryv" id="mJoin"><div class="papir" style="width:min(620px,96vw)">
+  <div class="papirHlava"><div><h2>JOIN A GAME</h2>
+    <div class="podnadpis">Připoj se ke kamarádovi – i když je na druhém konci světa</div></div></div>
+
+  <div class="krok"><b>1.</b> Kamarád ti pošle <b>POZVÁNKU</b> (dlouhý kód). Vlož ji sem:</div>
+  <textarea class="pole kodPole" id="polePozvanka" rows="3" placeholder="Sem vlož pozvánku od kamaráda…"></textarea>
+  <div class="lobbyPata" style="margin-top:8px;border:none;padding-top:0">
+    <button class="papirBtn zeleny" id="joinOk">PŘIPOJIT SE</button>
+    <button class="papirBtn sedy" data-zavri="mJoin">ZPĚT</button>
+  </div>
+
+  <div id="joinKrok2" style="display:none">
+    <div class="krok" style="margin-top:14px"><b>2.</b> Zkopíruj tuhle <b>ODPOVĚĎ</b> a pošli ji zpátky kamarádovi:</div>
+    <textarea class="pole kodPole" id="poleOdpoved" rows="3" readonly></textarea>
+    <div class="lobbyPata" style="margin-top:8px;border:none;padding-top:0">
+      <button class="papirBtn" id="kopirujOdpoved">📋 ZKOPÍROVAT ODPOVĚĎ</button>
+      <div class="pozn" style="flex:1;min-width:170px">Až ji kamarád vloží u sebe, objeví se ti lobby a hra začne, když on dá START.</div>
+    </div>
+  </div>
+  <div class="pozn" id="joinHlaska" style="margin-top:10px"></div>
+</div></div>
+
+<!-- ================= NÁPOVĚDA ================= -->
+<div class="prekryv" id="mNapoveda"><div class="papir" style="width:min(700px,96vw)">
+  <div class="papirHlava"><div><h2>JAK SE HRAJE</h2></div></div>
+  <div class="pozn" id="napovedaText" style="font-size:14px"></div>
+  <div class="lobbyPata"><button class="papirBtn zeleny velky" data-zavri="mNapoveda">ROZUMÍM</button></div>
+</div></div>
+
+<!-- ================= LOBBY ================= -->
+<div class="prekryv" id="mLobby"><div class="papir">
+  <div class="papirHlava">
+    <div><h2 id="lobbyNadpis">MULTIPLAYER</h2><div class="podnadpis" id="lobbyPodnadpis"></div></div>
+    <div class="kodBox" id="kodBox"><div class="lbl">GAME CODE</div><div class="kod" id="kodText">---</div></div>
+  </div>
+
+  <div class="sekce" style="margin-top:0">
+    <h3>Hráči</h3>
+    <div class="hraciHlava">
+      <div></div><div>Jméno</div><div>Civilizace</div><div>Tým</div><div>Barva</div><div class="sl-obt">Obtížnost</div><div></div>
+    </div>
+    <div id="hraciSeznam"></div>
+    <button class="papirBtn" id="pridejBota" style="margin-top:4px">+ PŘIDAT POČÍTAČ (BOTA)</button>
+  </div>
+
+  <div class="sekce" id="p2pSekce">
+    <h3>Kamarádi přes internet</h3>
+    <div id="p2pObsah"></div>
+  </div>
+
+  <div class="sekce">
+    <h3>Mapa</h3>
+    <div class="mapyMriz" id="mapyMriz"></div>
+  </div>
+
+  <div class="sekce">
+    <h3>Difficulty (jak silní jsou boti)</h3>
+    <div class="obtRada" id="obtRada"></div>
+  </div>
+
+  <div class="lobbyPata">
+    <button class="papirBtn zeleny velky" id="startHry">START GAME</button>
+    <button class="papirBtn sedy" id="lobbyZpet">ZPĚT DO MENU</button>
+    <div class="pozn" id="lobbyPozn" style="flex:1;min-width:190px"></div>
+  </div>
+</div></div>
+
+<!-- ================= HRA ================= -->
+<div id="hra">
+  <div id="svetOkno"><div id="svet"></div></div>
+  <div id="vinjeta"></div>
+  <div id="vyber"></div>
+
+  <div id="horni">
+    <div class="zdroj" id="z_drevo"><span>🌲</span><i id="v_drevo">0</i></div>
+    <div class="zdroj" id="z_zelezo"><span>⛏️</span><i id="v_zelezo">0</i></div>
+    <div class="zdroj" id="z_zlato"><span>🪙</span><i id="v_zlato">0</i></div>
+    <div class="zdroj" id="z_pop"><span>🏠</span><i id="v_pop">0/10</i></div>
+    <button class="hbtn" id="b_pauza">⏸</button>
+    <button class="hbtn" id="b_skore">📊</button>
+    <div id="civznak"></div>
+  </div>
+
+  <div id="skore"></div>
+  <div id="tip"></div>
+
+  <div id="dotyk">
+    <button class="dbtn" id="d_vyber" title="Označit tažením">▣</button>
+    <button class="dbtn" id="d_vojsko" title="Vybrat vojáky">⚔️</button>
+    <button class="dbtn" id="d_zoomP">＋</button>
+    <button class="dbtn" id="d_zoomM">－</button>
+  </div>
+
+  <div id="panel">
+    <div id="portret"><div class="jm">Nikdo není vybraný</div><div class="st">Klikni na panáčka</div></div>
+    <div id="akce"></div>
+    <div id="minimapa"><canvas id="mmc" width="360" height="240"></canvas></div>
+  </div>
+
+  <div id="zprava"></div>
+  <div id="pauza">⏸ PAUZA<br><span style="font-size:17px;opacity:.8">(mezerník)</span></div>
+  <div id="konec">
+    <h2 id="konecNadpis"></h2>
+    <p id="konecText"></p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+      <button class="papirBtn zeleny velky" onclick="location.reload()">HRÁT ZNOVU</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   1) CIVILIZACE – barvy podle skutečných plyšáků
+   ============================================================ */
+const CIVS = {
+  cici: {jm:"Číči", emo:"🐱", akcent:"#f0871f", nazev:"Rychlé stíny",
+    telo:"#4b3b47", telo2:"#392c36", bricho:"#5f4c59", usi:"#6b5462", usiIn:"#e0a08f",
+    nos:"#f0871f", packy:"#f0871f", oko:"#f7d267", vousky:1, ocas:"kocka", spicateUsi:1,
+    silne:"⚡ Nejrychlejší panáčci ve hře a nejrychlejší jezdci na koni",
+    slabe:"💔 Málo životů a žádní sloni – dlouhou bitvu neustojí",
+    nema:["slon"],
+    mod:{ vesnican:{rych:1.35},
+          vojak:{rych:1.35, rychUtoku:1.32, hp:0.72, utok:0.88},
+          lukostrelec:{rych:1.35, rychUtoku:1.28, hp:0.72},
+          jezdec:{rych:1.4, rychUtoku:1.25, hp:0.78, utok:0.88},
+          hrdina:{rych:1.3, hp:0.85} }},
+
+  pejsci:{jm:"Pejsci", emo:"🐶", akcent:"#e8956a", nazev:"Lovci",
+    telo:"#f4b192", telo2:"#e0966f", bricho:"#fbdcc9", usi:"#8b5a3c", usiIn:"#c98f6d",
+    nos:"#b9c3e8", packy:"#eda683", oko:"#f7e08a", fleky:"pes", ocas:"pes",
+    silne:"🏹 Nejlepší lučištníci ve hře – víc útoku i delší dostřel. Rychle kácí dřevo",
+    slabe:"⚔️ Slabší bojovník s mečem a žádní sloni",
+    nema:["slon"],
+    mod:{ lukostrelec:{utok:1.45, dostrel:1.28, hp:1.15},
+          vojak:{utok:0.88},
+          jezdec:{utok:1.0},
+          tezba:{drevo:1.6} }},
+
+  pandici:{jm:"Pandíci", emo:"🐼", akcent:"#4a86d8", nazev:"Živá pevnost",
+    telo:"#f3f3f8", telo2:"#dcdce8", bricho:"#ffffff", usi:"#4a86d8", usiIn:"#79aeee",
+    nos:"#23232b", packy:"#2b2b34", oko:"#7fc4ff", fleky:"panda", ocas:"",
+    silne:"🐘 NEJSILNĚJŠÍ slon ve hře! Budovy vydrží skoro dvakrát víc a věže pálí naplno",
+    slabe:"🐢 Nemají vůbec lučištníky ani koně a chodí pomaleji",
+    nema:["lukostrelec","jezdec"],
+    mod:{ budovyHp:1.6, vezUtok:1.4,
+          vojak:{hp:1.22, rych:0.88},
+          slon:{utok:1.4, hp:1.45},
+          vesnican:{rych:0.92}, hrdina:{rych:0.9, hp:1.15} }},
+
+  clawsby:{jm:"Clawsby", emo:"🦁", akcent:"#f3c53c", nazev:"Rytíři",
+    telo:"#f3c53c", telo2:"#dfad22", bricho:"#fff6e0", usi:"#dfad22", usiIn:"#f2dc9a",
+    nos:"#33251c", packy:"#f3c53c", oko:"#ffd76e", maska:"#d9884a", ocas:"",
+    silne:"⚔️ NEJSILNĚJŠÍ bojovník s mečem ve hře – a nejvíc životů. Má i silné jezdce",
+    slabe:"🐌 Bojovník je nejpomalejší ze všech a lučištníky ani slony vůbec nemají",
+    nema:["lukostrelec","slon"],
+    mod:{ vojak:{utok:1.8, hp:1.45, rych:0.6},
+          jezdec:{utok:1.22, hp:1.2, rych:0.88},
+          hrdina:{utok:1.25, hp:1.2, rych:0.85} }},
+
+  bobrici:{jm:"Bobříci", emo:"🦫", akcent:"#f0c53a", nazev:"Kutilové",
+    telo:"#a5713f", telo2:"#8a5c31", bricho:"#f7efe1", usi:"#7a5230", usiIn:"#c69a72",
+    nos:"#2c2018", packy:"#f0c53a", oko:"#ffe08a", ocas:"bobr", zuby:1, obliceje:1,
+    silne:"🐴🐘 Jediní mají ÚPLNĚ VŠECHNO – koně i slony! Staví 2× rychleji a budovy stojí míň",
+    slabe:"⚔️ Zato jsou všichni jejich bojovníci slabší než u ostatních",
+    mod:{ stavba:2.0, budovyCena:0.75, tezba:{zelezo:1.55},
+          vesnican:{hp:1.35}, vojak:{utok:0.9}, lukostrelec:{utok:0.9},
+          jezdec:{utok:0.78, hp:0.85}, slon:{utok:0.72, hp:0.85} }},
+
+  mysky:{jm:"Myšky", emo:"🐭", akcent:"#d98fd6", nazev:"Hbitý lid",
+    telo:"#d98fd6", telo2:"#c176bf", bricho:"#fdf2fb", usi:"#e6a8e2", usiIn:"#f7c9ef",
+    nos:"#e878b0", packy:"#f0b9d8", oko:"#c9a6ff", vousky:1, ocas:"mys", velkeUsi:1,
+    silne:"🏠 Panáčci stojí o čtvrtinu míň, do domečku se vejde víc a vesničané pádí",
+    slabe:"💔 Jsou malé a křehké a slona nemají – ve rvačce dlouho nevydrží",
+    nema:["slon"],
+    mod:{ vesnican:{rych:1.5}, jednotkyCena:0.75, popNavic:3,
+          vojak:{hp:0.78, rych:1.12}, lukostrelec:{hp:0.78, rych:1.12},
+          jezdec:{hp:0.78, rych:1.15, utok:0.85}, hrdina:{hp:0.9} }}
+};
+const CIVKEYS = Object.keys(CIVS);
+
+/* ============================================================
+   2) KRESLENÍ PLYŠÁKŮ (SVG)
+   ============================================================ */
+let __gid = 0;
+function svetlej(hex,f){
+  const n = parseInt(hex.slice(1),16);
+  let r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+  r=Math.round(r+(255-r)*f); g=Math.round(g+(255-g)*f); b=Math.round(b+(255-b)*f);
+  return "#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function tmavej(hex,f){
+  const n = parseInt(hex.slice(1),16);
+  let r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+  r=Math.round(r*(1-f)); g=Math.round(g*(1-f)); b=Math.round(b*(1-f));
+  return "#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function chlup(cx,cy,r,barva,n,vel){
+  let s="";
+  for(let i=0;i<n;i++){
+    const a=i/n*Math.PI*2, rr=r*(0.94+((i*37)%9)/90);
+    s+=`<circle cx="${(cx+Math.cos(a)*rr).toFixed(1)}" cy="${(cy+Math.sin(a)*rr).toFixed(1)}" r="${(r*(vel||0.14)).toFixed(1)}" fill="${barva}"/>`;
+  }
+  return s;
+}
+function oko(x,y,c,r){
+  r=r||1;
+  return `<ellipse cx="${x}" cy="${y}" rx="${10.5*r}" ry="${12*r}" fill="#17121a"/>
+  <path d="M${x-10*r} ${y+2*r} a${10.5*r} ${12*r} 0 0 0 ${20*r} 0 a${10.5*r} ${12*r} 0 0 0 ${-20*r} 0" fill="${c.oko}" opacity=".9"/>
+  <ellipse cx="${x}" cy="${y+1}" rx="${7*r}" ry="${8*r}" fill="#17121a"/>
+  <circle cx="${x-3.5*r}" cy="${y-4.5*r}" r="${3.4*r}" fill="#fff" opacity=".95"/>
+  <circle cx="${x+3*r}" cy="${y+4*r}" r="${1.7*r}" fill="#fff" opacity=".6"/>`;
+}
+
+/* Hlavní panáček. role: vesnican | vojak | lukostrelec | hrdina | portret */
+function plysak(civK, role, opt){
+  opt = opt || {};
+  const c = CIVS[civK], v=[];
+  const boj = (role==="vojak"||role==="hrdina"), luk=(role==="lukostrelec"), hrd=(role==="hrdina");
+  const gid = "p"+(++__gid);
+  const bar = opt.barva || c.akcent;     // barva hráče (jako v Age of Empires)
+
+  // --- přechody pro měkkou srst ---
+  v.push(`<defs>
+    <radialGradient id="${gid}t" cx="36%" cy="26%" r="82%">
+      <stop offset="0" stop-color="${svetlej(c.telo,0.30)}"/>
+      <stop offset="0.55" stop-color="${c.telo}"/>
+      <stop offset="1" stop-color="${tmavej(c.telo,0.16)}"/>
+    </radialGradient>
+    <radialGradient id="${gid}b" cx="50%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="${c.bricho}"/>
+    </radialGradient>
+  </defs>`);
+
+  // --- stín na zemi ---
+  if(!opt.bezStinu) v.push(`<ellipse cx="50" cy="93" rx="29" ry="7.5" fill="rgba(0,0,0,.24)"/>`);
+
+  // --- praporek v barvě hráče na zádech (aby bylo hned vidět, čí to je) ---
+  if(!opt.bezPraporku) v.push(`<g>
+    <rect x="9" y="14" width="2.8" height="52" rx="1.4" fill="#6b4a26"/>
+    <path d="M11.4 16 q9 4 17 0 q-8 6 0 11 q-9 4 -17 0 Z" fill="${bar}" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/>
+    <path d="M11.4 16 q9 4 17 0 q-8 6 0 11 q-9 4 -17 0 Z" fill="rgba(255,255,255,.22)" clip-path="inset(0 0 55% 0)"/>
+  </g>`);
+
+  // --- ocásek (za tělem) ---
+  if(opt.bezOcasu){} else
+  if(c.ocas==="mys")   v.push(`<path d="M80 80 q26 4 18 -18" stroke="${c.nos}" stroke-width="4" fill="none" stroke-linecap="round"/>`);
+  if(c.ocas==="kocka") v.push(`<path d="M80 76 q24 -2 16 -24" stroke="${c.telo2}" stroke-width="8" fill="none" stroke-linecap="round"/>`);
+  if(c.ocas==="bobr")  v.push(`<ellipse cx="88" cy="76" rx="15" ry="9" transform="rotate(24 88 76)" fill="${c.telo2}"/>
+                               <ellipse cx="88" cy="76" rx="10" ry="5" transform="rotate(24 88 76)" fill="rgba(0,0,0,.14)"/>`);
+  if(c.ocas==="pes")   v.push(`<path d="M82 74 q18 -6 10 -18" stroke="${c.telo2}" stroke-width="9" fill="none" stroke-linecap="round"/>`);
+
+  // --- nožičky ---
+  if(!opt.bezNohou) v.push(`<ellipse cx="33" cy="89" rx="12.5" ry="8" fill="${c.packy}"/>
+          <ellipse cx="67" cy="89" rx="12.5" ry="8" fill="${c.packy}"/>`);
+
+  // --- ouška (vysoko, aby byla vidět nad kulatým tělem) ---
+  const uy = c.velkeUsi?20:25, ur = c.velkeUsi?15:11.5;
+  for(const ux of (c.velkeUsi?[20,80]:[23,77])){
+    if(c.spicateUsi){
+      const zn = ux<50?-1:1;
+      v.push(`<path d="M${ux-10} ${uy+12} L${ux+zn*3} ${uy-13} L${ux+10} ${uy+12} Z" fill="${c.usi}" stroke="rgba(0,0,0,.12)" stroke-width="1"/>
+              <path d="M${ux-5} ${uy+9} L${ux+zn*1.5} ${uy-5} L${ux+5} ${uy+9} Z" fill="${c.usiIn}"/>`);
+    }else{
+      v.push(`<ellipse cx="${ux}" cy="${uy}" rx="${ur}" ry="${ur*1.08}" fill="${c.usi}" stroke="rgba(0,0,0,.12)" stroke-width="1"/>
+              <ellipse cx="${ux}" cy="${uy+1}" rx="${ur*0.55}" ry="${ur*0.62}" fill="${c.usiIn}"/>`);
+    }
+  }
+
+  // --- tělo (chlupatá koule) ---
+  v.push(chlup(50,56,36,c.telo2,30));
+  v.push(`<circle cx="50" cy="56" r="36" fill="url(#${gid}t)"/>`);
+  v.push(chlup(50,56,33,svetlej(c.telo,0.10),24,0.11));
+  v.push(`<ellipse cx="42" cy="42" rx="24" ry="16" fill="rgba(255,255,255,.14)"/>`);
+
+  // --- fleky / obličejová maska ---
+  if(c.fleky==="panda"){
+    v.push(`<path d="M14 62 q6 -20 20 -22 q6 12 2 26 q-14 6 -22 -4 Z" fill="#26262e" opacity=".95"/>`);
+    v.push(`<ellipse cx="34" cy="53" rx="13" ry="14.5" fill="#26262e"/>`);
+    v.push(`<ellipse cx="66" cy="53" rx="13" ry="14.5" fill="#26262e"/>`);
+  }
+  if(c.fleky==="pes"){
+    v.push(`<ellipse cx="30" cy="46" rx="13" ry="11" fill="#9a6440" opacity=".85"/>`);
+    v.push(`<ellipse cx="72" cy="70" rx="10" ry="8" fill="#9a6440" opacity=".7"/>`);
+  }
+  if(c.obliceje) v.push(`<ellipse cx="50" cy="60" rx="24" ry="21" fill="${c.bricho}"/>`);
+  if(c.maska)    v.push(`<ellipse cx="50" cy="63" rx="16" ry="12" fill="${c.maska}" opacity=".85"/>`);
+
+  // --- bříško ---
+  v.push(`<ellipse cx="50" cy="76" rx="22" ry="15" fill="url(#${gid}b)" opacity="${c.obliceje?.9:1}"/>`);
+
+  // --- tvářičky ---
+  v.push(`<ellipse cx="23" cy="66" rx="7.5" ry="4.6" fill="#ff7fa8" opacity=".26"/>
+          <ellipse cx="77" cy="66" rx="7.5" ry="4.6" fill="#ff7fa8" opacity=".26"/>`);
+
+  // --- očka ---
+  v.push(oko(34,53,c), oko(66,53,c));
+
+  // --- čumáček + pusa ---
+  v.push(`<ellipse cx="50" cy="66" rx="6" ry="4.4" fill="${c.nos}"/>
+          <ellipse cx="48" cy="65" rx="2" ry="1.4" fill="#fff" opacity=".45"/>
+          <path d="M50 70 q-6 6 -11 1 M50 70 q6 6 11 1" stroke="${c.nos}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`);
+  if(c.zuby) v.push(`<rect x="46" y="72" width="4" height="7" rx="1.4" fill="#fff"/><rect x="50.5" y="72" width="4" height="7" rx="1.4" fill="#fff"/>`);
+  if(c.vousky) v.push(`<g stroke="${c.nos}" stroke-width="1.5" stroke-linecap="round" opacity=".85">
+     <path d="M42 66 L22 62"/><path d="M42 69 L22 71"/><path d="M58 66 L78 62"/><path d="M58 69 L78 71"/></g>`);
+
+  // --- výbava ---
+  if(luk){
+    // kožená čepička s pírkem – aby byl lučištník na první pohled jiný než vesničan
+    v.push(`<path d="M22 40 a28 28 0 0 1 56 0 q-28 -12 -56 0 Z" fill="#6b4a26"/>
+            <path d="M22 40 a28 28 0 0 1 28 -28 q-6 14 -6 25 Z" fill="rgba(255,255,255,.18)"/>
+            <rect x="20" y="37" width="60" height="6" rx="3" fill="#8a5a2c"/>
+            <path d="M72 34 q14 -12 20 -4 q-10 0 -18 8 Z" fill="#e04a3a"/>`);
+    // pořádný luk s napnutou tětivou a šípem
+    v.push(`<g>
+       <path d="M22 30 q-16 26 0 52" stroke="#8a5a2c" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+       <path d="M22 30 q-4 26 0 52" stroke="#efe6d0" stroke-width="2" fill="none"/>
+       <path d="M12 56 L44 56" stroke="#e8dfc8" stroke-width="3"/>
+       <path d="M44 56 l-7 -4 M44 56 l-7 4" stroke="#cfc4a8" stroke-width="2.4" fill="none"/>
+       <path d="M12 56 l6 -4 M12 56 l6 4" stroke="#b9b2a4" stroke-width="2" fill="none"/></g>`);
+    // toulec se šípy na zádech
+    v.push(`<g transform="rotate(14 78 66)">
+       <rect x="72" y="58" width="13" height="24" rx="4" fill="#7a5a34"/>
+       <path d="M76 58 v-9 M80 58 v-11 M84 58 v-8" stroke="#e8dfc8" stroke-width="2"/></g>`);
+  }
+  if(boj){
+    const kov  = hrd? "#ffd76e":"#c3ccda", kov2 = hrd? "#e0a63c":"#8d97a8";
+    v.push(`<path d="M18 46 a32 32 0 0 1 64 0 z" fill="${kov}"/>
+            <path d="M18 46 a32 32 0 0 1 64 0 z" fill="rgba(255,255,255,.25)" clip-path="inset(0 50% 0 0)"/>
+            <rect x="15" y="42" width="70" height="7" rx="3.5" fill="${kov2}"/>
+            <rect x="47" y="44" width="6" height="14" rx="3" fill="${kov2}"/>`);
+    if(hrd) v.push(`<path d="M50 14 q10 -12 14 2 q-8 -2 -14 6 Z" fill="#e04a3a"/><circle cx="50" cy="16" r="5" fill="#ffd76e"/>`);
+    // brnění na bříšku
+    v.push(`<path d="M32 72 q18 -9 36 0 q-3 17 -18 22 q-15 -5 -18 -22 Z" fill="${kov}" opacity=".92"/>
+            <path d="M50 72 L50 93" stroke="${kov2}" stroke-width="2"/>`);
+    // meč
+    const d = hrd?1.2:1;
+    v.push(`<g transform="translate(78,62) rotate(-20) scale(${d})">
+       <rect x="-3" y="-38" width="6" height="40" rx="2.5" fill="#eef3f9" stroke="#b9c2cf" stroke-width="1"/>
+       <path d="M-3 -38 L0 -45 L3 -38 Z" fill="#fff"/>
+       <path d="M-1 -36 L-1 0" stroke="#c9d3e0" stroke-width="1.4"/>
+       <rect x="-11" y="0" width="22" height="5" rx="2.5" fill="${hrd?'#ffd76e':'#a9762f'}"/>
+       <rect x="-3" y="5" width="6" height="12" rx="3" fill="#6b4a26"/>
+       <circle cx="0" cy="18" r="3" fill="${hrd?'#ffd76e':'#a9762f'}"/></g>`);
+    // štít
+    v.push(`<path d="M2 60 q11 -6 22 0 v15 q0 11 -11 15 q-11 -4 -11 -15 Z" fill="${bar}" stroke="#3a2a18" stroke-width="2.5"/>
+            <path d="M2 60 q11 -6 22 0 v4 q-11 -5 -22 0 Z" fill="rgba(255,255,255,.3)"/>
+            <circle cx="13" cy="73" r="4.5" fill="#fff8e0" opacity=".9"/>`);
+  }
+  if(role==="vesnican"){
+    v.push(`<g transform="translate(74,88) rotate(34)">
+      <rect x="-2.5" y="-26" width="5" height="30" rx="2.5" fill="#8a5a2c"/>
+      <path d="M-3 -26 q14 -6 13 5 q-1 9 -13 5 Z" fill="#dbe4ef" stroke="#8d97a8" stroke-width="1.6"/>
+      <path d="M-3 -23 q8 -2 8 3" fill="none" stroke="#fff" stroke-width="1.3" opacity=".7"/></g>`);
+  }
+  return v.join("");
+}
+
+/* ---------- JEZDEC NA KONI ---------- */
+function konSVG(civK, barva){
+  const c = CIVS[civK], gid = "k"+(++__gid);
+  const srst = c.telo, tm = tmavej(c.telo,0.22), sv = svetlej(c.telo,0.20), kopyto = tmavej(c.telo,0.55);
+  const hriva = tmavej(c.telo,0.38);
+  const bar = barva || c.akcent;
+  const jezdec = plysak(civK,"vojak",{bezStinu:1,bezNohou:1,bezOcasu:1,bezPraporku:1,barva:bar});
+  const noha = (x,y,h,barva,ohnuta)=>`
+    <path d="M${x} ${y} q${ohnuta?4:0} ${h*0.5} 0 ${h}" stroke="${barva}" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <ellipse cx="${x+(ohnuta?2:0)}" cy="${y+h+2}" rx="6" ry="4" fill="${kopyto}"/>`;
+  return `
+  <defs>
+    <linearGradient id="${gid}" x1="0.2" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="${sv}"/><stop offset="0.55" stop-color="${srst}"/><stop offset="1" stop-color="${tm}"/></linearGradient>
+  </defs>
+  <ellipse cx="50" cy="95" rx="37" ry="7" fill="rgba(0,0,0,.26)"/>
+  <!-- ocas -->
+  <path d="M17 52 q-13 10 -10 24 q1 6 5 5 q3 -1 1 -6 q-3 -11 6 -18 Z" fill="${hriva}"/>
+  <path d="M17 54 q-9 9 -8 19" stroke="${tmavej(c.telo,0.5)}" stroke-width="1.6" fill="none" opacity=".6"/>
+  <!-- zadní nohy -->
+  ${noha(26,64,26,tm,0)}
+  ${noha(38,66,24,tm,1)}
+  <!-- trup -->
+  <ellipse cx="47" cy="60" rx="30" ry="18" fill="url(#${gid})"/>
+  <ellipse cx="42" cy="53" rx="20" ry="9" fill="${sv}" opacity=".45"/>
+  <path d="M22 66 q14 9 30 5" stroke="${tm}" stroke-width="2" fill="none" opacity=".45"/>
+  <!-- přední nohy -->
+  ${noha(60,64,26,srst,0)}
+  ${noha(72,62,28,sv,1)}
+  <!-- krk -->
+  <path d="M62 52 q8 -18 18 -25 q8 -5 11 2 q-6 8 -8 19 q-7 10 -21 12 Z" fill="url(#${gid})"/>
+  <path d="M66 48 q7 -14 15 -20" stroke="${sv}" stroke-width="3" fill="none" opacity=".4"/>
+  <!-- hlava -->
+  <g transform="translate(-7,1) rotate(-16 88 32)">
+    <path d="M76 34 q0 -11 10 -13 q12 -2 16 4 q4 5 -2 9 q-9 5 -16 5 q-8 0 -8 -5 Z" fill="${srst}"/>
+    <ellipse cx="99" cy="34" rx="6" ry="5" fill="${sv}"/>
+    <ellipse cx="101" cy="34" rx="2.4" ry="1.7" fill="${c.nos}"/>
+    <circle cx="86" cy="29" r="2.9" fill="#17121a"/><circle cx="85" cy="28" r="1.1" fill="#fff"/>
+    <path d="M78 24 l-2 -11 l8 6 Z" fill="${srst}"/>
+    <path d="M78.5 23 l-1 -7 l4.5 3.5 Z" fill="${c.usiIn}"/>
+    <path d="M80 36 q10 3 18 1" stroke="${tm}" stroke-width="2" fill="none" opacity=".5"/>
+    <path d="M82 28 q9 -2 15 3" stroke="#4a3a2a" stroke-width="2" fill="none" opacity=".55"/>
+  </g>
+  <!-- hříva -->
+  <path d="M62 32 q7 -13 16 -19 q-3 9 -4 13 q5 -7 10 -9 q-5 9 -6 15 q-9 3 -16 0 Z" fill="${hriva}"/>
+  <path d="M64 40 q6 -6 12 -8 q-4 6 -5 11 q-5 0 -7 -3 Z" fill="${hriva}"/>
+  <!-- otěže -->
+  <path d="M58 40 q16 -6 28 -8" stroke="#6b4a26" stroke-width="2" fill="none"/>
+  <!-- čabraka a sedlo -->
+  <path d="M30 47 q17 -10 34 0 l-3 14 q-15 6 -29 0 Z" fill="${bar}"/>
+  <path d="M30 47 q17 -10 34 0 l-1 4 q-16 -8 -32 0 Z" fill="${svetlej(bar,0.35)}"/>
+  <path d="M34 45 q13 -7 26 0 l-1 8 q-12 -5 -24 0 Z" fill="#8a5a2c"/>
+  <path d="M34 45 q13 -7 26 0 l-0.5 2.5 q-13 -6 -25 0 Z" fill="#a9762f"/>
+  <rect x="43" y="53" width="8" height="12" rx="3" fill="#6b4a26"/>
+  <g transform="translate(21,3) scale(0.5)">${jezdec}</g>`;
+}
+
+/* ---------- JEZDEC NA SLONU ---------- */
+function slonSVG(civK, barva){
+  const c = CIVS[civK], gid = "s"+(++__gid);
+  const srst = c.telo, tm = tmavej(c.telo,0.24), sv = svetlej(c.telo,0.20), tm2 = tmavej(c.telo,0.4);
+  const bar = barva || c.akcent;
+  const jezdec = plysak(civK,"vojak",{bezStinu:1,bezNohou:1,bezOcasu:1,bezPraporku:1,barva:bar});
+  const nohaS = (x,y,w,h,barva)=>`
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w/2.4}" fill="${barva}"/>
+    <path d="M${x+1} ${y+h-5} h${w-2}" stroke="${tm2}" stroke-width="1.4" opacity=".5"/>
+    <g fill="${svetlej(c.telo,0.5)}">
+      <ellipse cx="${x+w*0.26}" cy="${y+h-2}" rx="2.1" ry="1.6"/>
+      <ellipse cx="${x+w*0.5}" cy="${y+h-1.4}" rx="2.1" ry="1.6"/>
+      <ellipse cx="${x+w*0.74}" cy="${y+h-2}" rx="2.1" ry="1.6"/></g>`;
+  return `
+  <defs><radialGradient id="${gid}" cx="38%" cy="24%" r="82%">
+    <stop offset="0" stop-color="${sv}"/><stop offset="0.6" stop-color="${srst}"/><stop offset="1" stop-color="${tm}"/></radialGradient></defs>
+  <ellipse cx="46" cy="96" rx="43" ry="8" fill="rgba(0,0,0,.28)"/>
+  <path d="M7 62 q-8 9 -4 20 q2 5 5 3 q3 -2 0 -5 q-4 -7 3 -13 Z" fill="${tm}"/>
+  ${nohaS(12,66,16,30,tm)}
+  ${nohaS(29,68,16,28,tm)}
+  <ellipse cx="37" cy="63" rx="30" ry="24" fill="url(#${gid})"/>
+  <path d="M11 70 q25 12 50 2" stroke="${tm}" stroke-width="2" fill="none" opacity=".35"/>
+  ${nohaS(46,68,16,28,srst)}
+  ${nohaS(62,66,16,30,sv)}
+  <!-- hlava -->
+  <ellipse cx="72" cy="49" rx="21" ry="20" fill="${srst}"/>
+  <ellipse cx="75" cy="39" rx="13" ry="8" fill="${sv}" opacity=".55"/>
+  <!-- ucho na hlavě -->
+  <path d="M55 31 q15 -3 15 14 q0 17 -13 18 q-12 -2 -12 -16 q0 -14 10 -16 Z" fill="${tm}" stroke="${tmavej(c.telo,0.45)}" stroke-width="1.4"/>
+  <path d="M57 36 q11 -2 11 11 q0 12 -9 13 q-8 -2 -8 -12 q0 -10 6 -12 Z" fill="${c.usiIn}" opacity=".8"/>
+  <!-- chobot -->
+  <path d="M84 56 q14 14 11 30 q-1 9 -8 9 q-7 0 -5 -8 q3 -12 -8 -23 Z" fill="${srst}" stroke="${tm}" stroke-width="1.6"/>
+  <path d="M86 95 q8 3 10 -5" stroke="${srst}" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M86 60 q8 10 8 20" stroke="${sv}" stroke-width="2.4" fill="none" opacity=".55"/>
+  <g stroke="${tm}" stroke-width="1.5" fill="none" opacity=".5">
+    <path d="M83 65 q9 6 8 15"/><path d="M84 73 q7 5 6 12"/><path d="M85 81 q5 4 4 9"/></g>
+  <!-- kly -->
+  <path d="M70 66 q-6 15 -19 16" stroke="#fff8e6" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M78 70 q-3 14 -14 17" stroke="#f0e5cc" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- oko -->
+  <circle cx="80" cy="44" r="4.6" fill="#17121a"/>
+  <circle cx="78.3" cy="42.3" r="1.8" fill="#fff"/>
+  <path d="M75 36 q7 -3 11 2" stroke="${tm}" stroke-width="1.7" fill="none" opacity=".55"/>
+  <!-- čelní plát a čabraka -->
+  <path d="M60 27 q16 -7 26 4 q-3 9 -13 9 q-11 0 -13 -13 Z" fill="${bar}"/>
+  <path d="M73 40 v6" stroke="${bar}" stroke-width="4"/>
+  <circle cx="73" cy="32" r="3.8" fill="#fff8e0" opacity=".9"/>
+  <path d="M10 47 q25 -14 48 0 l-4 12 q-20 -10 -40 0 Z" fill="${bar}"/>
+  <path d="M10 47 q25 -14 48 0 l-1 3 q-23 -12 -46 0 Z" fill="${svetlej(bar,0.35)}"/>
+  <g fill="${svetlej(bar,0.5)}"><circle cx="20" cy="53" r="2"/><circle cx="34" cy="50" r="2"/><circle cx="49" cy="53" r="2"/></g>
+  <!-- houda (sedátko) -->
+  <rect x="20" y="34" width="40" height="11" rx="3" fill="#8a5a2c"/>
+  <rect x="20" y="34" width="40" height="4" rx="2" fill="#a9762f"/>
+  <g stroke="#6b4a26" stroke-width="3.2" stroke-linecap="round">
+    <path d="M23 34 V22"/><path d="M57 34 V22"/></g>
+  <path d="M18 22 h44 l-4 -7 h-36 Z" fill="${bar}"/>
+  <path d="M18 22 h44 l-2 4 h-40 Z" fill="${tmavej(bar,0.25)}"/>
+  <g transform="translate(16,-13) scale(0.52)">${jezdec}</g>`;
+}
+/* jedna funkce pro všechny jednotky (barva = barva hráče) */
+function jednotkaSVG(civK, kind, barva){
+  if(kind==="jezdec") return konSVG(civK, barva);
+  if(kind==="slon")   return slonSVG(civK, barva);
+  return plysak(civK, kind, {barva:barva});
+}
+
+/* ---------- staré ikonky surovin (místo moderních emoji) ---------- */
+function ikonka(vnitrek){
+  return `<svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">${vnitrek}</svg>`;
+}
+const IK = {
+  drevo: ikonka(`<rect x="2" y="7" width="20" height="10" rx="5" fill="#8a5a2c" stroke="#4a2f14" stroke-width="1.5"/>
+    <path d="M4 9.5 h13 M4 14.5 h13" stroke="#6b4520" stroke-width="1"/>
+    <ellipse cx="18.5" cy="12" rx="3.4" ry="5" fill="#c08a4a" stroke="#4a2f14" stroke-width="1.3"/>
+    <ellipse cx="18.5" cy="12" rx="1.7" ry="2.6" fill="none" stroke="#8a5a2c" stroke-width="1"/>`),
+  zelezo: ikonka(`<path d="M3.5 17.5 L6.5 7.5 L14 4.5 L20.5 10 L18 19 Z" fill="#8e9aa6" stroke="#3f4a55" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M6.5 7.5 L14 4.5 L12.5 12.5 Z" fill="#c3d1de"/>
+    <path d="M12.5 12.5 L20.5 10 L18 19 Z" fill="#6e7a86"/>
+    <circle cx="16" cy="14.5" r="1.5" fill="#eaf3fb"/>`),
+  zlato: ikonka(`<circle cx="12" cy="12" r="8.4" fill="#f0c33c" stroke="#8a6410" stroke-width="1.7"/>
+    <circle cx="12" cy="12" r="5.4" fill="none" stroke="#a37812" stroke-width="1.2"/>
+    <path d="M9.2 9.2 q2.8 -1.7 5.6 0" stroke="#fff6cd" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+    <path d="M12 8.6 v6.8 M10 10.4 h4 M10 13.6 h4" stroke="#8a6410" stroke-width="1.2"/>`),
+  domek: ikonka(`<path d="M2.5 12.5 L12 4 L21.5 12.5 Z" fill="#a4552f" stroke="#5c2f16" stroke-width="1.5" stroke-linejoin="round"/>
+    <rect x="5.5" y="12" width="13" height="8" fill="#e6cfa0" stroke="#5c2f16" stroke-width="1.5"/>
+    <rect x="10" y="14.5" width="4" height="5.5" fill="#6b4a26"/>
+    <circle cx="13.2" cy="17.4" r=".7" fill="#f0c33c"/>`)
+};
+/* malá varianta do cen */
+function IKmini(k){ return IK[k].replace('width="20" height="20"','width="13" height="13"'); }
+
+/* width/height jsou tu kvůli vnořování do jiného SVG (úvodní obrázek),
+   v HTML je stejně přebije CSS width:100% */
+function svgObal(vnitrek, vb){
+  return `<svg viewBox="${vb||"0 0 100 100"}" width="100" height="100" xmlns="http://www.w3.org/2000/svg">${vnitrek}</svg>`;
+}
+/* ============================================================
+   BUDOVY – každá civilizace staví ve svém vlastním slohu
+   ============================================================ */
+const STYLY = {
+  cici:   {strechaTyp:"spicata", zedTyp:"prkna", ozdoba:"lucerna",
+           zed:"#57506b", zed2:"#403a52", ram:"#2f2a3e", strecha:"#7b4a8c", strecha2:"#4f2e5c",
+           okno:"#ffb648", dvere:"#332c42", zaklad:"#3a3446"},
+  pejsci: {strechaTyp:"doskova", zedTyp:"prkna", ozdoba:"parohy",
+           zed:"#e3c49f", zed2:"#c39d74", ram:"#8b5a3c", strecha:"#d3a457", strecha2:"#9d7136",
+           okno:"#ffd98a", dvere:"#6b4a26", zaklad:"#8a6a4a"},
+  pandici:{strechaTyp:"pagoda", zedTyp:"hlina", ozdoba:"bambus",
+           zed:"#f4f1e6", zed2:"#dad4c2", ram:"#6b5a46", strecha:"#3f6fc4", strecha2:"#294c93",
+           okno:"#ffe9a8", dvere:"#7a5230", zaklad:"#9a9184"},
+  clawsby:{strechaTyp:"tasky", zedTyp:"kamen", ozdoba:"korouhev",
+           zed:"#dcd6c8", zed2:"#b8b0a0", ram:"#8f8779", strecha:"#c0392b", strecha2:"#8a2216",
+           okno:"#3d4a68", dvere:"#6b4a26", zaklad:"#a49c8c"},
+  bobrici:{strechaTyp:"klady", zedTyp:"klady", ozdoba:"kolo",
+           zed:"#bd8b52", zed2:"#996a39", ram:"#6f4a26", strecha:"#6f9a45", strecha2:"#4a752c",
+           okno:"#ffd98a", dvere:"#5c3d22", zaklad:"#7a5a3a"},
+  mysky:  {strechaTyp:"houba", zedTyp:"hlina", ozdoba:"kytky",
+           zed:"#f7e9cd", zed2:"#e4cfa4", ram:"#c98fbe", strecha:"#d98fd6", strecha2:"#b160ad",
+           okno:"#ffd6f0", dvere:"#a8734e", zaklad:"#c9a98a"}
+};
+
+/* ---- STŘECHA ---- */
+function strechaSVG(s, x1, x2, yb, h, akcent){
+  const w = x2-x1, cx = (x1+x2)/2, yt = yb-h, id = "st"+(++__gid);
+  let t = `<defs><linearGradient id="${id}" x1="0.1" y1="0" x2="0.5" y2="1">
+      <stop offset="0" stop-color="${svetlej(s.strecha,0.24)}"/>
+      <stop offset="0.5" stop-color="${s.strecha}"/>
+      <stop offset="1" stop-color="${s.strecha2}"/></linearGradient></defs>`;
+  const F = `url(#${id})`;
+
+  if(s.strechaTyp==="houba"){
+    t += `<path d="M${x1} ${yb} Q${cx} ${yt-h*0.55} ${x2} ${yb} Q${cx} ${yb+h*0.3} ${x1} ${yb} Z" fill="${F}"/>
+      <ellipse cx="${cx-w*0.17}" cy="${yb-h*0.66}" rx="${w*0.085}" ry="${h*0.21}" fill="#fff6e6" opacity=".65"/>
+      <ellipse cx="${cx+w*0.16}" cy="${yb-h*0.44}" rx="${w*0.062}" ry="${h*0.16}" fill="#fff6e6" opacity=".55"/>
+      <ellipse cx="${cx-w*0.02}" cy="${yb-h*0.3}" rx="${w*0.045}" ry="${h*0.11}" fill="#fff6e6" opacity=".4"/>
+      <path d="M${x1} ${yb} Q${cx} ${yb+h*0.3} ${x2} ${yb}" fill="none" stroke="rgba(0,0,0,.16)" stroke-width="2.2"/>`;
+  }
+  else if(s.strechaTyp==="spicata"){
+    t += `<path d="M${x1} ${yb} Q${cx-w*0.13} ${yb-h*0.78} ${cx} ${yt-h*0.55}
+        Q${cx+w*0.13} ${yb-h*0.78} ${x2} ${yb} Q${cx} ${yb+h*0.16} ${x1} ${yb} Z" fill="${F}"/>
+      <path d="M${x1} ${yb} Q${cx-w*0.13} ${yb-h*0.78} ${cx} ${yt-h*0.55} L${cx} ${yb} Z" fill="rgba(255,255,255,.14)"/>
+      <path d="M${cx-w*0.30} ${yb-h*0.3} Q${cx} ${yb-h*0.55} ${cx+w*0.30} ${yb-h*0.3}" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="1.6"/>
+      <circle cx="${cx}" cy="${yt-h*0.55}" r="${Math.max(2.6,w*0.04)}" fill="${akcent}"/>`;
+  }
+  else if(s.strechaTyp==="pagoda"){
+    const e = w*0.12;
+    t += `<path d="M${x1-e} ${yb} C${x1+w*0.06} ${yb-h*0.22} ${cx-w*0.24} ${yt} ${cx} ${yt}
+        C${cx+w*0.24} ${yt} ${x2-w*0.06} ${yb-h*0.22} ${x2+e} ${yb} Q${cx} ${yb+h*0.22} ${x1-e} ${yb} Z" fill="${F}"/>
+      <path d="M${x1-e} ${yb} C${x1+w*0.06} ${yb-h*0.22} ${cx-w*0.24} ${yt} ${cx} ${yt} L${cx} ${yb} Z" fill="rgba(255,255,255,.13)"/>
+      <path d="M${cx} ${yt} L${cx} ${yb}" stroke="rgba(0,0,0,.18)" stroke-width="1.6"/>
+      <path d="M${x1-e} ${yb} Q${cx} ${yb+h*0.22} ${x2+e} ${yb}" fill="none" stroke="${s.strecha2}" stroke-width="3"/>
+      <path d="M${cx-w*0.30} ${yb-h*0.62} C${cx-w*0.12} ${yb-h*0.92} ${cx+w*0.12} ${yb-h*0.92} ${cx+w*0.30} ${yb-h*0.62}
+        Q${cx} ${yb-h*0.5} ${cx-w*0.30} ${yb-h*0.62} Z" fill="${s.strecha2}"/>
+      <circle cx="${cx}" cy="${yt-h*0.12}" r="${Math.max(2.2,w*0.032)}" fill="${akcent}"/>`;
+  }
+  else if(s.strechaTyp==="doskova"){
+    t += `<path d="M${x1} ${yb} Q${cx} ${yt-h*0.22} ${x2} ${yb} Q${cx} ${yb+h*0.24} ${x1} ${yb} Z" fill="${F}"/>`;
+    for(let i=1;i<=6;i++){
+      const px = x1 + w*i/7;
+      t += `<path d="M${cx} ${yt-h*0.1} Q${(cx+px)/2} ${yb-h*0.28} ${px} ${yb+h*0.06}" fill="none" stroke="${s.strecha2}" stroke-width="1.5" opacity=".65"/>`;
+    }
+    t += `<path d="M${x1} ${yb} Q${cx} ${yb+h*0.24} ${x2} ${yb}" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="2.4"/>
+      <path d="M${cx-w*0.18} ${yt+h*0.04} Q${cx} ${yt-h*0.14} ${cx+w*0.18} ${yt+h*0.04}" fill="none" stroke="${s.ram}" stroke-width="3" stroke-linecap="round"/>`;
+  }
+  else if(s.strechaTyp==="klady"){
+    t += `<path d="M${x1-3} ${yb} L${cx} ${yt} L${x2+3} ${yb} Z" fill="${F}"/>
+      <path d="M${x1-3} ${yb} L${cx} ${yt} L${cx} ${yb} Z" fill="rgba(255,255,255,.13)"/>`;
+    for(let i=1;i<=4;i++){
+      const yy = yb - h*i/5, dx = w*(1-i/5)/2 + 3;
+      t += `<path d="M${cx-dx} ${yy} H${cx+dx}" stroke="${s.strecha2}" stroke-width="1.6" opacity=".6"/>`;
+    }
+    t += `<rect x="${x1-5}" y="${yb-3}" width="${w+10}" height="6" rx="3" fill="${s.ram}"/>
+      <circle cx="${x1-5}" cy="${yb}" r="3.4" fill="${svetlej(s.ram,0.25)}"/>
+      <circle cx="${x2+5}" cy="${yb}" r="3.4" fill="${svetlej(s.ram,0.25)}"/>`;
+  }
+  else { /* tasky */
+    t += `<path d="M${x1-4} ${yb} L${cx} ${yt} L${x2+4} ${yb} Z" fill="${F}"/>
+      <path d="M${x1-4} ${yb} L${cx} ${yt} L${cx} ${yb} Z" fill="rgba(255,255,255,.15)"/>`;
+    for(let i=1;i<=4;i++){
+      const yy = yb - h*i/5, dx = w*(1-i/5)/2 + 4;
+      t += `<path d="M${cx-dx} ${yy} H${cx+dx}" stroke="rgba(0,0,0,.22)" stroke-width="1.3"/>`;
+      for(let k=-2;k<=2;k++){
+        const px = cx + k*(dx/2.6);
+        if(Math.abs(px-cx)<dx-2) t += `<path d="M${px} ${yy} v${h/5}" stroke="rgba(0,0,0,.14)" stroke-width="1"/>`;
+      }
+    }
+    t += `<rect x="${x1-6}" y="${yb-3}" width="${w+12}" height="6" rx="2" fill="${s.strecha2}"/>`;
+  }
+  return t;
+}
+
+/* ---- ZEĎ ---- */
+function zedSVG(s, x, y, w, h){
+  const id = "zd"+(++__gid);
+  let t = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0.4">
+     <stop offset="0" stop-color="${svetlej(s.zed,0.16)}"/>
+     <stop offset="0.55" stop-color="${s.zed}"/>
+     <stop offset="1" stop-color="${s.zed2}"/></linearGradient></defs>
+   <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="url(#${id})"/>`;
+  if(s.zedTyp==="prkna"){
+    for(let px=x+7; px<x+w-3; px+=8)
+      t += `<path d="M${px} ${y+2} V${y+h-2}" stroke="${s.zed2}" stroke-width="1.4" opacity=".7"/>`;
+    t += `<rect x="${x}" y="${y+h*0.45}" width="${w}" height="4" fill="${s.ram}" opacity=".8"/>`;
+  }else if(s.zedTyp==="klady"){
+    for(let py=y+6; py<y+h-2; py+=9){
+      t += `<rect x="${x}" y="${py-4}" width="${w}" height="8" rx="4" fill="${py%2?s.zed:svetlej(s.zed,0.08)}" opacity=".9"/>
+        <path d="M${x+3} ${py} H${x+w-3}" stroke="${s.zed2}" stroke-width="1" opacity=".5"/>`;
+    }
+  }else if(s.zedTyp==="kamen"){
+    let radek=0;
+    for(let py=y+3; py<y+h-3; py+=9){
+      for(let px=x+2+(radek%2?7:0); px<x+w-6; px+=15)
+        t += `<rect x="${px}" y="${py}" width="${Math.min(13,x+w-3-px)}" height="7" rx="2" fill="${radek%2?svetlej(s.zed,0.10):s.zed2}" opacity=".55"/>`;
+      radek++;
+    }
+  }else{
+    t += `<ellipse cx="${x+w*0.3}" cy="${y+h*0.35}" rx="${w*0.22}" ry="${h*0.2}" fill="#fff" opacity=".22"/>
+      <rect x="${x}" y="${y+h*0.55}" width="${w}" height="4" fill="${s.ram}" opacity=".55"/>`;
+  }
+  t += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="1.5"/>`;
+  return t;
+}
+
+/* ---- OKNO, DVEŘE, DROBNOSTI ---- */
+function oknoSVG(s, x, y, w, h){
+  return `<rect x="${x-2}" y="${y-2}" width="${w+4}" height="${h+4}" rx="3" fill="${s.ram}"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="${s.okno}"/>
+    <path d="M${x+w/2} ${y} v${h} M${x} ${y+h/2} h${w}" stroke="${s.ram}" stroke-width="1.4"/>
+    <path d="M${x+1} ${y+1} l${w*0.5} 0 l-${w*0.5} ${h*0.5} Z" fill="#fff" opacity=".35"/>`;
+}
+function dvereSVG(s, cx, yb, w, h){
+  return `<path d="M${cx-w/2} ${yb} v-${h-w/2} a${w/2} ${w/2} 0 0 1 ${w} 0 v${h-w/2} Z" fill="${s.dvere}"/>
+    <path d="M${cx-w/2} ${yb} v-${h-w/2} a${w/2} ${w/2} 0 0 1 ${w/2} -${w/2} v${h} Z" fill="rgba(255,255,255,.12)"/>
+    <path d="M${cx-w/2+2} ${yb-h*0.55} h${w-4}" stroke="${s.ram}" stroke-width="2" opacity=".7"/>
+    <circle cx="${cx+w*0.28}" cy="${yb-h*0.42}" r="1.9" fill="#ffd76e"/>`;
+}
+function vlajkaSVG(a, x, yTop, h){
+  return `<g><rect x="${x-1.2}" y="${yTop}" width="2.6" height="${h}" rx="1.3" fill="#6b4a26"/>
+    <circle cx="${x}" cy="${yTop}" r="2.6" fill="${svetlej(a,0.4)}"/>
+    <path d="M${x+1.3} ${yTop+3} q8 4 16 0 q-8 7 0 12 q-8 4 -16 0 Z" fill="${a}" stroke="rgba(0,0,0,.22)" stroke-width="1">
+      <animate attributeName="d" dur="2.4s" repeatCount="indefinite"
+        values="M${x+1.3} ${yTop+3} q8 4 16 0 q-8 7 0 12 q-8 4 -16 0 Z;M${x+1.3} ${yTop+3} q8 -3 16 2 q-8 6 0 12 q-8 -2 -16 -1 Z;M${x+1.3} ${yTop+3} q8 4 16 0 q-8 7 0 12 q-8 4 -16 0 Z"/>
+    </path></g>`;
+}
+function travaSVG(x1, x2, y){
+  let t = "";
+  for(let i=0;i<5;i++){
+    const px = x1 + (x2-x1)*(i+0.5)/5 + ((i*13)%7) - 3;
+    t += `<path d="M${px} ${y} q2 -7 5 -9 M${px+4} ${y} q0 -6 2 -9" stroke="#3f8f45" stroke-width="2.1" fill="none" stroke-linecap="round" opacity=".85"/>`;
+  }
+  return t;
+}
+function kourSVG(x, y){
+  return `<g opacity=".5"><circle cx="${x}" cy="${y}" r="4" fill="#fff">
+      <animate attributeName="cy" values="${y};${y-16}" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="3;7" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".55;0" dur="3s" repeatCount="indefinite"/></circle>
+    <circle cx="${x+3}" cy="${y}" r="3" fill="#fff">
+      <animate attributeName="cy" values="${y};${y-18}" dur="3s" begin="1.2s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="2.5;6" dur="3s" begin="1.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".5;0" dur="3s" begin="1.2s" repeatCount="indefinite"/></circle></g>`;
+}
+/* ozdoba podle civilizace – to, co dělá stavbu „jejich" */
+function ozdobaSVG(s, a, x, y, velikost){
+  const m = velikost||1;
+  if(s.ozdoba==="lucerna")
+    return `<g transform="translate(${x},${y}) scale(${m})">
+      <path d="M0 -10 q6 0 6 6 l0 4 q0 5 -6 5 q-6 0 -6 -5 l0 -4 q0 -6 6 -6 Z" fill="#ffb648"/>
+      <path d="M0 -10 q6 0 6 6 l0 4 q0 5 -6 5 Z" fill="#e8912a"/>
+      <rect x="-7" y="-12" width="14" height="3" rx="1.5" fill="#3a2d42"/>
+      <rect x="-7" y="3" width="14" height="3" rx="1.5" fill="#3a2d42"/>
+      <circle cx="0" cy="-2" r="8" fill="#ffb648" opacity=".22"/></g>`;
+  if(s.ozdoba==="parohy")
+    return `<g transform="translate(${x},${y}) scale(${m})" stroke="#efe0c4" stroke-width="2.4" fill="none" stroke-linecap="round">
+      <path d="M0 4 L-3 -8 M-3 -8 l-6 -4 M-3 -8 l-4 -8 M0 4 L3 -8 M3 -8 l6 -4 M3 -8 l4 -8"/></g>`;
+  if(s.ozdoba==="bambus")
+    return `<g transform="translate(${x},${y}) scale(${m})">
+      <path d="M0 8 V-16" stroke="#5aa054" stroke-width="3.4" stroke-linecap="round"/>
+      <path d="M-4 2 h8 M-4 -6 h8" stroke="#3f7d3c" stroke-width="1.6"/>
+      <path d="M0 -12 q9 -5 12 2 q-9 3 -12 -2 Z" fill="#6fbe63"/>
+      <path d="M0 -6 q-9 -5 -12 2 q9 3 12 -2 Z" fill="#5aa054"/></g>`;
+  if(s.ozdoba==="korouhev")
+    return `<g transform="translate(${x},${y}) scale(${m})">
+      <path d="M0 8 V-14" stroke="#7d7264" stroke-width="2.4"/>
+      <path d="M0 -14 l12 5 l-12 5 Z" fill="${a}" stroke="rgba(0,0,0,.25)"/>
+      <circle cx="0" cy="-16" r="2.4" fill="#ffd76e"/></g>`;
+  if(s.ozdoba==="kolo")
+    return `<g transform="translate(${x},${y}) scale(${m})">
+      <circle cx="0" cy="0" r="11" fill="none" stroke="#7a5230" stroke-width="3.4"/>
+      <circle cx="0" cy="0" r="2.6" fill="#7a5230"/>
+      <g stroke="#8a5f38" stroke-width="2"><path d="M0 -11 V11 M-11 0 H11 M-8 -8 L8 8 M-8 8 L8 -8"/></g>
+      <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="9s" repeatCount="indefinite" additive="sum"/></g>`;
+  return `<g transform="translate(${x},${y}) scale(${m})">
+      <path d="M0 9 V0" stroke="#3f8f45" stroke-width="2.4"/>
+      <g fill="#ff9ad0"><circle cx="0" cy="-4" r="4.4"/><circle cx="-5" cy="0" r="4"/><circle cx="5" cy="0" r="4"/>
+      <circle cx="-3" cy="-8" r="4"/><circle cx="3" cy="-8" r="4"/></g>
+      <circle cx="0" cy="-4" r="2.4" fill="#ffe066"/></g>`;
+}
+
+/* ---- SAMOTNÉ BUDOVY ---- */
+function budovaSVG(kind, civK, barva){
+  const c = CIVS[civK], a = barva || c.akcent, s = STYLY[civK];
+
+  if(kind==="domek") return svgObal(`
+    <ellipse cx="50" cy="94" rx="33" ry="7" fill="rgba(0,0,0,.24)"/>
+    <rect x="26" y="88" width="48" height="7" rx="3" fill="${s.zaklad}"/>
+    ${zedSVG(s, 28, 56, 44, 34)}
+    ${strechaSVG(s, 12, 88, 60, 30, a)}
+    ${oknoSVG(s, 33, 64, 12, 12)}
+    ${dvereSVG(s, 60, 89, 15, 24)}
+    ${ozdobaSVG(s, a, 22, 82, 0.8)}
+    ${travaSVG(24, 78, 94)}`);
+
+  if(kind==="radnice") return svgObal(`
+    <ellipse cx="50" cy="95" rx="44" ry="8" fill="rgba(0,0,0,.26)"/>
+    <rect x="16" y="86" width="68" height="9" rx="4" fill="${s.zaklad}"/>
+    <rect x="12" y="90" width="76" height="6" rx="3" fill="${svetlej(s.zaklad,0.15)}"/>
+    ${zedSVG(s, 20, 50, 60, 38)}
+    ${strechaSVG(s, 4, 96, 54, 34, a)}
+    ${oknoSVG(s, 27, 58, 13, 13)}
+    ${oknoSVG(s, 60, 58, 13, 13)}
+    ${dvereSVG(s, 50, 88, 20, 30)}
+    ${kourSVG(72, 34)}
+    <rect x="66" y="30" width="10" height="16" rx="2" fill="${s.zaklad}"/>
+    ${vlajkaSVG(a, 50, 4, 26)}
+    ${ozdobaSVG(s, a, 14, 78, 0.9)}
+    ${ozdobaSVG(s, a, 86, 78, 0.9)}
+    ${travaSVG(16, 84, 95)}`);
+
+  if(kind==="kasarna") return svgObal(`
+    <ellipse cx="50" cy="95" rx="42" ry="8" fill="rgba(0,0,0,.25)"/>
+    <rect x="14" y="86" width="72" height="9" rx="4" fill="${s.zaklad}"/>
+    ${zedSVG(s, 17, 52, 66, 36)}
+    ${strechaSVG(s, 3, 97, 56, 30, a)}
+    ${dvereSVG(s, 50, 88, 22, 28)}
+    <g><rect x="20" y="66" width="18" height="4" rx="2" fill="${s.ram}"/>
+       <path d="M24 68 V44" stroke="#b9b2a4" stroke-width="2.6"/><path d="M24 41 l-3.4 6.5 h6.8 Z" fill="#e6edf5"/>
+       <path d="M33 68 V47" stroke="#b9b2a4" stroke-width="2.6"/><path d="M33 44 l-3.4 6.5 h6.8 Z" fill="#e6edf5"/></g>
+    <path d="M64 62 q9 -4 18 0 v12 q0 9 -9 12 q-9 -3 -9 -12 Z" fill="${a}" stroke="#3a2a18" stroke-width="2"/>
+    <path d="M73 62 v24" stroke="rgba(0,0,0,.2)" stroke-width="2"/>
+    <circle cx="73" cy="72" r="3.6" fill="#fff8e0" opacity=".9"/>
+    ${vlajkaSVG(a, 50, 6, 24)}
+    ${travaSVG(16, 84, 95)}`);
+
+  if(kind==="staj") return svgObal(`
+    <ellipse cx="50" cy="95" rx="43" ry="8" fill="rgba(0,0,0,.25)"/>
+    <rect x="12" y="86" width="76" height="9" rx="4" fill="${s.zaklad}"/>
+    ${zedSVG(s, 15, 54, 70, 34)}
+    ${strechaSVG(s, 2, 98, 58, 28, a)}
+    <rect x="34" y="62" width="32" height="26" rx="2" fill="${tmavej(s.dvere,0.25)}"/>
+    <g transform="translate(50,80) scale(0.5)" opacity=".92">
+      <ellipse cx="0" cy="-6" rx="21" ry="13" fill="${svetlej(s.zed,0.35)}"/>
+      <path d="M15 -12 q11 -16 20 -20 q7 -2 8 5 q-5 7 -7 15 q-7 7 -21 7 Z" fill="${svetlej(s.zed,0.35)}"/>
+      <ellipse cx="40" cy="-26" rx="11" ry="8" transform="rotate(-18 40 -26)" fill="${svetlej(s.zed,0.35)}"/>
+      <circle cx="40" cy="-29" r="2.2" fill="${s.dvere}"/>
+      <rect x="-16" y="4" width="7" height="14" rx="3.5" fill="${svetlej(s.zed,0.35)}"/>
+      <rect x="6" y="4" width="7" height="14" rx="3.5" fill="${svetlej(s.zed,0.35)}"/>
+    </g>
+    <path d="M34 74 H66" stroke="${s.ram}" stroke-width="3.4"/>
+    <g><rect x="16" y="74" width="15" height="12" rx="2" fill="#d9b45a"/>
+       <path d="M18 76 h11 M18 80 h11 M18 84 h11" stroke="#b08c34" stroke-width="1.4"/></g>
+    <rect x="70" y="72" width="14" height="14" rx="3" fill="${s.ram}"/>
+    <path d="M70 78 h14" stroke="${svetlej(s.ram,0.3)}" stroke-width="2"/>
+    ${vlajkaSVG(a, 50, 8, 22)}
+    ${travaSVG(14, 86, 95)}`);
+
+  if(kind==="vez") return svgObal(`
+    <ellipse cx="50" cy="95" rx="27" ry="7" fill="rgba(0,0,0,.26)"/>
+    <rect x="28" y="88" width="44" height="8" rx="3" fill="${s.zaklad}"/>
+    ${zedSVG(s, 33, 34, 34, 55)}
+    <rect x="26" y="28" width="48" height="10" rx="2" fill="${s.zaklad}"/>
+    <path d="M26 28 h6 v-8 h7 v8 h7 v-8 h7 v8 h7 v-8 h7 v8 h5" fill="none" stroke="${s.zaklad}" stroke-width="6"/>
+    ${strechaSVG(s, 30, 70, 24, 20, a)}
+    <path d="M44 46 a6 6 0 0 1 12 0 v13 h-12 Z" fill="${s.okno}"/>
+    <path d="M44 46 a6 6 0 0 1 12 0 v13 h-12 Z" fill="none" stroke="${s.ram}" stroke-width="2.5"/>
+    <path d="M50 40 v19" stroke="${s.ram}" stroke-width="1.8"/>
+    <rect x="42" y="72" width="16" height="16" rx="2" fill="${s.dvere}"/>
+    <circle cx="54" cy="80" r="1.8" fill="#ffd76e"/>
+    ${ozdobaSVG(s, a, 22, 62, 0.75)}
+    ${travaSVG(30, 70, 95)}`);
+
+  if(kind==="hrad") return svgObal(`
+    <ellipse cx="50" cy="96" rx="48" ry="8" fill="rgba(0,0,0,.3)"/>
+    ${zedSVG(s, 18, 48, 64, 48)}
+    <path d="M18 48 h5 v-8 h7 v8 h7 v-8 h7 v8 h7 v-8 h7 v8 h7 v-8 h7 v8 h4" fill="none" stroke="${s.zaklad}" stroke-width="7"/>
+    ${zedSVG(s, 6, 40, 22, 56)}
+    ${zedSVG(s, 72, 40, 22, 56)}
+    <path d="M6 40 h4 v-8 h6 v8 h6 v-8 h6 v8 h0" fill="none" stroke="${s.zaklad}" stroke-width="7"/>
+    <path d="M72 40 h4 v-8 h6 v8 h6 v-8 h6 v8 h0" fill="none" stroke="${s.zaklad}" stroke-width="7"/>
+    ${strechaSVG(s, 4, 30, 30, 20, a)}
+    ${strechaSVG(s, 70, 96, 30, 20, a)}
+    <path d="M36 96 v-26 q14 -14 28 0 v26 Z" fill="${tmavej(s.dvere,0.2)}"/>
+    <path d="M36 96 v-26 q7 -7 14 -7 v33 Z" fill="rgba(255,255,255,.10)"/>
+    <g stroke="${svetlej(s.dvere,0.25)}" stroke-width="2">
+      <path d="M43 70 v26"/><path d="M50 67 v29"/><path d="M57 70 v26"/><path d="M36 80 h28"/></g>
+    ${oknoSVG(s, 12, 52, 10, 13)}
+    ${oknoSVG(s, 78, 52, 10, 13)}
+    ${oknoSVG(s, 26, 56, 11, 12)}
+    ${oknoSVG(s, 63, 56, 11, 12)}
+    ${vlajkaSVG(a, 50, 2, 28)}
+    ${vlajkaSVG(a, 17, 14, 18)}
+    ${vlajkaSVG(a, 83, 14, 18)}
+    ${ozdobaSVG(s, a, 50, 62, 0.85)}
+    ${travaSVG(10, 90, 96)}`);
+
+  return svgObal("");
+}
+/* ---------------- ZDROJE A DEKORACE ---------------- */
+function zdrojSVG(kind, va){
+  va = va||0;
+  const stin = `<ellipse cx="50" cy="93" rx="24" ry="7" fill="rgba(0,0,0,.24)"/>`;
+  const kmen = (w,h,b)=>`<path d="M${50-w/2} 93 q${w/2} -6 ${w} 0 l-2 -${h} q-${w/2} -5 -${w-4} 0 Z" fill="${b||"#7a5230"}"/>
+     <path d="M${50-w/2+1} 92 q3 -${h*0.5} 2 -${h}" stroke="#5e3f24" stroke-width="2" fill="none" opacity=".6"/>`;
+  if(kind==="strom"){
+    if(va===1) return svgObal(`${stin}${kmen(11,30,"#6d4a2c")}
+      <path d="M50 6 L74 40 H26 Z" fill="#2f7a3a"/>
+      <path d="M50 22 L78 58 H22 Z" fill="#3a8c44"/>
+      <path d="M50 40 L82 74 H18 Z" fill="#46a04f"/>
+      <path d="M50 22 L64 40 H50 Z" fill="rgba(255,255,255,.14)"/>`);
+    if(va===2) return svgObal(`${stin}${kmen(13,26)}
+      <ellipse cx="50" cy="52" rx="34" ry="24" fill="#3d8b43"/>
+      <ellipse cx="30" cy="46" rx="18" ry="15" fill="#4aa350"/>
+      <ellipse cx="68" cy="48" rx="20" ry="16" fill="#3a8340"/>
+      <ellipse cx="50" cy="36" rx="20" ry="14" fill="#54b25a"/>
+      <ellipse cx="38" cy="38" rx="7" ry="5" fill="rgba(255,255,255,.20)"/>
+      <circle cx="66" cy="60" r="3" fill="#ff6a7a"/><circle cx="34" cy="62" r="2.6" fill="#ff6a7a"/>`);
+    return svgObal(`${stin}${kmen(12,34)}
+      <circle cx="50" cy="44" r="26" fill="#3f8f45"/><circle cx="30" cy="56" r="18" fill="#4aa350"/>
+      <circle cx="70" cy="56" r="18" fill="#37803d"/><circle cx="50" cy="30" r="16" fill="#56b45c"/>
+      <circle cx="40" cy="36" r="7" fill="rgba(255,255,255,.20)"/>
+      <circle cx="62" cy="34" r="3" fill="#8fe08a" opacity=".7"/>`);
+  }
+  if(kind==="zlato") return svgObal(`
+    <ellipse cx="50" cy="91" rx="32" ry="8" fill="rgba(0,0,0,.22)"/>
+    <path d="M14 90 q-2 -26 18 -32 q26 -8 38 8 q14 14 14 24 Z" fill="#8a8276"/>
+    <path d="M14 90 q-2 -26 18 -32 q10 -3 17 1 q-17 12 -12 31 Z" fill="#a49c8e"/>
+    <path d="M30 88 l7 -20 l8 20 l-7 5 Z" fill="#ffd447" stroke="#c9910f" stroke-width="1.5"/>
+    <path d="M52 88 l9 -26 l10 26 l-9 6 Z" fill="#ffe680" stroke="#c9910f" stroke-width="1.5"/>
+    <path d="M61 62 l10 26 l-9 6 Z" fill="#e8a81c"/>
+    <path d="M42 84 l5 -12 l5 12 l-5 3 Z" fill="#ffd447" stroke="#c9910f" stroke-width="1.2"/>
+    <circle cx="36" cy="76" r="2.4" fill="#fffbe0"/><circle cx="58" cy="72" r="2.8" fill="#fffbe0"/>
+    <path d="M22 60 l2 -6 l2 6 l6 2 l-6 2 l-2 6 l-2 -6 l-6 -2 Z" fill="#fff3b0" opacity=".9"/>`);
+  if(kind==="zelezo") return svgObal(`
+    <ellipse cx="50" cy="91" rx="32" ry="8" fill="rgba(0,0,0,.22)"/>
+    <path d="M12 90 q-2 -28 20 -34 q26 -8 40 8 q14 14 14 26 Z" fill="#6f6a63"/>
+    <path d="M12 90 q-2 -28 20 -34 q10 -3 17 1 q-18 13 -13 33 Z" fill="#8b857c"/>
+    <path d="M28 88 l7 -20 l8 20 l-7 5 Z" fill="#9fb4c9" stroke="#5d6b78" stroke-width="1.5"/>
+    <path d="M50 88 l9 -26 l10 26 l-9 6 Z" fill="#c9dcee" stroke="#5d6b78" stroke-width="1.5"/>
+    <path d="M59 62 l10 26 l-9 6 Z" fill="#7d93a8"/>
+    <path d="M40 84 l5 -12 l5 12 l-5 3 Z" fill="#aec4d6" stroke="#5d6b78" stroke-width="1.2"/>
+    <circle cx="34" cy="76" r="2.4" fill="#eef6ff"/><circle cx="56" cy="72" r="2.8" fill="#eef6ff"/>`);
+  if(kind==="ker") return svgObal(`
+    <circle cx="38" cy="72" r="16" fill="#3d8a43"/><circle cx="60" cy="70" r="18" fill="#47a04d"/>
+    <circle cx="50" cy="58" r="14" fill="#54b25a"/>
+    <circle cx="42" cy="66" r="3" fill="#ff6a7a"/><circle cx="64" cy="62" r="3" fill="#ff6a7a"/>`);
+  if(kind==="kamen") return svgObal(`
+    <ellipse cx="50" cy="82" rx="26" ry="8" fill="rgba(0,0,0,.18)"/>
+    <path d="M22 82 q4 -24 20 -26 q20 -3 28 12 q6 8 8 14 Z" fill="#8a857c"/>
+    <path d="M30 82 q2 -18 14 -20 q6 6 4 20 Z" fill="#a29c92"/>`);
+  if(kind==="kvet") return svgObal(`
+    <path d="M50 90 L50 62" stroke="#3f8f45" stroke-width="4"/>
+    <g fill="#ff9ad0"><circle cx="50" cy="52" r="9"/><circle cx="36" cy="60" r="8"/><circle cx="64" cy="60" r="8"/>
+    <circle cx="42" cy="42" r="8"/><circle cx="58" cy="42" r="8"/></g>
+    <circle cx="50" cy="51" r="5" fill="#ffe066"/>`);
+  return svgObal("");
+}
+
+/* ============================================================
+   3) HERNÍ DATA
+   ============================================================ */
+let SVET_W = 3600, SVET_H = 2600;
+
+const BUD = {
+  radnice:{jm:"Radnice", hp:1100, r:56, vel:130, cena:{drevo:280,zlato:130}, cas:26, popPlus:5,
+    popis:"Tady cvičíš vesničany. Suroviny se sem nosí.", cvici:["vesnican"]},
+  domek:{jm:"Domeček", hp:320, r:32, vel:80, cena:{drevo:40}, cas:8, popPlus:6,
+    popis:"Každý domeček ubytuje 6 dalších Ňuňísků.", cvici:[]},
+  kasarna:{jm:"Kasárna", hp:620, r:46, vel:106, cena:{drevo:90,zelezo:25}, cas:16,
+    popis:"Cvičí bojovníky a lučištníky – ti jsou levní, dá se jich mít hodně.", cvici:["vojak","lukostrelec"]},
+  staj:{jm:"Stáj", hp:680, r:46, vel:108, cena:{drevo:130,zelezo:40,zlato:60}, cas:20,
+    popis:"Cvičí JEZDCE NA KONI – rychlý a silný, ale drahý.", cvici:["jezdec"]},
+  vez:{jm:"Věž", hp:700, r:28, vel:94, cena:{drevo:60,zelezo:45}, cas:14, dostrel:250, utok:15, rychUtoku:1.1, strela:1,
+    popis:"Sama střílí po nepřátelích, co přijdou blízko.", cvici:[]},
+  hrad:{jm:"Hrad", hp:2200, r:64, vel:152, cena:{drevo:320,zelezo:160,zlato:260}, cas:40, popPlus:5,
+    dostrel:280, utok:24, rychUtoku:1.0, strela:1,
+    popis:"Obrovská pevnost. Cvičí HRDINU a JEZDCE NA SLONU a sama střílí!", cvici:["hrdina","slon"]}
+};
+
+const JED = {
+  vesnican:{jm:"Vesničan", ik:"⛏️", hp:70, r:14, vel:46, rychlost:80, utok:5, dostrel:26, rychUtoku:1.2,
+    cena:{zlato:50}, cas:6, popis:"Těží dřevo, železo a zlato a staví budovy."},
+  vojak:{jm:"Bojovník", ik:"⚔️", hp:170, r:16, vel:52, rychlost:72, utok:17, dostrel:30, rychUtoku:1.1,
+    cena:{zelezo:25,zlato:15}, cas:9, popis:"Meč a brnění. Levný – dá se jich mít spousta."},
+  lukostrelec:{jm:"Lučištník", ik:"🏹", hp:95, r:15, vel:50, rychlost:76, utok:13, dostrel:200, rychUtoku:1.4, strela:1,
+    cena:{drevo:30,zlato:20}, cas:9, popis:"Střílí zdálky. Ale je křehký!"},
+  jezdec:{jm:"Jezdec na koni", ik:"🐴", hp:240, r:19, vel:78, rychlost:124, utok:27, dostrel:34, rychUtoku:1.0,
+    cena:{drevo:40,zelezo:55,zlato:85}, cas:16, popis:"Uhání přes mapu a rozpráší lučištníky. Drahý!"},
+  slon:{jm:"Jezdec na slonu", ik:"🐘", hp:640, r:24, vel:102, rychlost:50, utok:58, dostrel:42, rychUtoku:1.5,
+    cena:{zelezo:150,zlato:200}, cas:30, popis:"Chodící pevnost. Boří budovy jako nic, ale je pomalý a hodně drahý."},
+  hrdina:{jm:"Hrdina", ik:"👑", hp:480, r:20, vel:64, rychlost:84, utok:42, dostrel:34, rychUtoku:0.9,
+    cena:{zelezo:130,zlato:210}, cas:24, popis:"Legenda tvé civilizace. Nezastavitelný!", limit:1}
+};
+
+const ZDROJE = {
+  strom:{typ:"drevo", zasoba:140, r:20, vel:78, jm:"Strom"},
+  zlato:{typ:"zlato", zasoba:320, r:22, vel:74, jm:"Zlatá žíla"},
+  zelezo:{typ:"zelezo", zasoba:320, r:22, vel:74, jm:"Železná ruda"}
+};
+const IKONA = {drevo:"🌲", zelezo:"⛏️", zlato:"🪙"};
+const NAZEV = {drevo:"dřevo", zelezo:"železo", zlato:"zlato"};
+
+/* ---- 10 barev hráčů (jako v Age of Empires) ---- */
+const BARVY = [
+  {jm:"Modrá",     h:"#3b7ddd", t:"#1f4b91"},
+  {jm:"Červená",   h:"#d63b2a", t:"#8d2116"},
+  {jm:"Zelená",    h:"#4aa83f", t:"#2b6a24"},
+  {jm:"Žlutá",     h:"#e8c02a", t:"#a2830f"},
+  {jm:"Tyrkysová", h:"#2fb3b3", t:"#166f6f"},
+  {jm:"Fialová",   h:"#9450d0", t:"#5d2b8a"},
+  {jm:"Šedá",      h:"#9aa3ad", t:"#5e666f"},
+  {jm:"Oranžová",  h:"#ef8b24", t:"#a3550a"},
+  {jm:"Růžová",    h:"#ef78b4", t:"#a83b72"},
+  {jm:"Černá",     h:"#4a4a55", t:"#22222a"}
+];
+
+/* ---- 6 obtížností ---- */
+const OBTIZNOSTI = [
+  {jm:"Easiest",  cz:"Úplně v pohodě", prvniVlna:340, mezera:200, sila:0.3,  rust:0.22, dmg:0.35, veze:0, staviCas:150, tezba:0.7},
+  {jm:"Standard", cz:"Klidná",         prvniVlna:260, mezera:155, sila:0.45, rust:0.32, dmg:0.5,  veze:1, staviCas:120, tezba:0.85},
+  {jm:"Moderate", cz:"Normální",       prvniVlna:165, mezera:110, sila:0.75, rust:0.6,  dmg:0.78, veze:3, staviCas:85,  tezba:1},
+  {jm:"Hard",     cz:"Těžká",          prvniVlna:130, mezera:92,  sila:0.95, rust:0.8,  dmg:0.92, veze:4, staviCas:72,  tezba:1.15},
+  {jm:"Hardest",  cz:"Šílená",         prvniVlna:105, mezera:78,  sila:1.15, rust:1.0,  dmg:1.05, veze:5, staviCas:60,  tezba:1.3},
+  {jm:"Extreme",  cz:"Nelidská",       prvniVlna:80,  mezera:62,  sila:1.5,  rust:1.35, dmg:1.25, veze:7, staviCas:48,  tezba:1.6}
+];
+
+/* ---- 10 map ---- */
+const MAPY = [
+  {jm:"Zelená pláň",     popis:"Vyvážená mapa pro každého", zeme:"#5f9e4f", lesy:1,   zlato:1,   zelezo:1,   sirka:3600, vyska:2600},
+  {jm:"Hluboký hvozd",   popis:"Spousta dřeva, málo zlata", zeme:"#4f8f42", lesy:2,   zlato:0.6, zelezo:0.9, sirka:3600, vyska:2600},
+  {jm:"Zlatý kaňon",     popis:"Zlato uprostřed – běž pro něj!", zeme:"#a08a55", lesy:0.6, zlato:1.9, zelezo:0.9, sirka:3600, vyska:2600, stred:"zlato"},
+  {jm:"Železné hory",    popis:"Železa jak naseto, dřeva málo", zeme:"#7d8a7a", lesy:0.55,zlato:0.8, zelezo:2,   sirka:3600, vyska:2600, stred:"zelezo"},
+  {jm:"Marmeládová poušť",popis:"Pusto a prázdno, šetři!",  zeme:"#d9b874", lesy:0.35,zlato:0.8, zelezo:0.7, sirka:3600, vyska:2600},
+  {jm:"Ledová planina",  popis:"Studená a otevřená",        zeme:"#b9d4dd", lesy:0.7, zlato:1,   zelezo:1.2, sirka:3800, vyska:2700},
+  {jm:"Houbové údolí",   popis:"Malá mapa – rychlé bitvy",  zeme:"#6aa85c", lesy:1.2, zlato:1.2, zelezo:1.2, sirka:2800, vyska:2000},
+  {jm:"Velká step",      popis:"Obrovská mapa, daleko k sobě", zeme:"#8fa855", lesy:0.9, zlato:1,  zelezo:1,   sirka:4600, vyska:3200},
+  {jm:"Bobří mokřady",   popis:"Hodně dřeva u základen",    zeme:"#5a9a6a", lesy:1.6, zlato:1.1, zelezo:0.8, sirka:3600, vyska:2600},
+  {jm:"Země Ňuňísků",    popis:"Domovina – všeho dost",     zeme:"#63a552", lesy:1.3, zlato:1.3, zelezo:1.3, sirka:3800, vyska:2700}
+];
+
+/* ---- ikony hráče (obrázek u jména) ---- */
+const IKONY = CIVKEYS.slice();
+
+/* ============================================================
+   4) STAV HRY
+   ============================================================ */
+const G = {
+  hraci:[], ja:0, mapa:0, obt:2, rezim:"single", kod:"---",
+  bezi:false, pauza:false, konec:false,
+  ents:[], jednotky:[], budovy:[], zdroje:[], strely:[],
+  sel:[], nextId:1, cas:0, cam:{x:0,y:0}, zoom:1, stavim:null, ghost:null
+};
+let SVET, SVETOKNO, HRA, MMC, MMX;
+
+/* ------------ pomocné ------------ */
+/* vlastní náhoda se semínkem – aby všechna okna vygenerovala STEJNOU mapu */
+let _seed = 123456789;
+function seedni(s){ _seed = (s>>>0) || 1; }
+function rnd(){ _seed ^= _seed<<13; _seed ^= _seed>>>17; _seed ^= _seed<<5; _seed>>>=0; return _seed/4294967296; }
+const nah = (a,b)=>a+rnd()*(b-a);
+const nahI = (a,b)=>Math.floor(nah(a,b+1));
+function dist(a,b){return Math.hypot(a.x-b.x, a.y-b.y);}
+function dist2(ax,ay,bx,by){return Math.hypot(ax-bx,ay-by);}
+function klam(v,a,b){return v<a?a:(v>b?b:v);}
+function MY(){ return G.hraci[G.ja]; }
+function HR(i){ return G.hraci[i]; }
+function jeNepritel(a,b){
+  if(a<0||b<0||a==null||b==null) return false;
+  if(a===b) return false;
+  const A=G.hraci[a], B=G.hraci[b];
+  if(!A||!B) return false;
+  return A.tym !== B.tym;
+}
+function jeMuj(side){ return side===G.ja; }
+function barvaHrace(i){ const h=G.hraci[i]; return h? BARVY[h.barva] : BARVY[0]; }
+
+/* ---- civilizační schopnosti ---- */
+function civKey(side){ const h=G.hraci[side]; return h? h.civ : CIVKEYS[0]; }
+function M(side, cesta){
+  const civ = CIVS[civKey(side)];
+  let v = civ.mod;
+  for(const k of cesta.split(".")){
+    if(v==null || typeof v!=="object") return cesta.endsWith("popNavic")?0:1;
+    v = v[k];
+  }
+  if(v==null) return cesta.endsWith("popNavic")?0:1;
+  return v;
+}
+function maJednotku(side, kind){
+  const civ = CIVS[civKey(side)];
+  return !(civ.nema||[]).includes(kind);
+}
+function maBudovu(side, kind){
+  if(kind==="staj") return maJednotku(side,"jezdec");
+  return true;
+}
+function cvicitelne(side, kind){
+  return (BUD[kind].cvici||[]).filter(u=>maJednotku(side,u));
+}
+function cenaJednotky(kind, side){
+  const c = JED[kind].cena, m = (kind==="vesnican")?1:M(side,"jednotkyCena"), out={};
+  for(const k in c) out[k] = Math.round(c[k]*m);
+  return out;
+}
+function cenaBudovy(kind, side){
+  const c = BUD[kind].cena, m = M(side,"budovyCena"), out={};
+  for(const k in c) out[k] = Math.round(c[k]*m);
+  return out;
+}
+function statJ(kind, side, co){
+  const d = JED[kind];
+  if(co==="hp")       return Math.round(d.hp * M(side,kind+".hp"));
+  if(co==="utok")     return d.utok * M(side,kind+".utok");
+  if(co==="rychlost") return d.rychlost * M(side,kind+".rych");
+  if(co==="dostrel")  return d.dostrel * M(side,kind+".dostrel");
+  if(co==="rychUtoku")return d.rychUtoku / M(side,kind+".rychUtoku");
+  return d[co];
+}
+
+/* ============================================================
+   5) ENTITY
+   ============================================================ */
+function novaEnt(o){
+  o.id = G.nextId++;
+  o.maxHp = o.maxHp||1; o.hp = o.hp==null? o.maxHp : o.hp;
+  G.ents.push(o);
+  if(o.druh==="jednotka") G.jednotky.push(o);
+  else if(o.druh==="budova") G.budovy.push(o);
+  else if(o.druh==="zdroj") G.zdroje.push(o);
+  vytvorEl(o);
+  return o;
+}
+
+function vytvorEl(e){
+  const d = document.createElement("div");
+  d.className = "ent";
+  d.style.width = e.vel+"px"; d.style.height = e.vel+"px";
+  d.dataset.id = e.id;
+  const bar = e.side>=0 ? barvaHrace(e.side) : null;
+  let vnitrek = "";
+  if(e.druh==="jednotka") vnitrek = svgObal(jednotkaSVG(civKey(e.side), e.kind, bar.h));
+  else if(e.druh==="budova") vnitrek = budovaSVG(e.kind, civKey(e.side), bar.h);
+  else vnitrek = zdrojSVG(e.kind, e.varianta);
+  d.innerHTML = vnitrek;
+  e.svgEl = d.firstChild;
+
+  if(e.druh!=="dekorace"){
+    const ring = document.createElement("div");
+    ring.className = "kroužek";
+    const rr = e.druh==="budova" ? e.vel*0.62 : e.vel*0.72;
+    ring.style.width = rr+"px"; ring.style.height = (rr*0.55)+"px";
+    ring.style.left = ((e.vel-rr)/2)+"px";
+    ring.style.top = (e.vel*0.86 - rr*0.28)+"px";
+    ring.style.display = "none";
+    d.appendChild(ring); e.ringEl = ring;
+  }
+  if(e.druh!=="zdroj" && e.druh!=="dekorace"){
+    const hp = document.createElement("div");
+    hp.className = "hp";
+    hp.style.width = (e.druh==="budova"? e.vel*0.55 : e.vel*0.5)+"px";
+    hp.style.top = (e.druh==="budova"? e.vel*0.06 : e.vel*0.02)+"px";
+    hp.innerHTML = "<i style='width:100%'></i>";
+    hp.firstChild.style.background = `linear-gradient(180deg,${svetlej(bar.h,0.35)},${bar.h} 60%,${bar.t})`;
+    d.appendChild(hp); e.hpEl = hp.firstChild; e.hpBox = hp;
+    hp.style.display = "none";
+  }
+  e.el = d;
+  SVET.appendChild(d);
+  polohuj(e);
+}
+
+function polohuj(e){
+  e.el.style.transform = `translate(${(e.x-e.vel/2).toFixed(1)}px,${(e.y-e.vel*0.93-(e.hopY||0)).toFixed(1)}px)`;
+  e.el.style.zIndex = Math.round(e.y);
+}
+
+function pridejBudovu(kind, side, x, y, hotova){
+  const b = BUD[kind];
+  const hpMax = Math.round(b.hp * M(side,"budovyHp"));
+  const popPlus = b.popPlus ? b.popPlus + (kind==="domek"? M(side,"popNavic") : 0) : 0;
+  const e = novaEnt({druh:"budova", kind, side, x, y, r:b.r, vel:b.vel, maxHp:hpMax, popPlus,
+    hp: hotova? hpMax : Math.round(hpMax*0.15),
+    hotova:!!hotova, postup: hotova?1:0, fronta:[], vyrobaCas:0, cd:nah(0,1)});
+  if(!hotova) e.el.classList.add("stavba");
+  if(hotova && popPlus) zmenPop(side, popPlus);
+  if(!hotova){
+    const p = document.createElement("div");
+    p.className="prubeh"; p.style.top=(b.vel*0.2)+"px"; p.innerHTML="<i style='width:0'></i>";
+    e.el.appendChild(p); e.postupEl = p.firstChild; e.postupBox = p;
+  }
+  return e;
+}
+function pridejJednotku(kind, side, x, y){
+  const j = JED[kind];
+  const e = novaEnt({druh:"jednotka", kind, side, x, y, r:j.r, vel:j.vel, maxHp:statJ(kind,side,"hp"),
+    stav:"stoj", cil:null, cilE:null, naklad:null, cd:nah(0,1), smer:1, hop:nah(0,6)});
+  zmenPop(side, 0, 1);
+  return e;
+}
+function pridejZdroj(kind, x, y){
+  const z = ZDROJE[kind];
+  return novaEnt({druh:"zdroj", kind, side:-1, x, y, r:z.r, vel:z.vel, varianta:nahI(0,2),
+    typ:z.typ, zasoba:z.zasoba, maxZasoba:z.zasoba, maxHp:1});
+}
+function pridejDekoraci(kind, x, y, vel){
+  const d = document.createElement("div");
+  d.className="ent"; d.style.width=vel+"px"; d.style.height=vel+"px";
+  d.innerHTML = zdrojSVG(kind, nahI(0,2));
+  d.style.transform = `translate(${x-vel/2}px,${y-vel*0.93}px)`;
+  d.style.zIndex = Math.round(y);
+  d.style.opacity = ".92";
+  SVET.appendChild(d);
+}
+function zmenPop(side, popPlus, popUse){
+  const h = G.hraci[side]; if(!h) return;
+  if(popPlus) h.popMax = Math.min(90, h.popMax + popPlus);
+  if(popUse)  h.pop += popUse;
+}
+
+/* ============================================================
+   6) STAVBA SVĚTA
+   ============================================================ */
+/* pozice základen – pro 2 hráče protilehlé rohy, pak dokola */
+const POZICE = [
+  {x:0.14, y:0.80}, {x:0.86, y:0.20}, {x:0.14, y:0.20}, {x:0.86, y:0.80},
+  {x:0.50, y:0.90}, {x:0.50, y:0.10}, {x:0.09, y:0.50}, {x:0.91, y:0.50}
+];
+let ZAKL = [];
+
+function shlukStromu(cx,cy,n,rad){
+  for(let i=0;i<n;i++){
+    const a=nah(0,Math.PI*2), d=Math.sqrt(Math.random())*rad;
+    pridejZdroj("strom", klam(cx+Math.cos(a)*d,60,SVET_W-60), klam(cy+Math.sin(a)*d,60,SVET_H-60));
+  }
+}
+function zilaZdroje(kind,cx,cy,n){
+  for(let i=0;i<n;i++){
+    const a=i/n*Math.PI*2 + nah(-.3,.3), d=nah(20,58);
+    pridejZdroj(kind, klam(cx+Math.cos(a)*d,60,SVET_W-60), klam(cy+Math.sin(a)*d*0.7,60,SVET_H-60));
+  }
+}
+
+function postavSvet(){
+  const mapa = MAPY[G.mapa];
+  SVET_W = mapa.sirka; SVET_H = mapa.vyska;
+  SVET.style.width = SVET_W+"px"; SVET.style.height = SVET_H+"px";
+  SVET.style.backgroundColor = mapa.zeme;
+
+  ZAKL = G.hraci.map((h,i)=>({x:POZICE[i].x*SVET_W, y:POZICE[i].y*SVET_H}));
+
+  // dekorace
+  const dekoraci = Math.round(110 * (SVET_W*SVET_H)/(3600*2600));
+  for(let i=0;i<dekoraci;i++){
+    const t = ["kvet","kamen","ker"][nahI(0,2)];
+    pridejDekoraci(t, nah(40,SVET_W-40), nah(40,SVET_H-40), t==="ker"?nah(50,70):(t==="kamen"?nah(42,62):nah(34,48)));
+  }
+
+  // lesy a suroviny u každé základny
+  ZAKL.forEach((z,i)=>{
+    const smerX = z.x < SVET_W/2 ? 1 : -1, smerY = z.y < SVET_H/2 ? 1 : -1;
+    shlukStromu(z.x+smerX*330, z.y+smerY*180, Math.round(15*mapa.lesy), 190);
+    shlukStromu(z.x+smerX*140, z.y+smerY*400, Math.round(11*mapa.lesy), 165);
+    zilaZdroje("zlato",  klam(z.x+smerX*310, 120, SVET_W-120), klam(z.y-smerY*210, 120, SVET_H-120), Math.round(6*mapa.zlato));
+    zilaZdroje("zelezo", klam(z.x-smerX*200, 120, SVET_W-120), klam(z.y+smerY*300, 120, SVET_H-120), Math.round(6*mapa.zelezo));
+  });
+
+  // střed mapy a náhodné shluky
+  const shluku = Math.round(9 * mapa.lesy * (SVET_W*SVET_H)/(3600*2600));
+  for(let i=0;i<shluku;i++)
+    shlukStromu(nah(SVET_W*0.2,SVET_W*0.8), nah(SVET_H*0.2,SVET_H*0.8), nahI(8,16), nah(150,240));
+  const zil = Math.round(5*mapa.zlato), zelez = Math.round(5*mapa.zelezo);
+  for(let i=0;i<zil;i++)   zilaZdroje("zlato",  nah(SVET_W*0.25,SVET_W*0.75), nah(SVET_H*0.25,SVET_H*0.75), 6);
+  for(let i=0;i<zelez;i++) zilaZdroje("zelezo", nah(SVET_W*0.25,SVET_W*0.75), nah(SVET_H*0.25,SVET_H*0.75), 6);
+  if(mapa.stred){
+    for(let i=0;i<7;i++) zilaZdroje(mapa.stred, SVET_W/2+nah(-260,260), SVET_H/2+nah(-200,200), 7);
+  }
+
+  // základny hráčů
+  G.hraci.forEach((h,i)=>{
+    const z = ZAKL[i];
+    const dovnitrX = z.x < SVET_W/2 ? 1 : -1, dovnitrY = z.y < SVET_H/2 ? 1 : -1;
+    pridejBudovu("radnice", i, z.x, z.y, true);
+    pridejBudovu("domek", i, z.x - dovnitrX*170, z.y - dovnitrY*50, true);
+    pridejBudovu("domek", i, z.x + dovnitrX*40,  z.y - dovnitrY*175, true);
+    const O = OBTIZNOSTI[G.obt];
+    const vesnicanu = h.bot ? 4 : (G.obt<=1 ? 6 : 4);
+    for(let k=0;k<vesnicanu;k++)
+      pridejJednotku("vesnican", i, z.x+nah(-120,120), z.y+dovnitrY*nah(60,140));
+    if(h.bot){
+      h.res.drevo = Math.round(h.res.drevo * (0.9+O.tezba*0.3));
+      pridejBudovu("kasarna", i, z.x + dovnitrX*190, z.y + dovnitrY*95, true);
+      for(let v=0; v<Math.min(3,O.veze); v++)
+        pridejBudovu("vez", i, z.x + nah(-170,170), z.y - dovnitrY*nah(90,190), true);
+      const hlidacu = Math.max(1, Math.round(O.sila*2.4));
+      for(let k=0;k<hlidacu;k++){
+        const s = pridejJednotku("vojak", i, z.x+nah(-150,150), z.y+dovnitrY*nah(120,200));
+        s.straz = {x:s.x, y:s.y};
+      }
+      h.dalsiVlna = O.prvniVlna * nah(0.9,1.15);
+      h.aiStavba = O.staviCas*0.6;
+      h.vlnaCislo = 0;
+    }else if(G.obt<=1){
+      h.res.drevo += 160; h.res.zelezo += 90; h.res.zlato += 130;
+    }
+  });
+}
+
+/* nový hráč do lobby */
+function novyHrac(o){
+  return Object.assign({
+    jm:"Hráč", ikona:CIVKEYS[0], civ:CIVKEYS[nahI(0,5)], barva:0, tym:1, bot:false, ja:false,
+    res:{drevo:260, zelezo:120, zlato:180}, pop:0, popMax:10,
+    porazen:false, dalsiVlna:1e9, vlnaCislo:0, aiStavba:0
+  }, o||{});
+}
+
+/* ============================================================
+   7) EFEKTY A ZVUKY
+   ============================================================ */
+let AC = null;
+function ac(){ if(!AC){ try{AC = new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } return AC; }
+function ton(f1,f2,dur,typ,hlas){
+  const a = ac(); if(!a) return;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = typ||"square"; o.frequency.setValueAtTime(f1,a.currentTime);
+  if(f2) o.frequency.exponentialRampToValueAtTime(Math.max(30,f2), a.currentTime+dur);
+  g.gain.setValueAtTime(hlas||0.05,a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);
+  o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime+dur);
+}
+function zvuk(t){
+  if(G.tichoDoby>0) return;
+  if(t==="klik")   ton(520,760,0.06,"square",0.035);
+  if(t==="sek")    ton(180,60,0.12,"sawtooth",0.05);
+  if(t==="luk")    ton(900,300,0.12,"triangle",0.04);
+  if(t==="mince")  {ton(880,1320,0.09,"triangle",0.05); setTimeout(()=>ton(1320,1760,0.07,"triangle",0.04),70);}
+  if(t==="stavba") {ton(300,200,0.09,"square",0.045); setTimeout(()=>ton(240,160,0.09,"square",0.04),110);}
+  if(t==="hotovo") {ton(660,990,0.1,"triangle",0.05); setTimeout(()=>ton(990,1320,0.14,"triangle",0.05),100);}
+  if(t==="bum")    ton(140,40,0.35,"sawtooth",0.07);
+  if(t==="chyba")  ton(200,120,0.16,"square",0.05);
+  if(t==="poplach"){ton(440,660,0.2,"sawtooth",0.06); setTimeout(()=>ton(330,220,0.3,"sawtooth",0.06),220);}
+}
+
+function jiskra(x,y,text,barva){
+  const d = document.createElement("div");
+  d.className="jiskra"; d.textContent=text; d.style.color=barva||"#fff";
+  d.style.left=(x-14)+"px"; d.style.top=(y-30)+"px";
+  SVET.appendChild(d); setTimeout(()=>d.remove(),1000);
+}
+function castice(x,y,barva,n){
+  for(let i=0;i<(n||6);i++){
+    const d = document.createElement("div");
+    d.className="cast"; d.style.background=barva;
+    d.style.left=x+"px"; d.style.top=y+"px";
+    d.style.setProperty("--dx", nah(-30,30)+"px");
+    d.style.setProperty("--dy", nah(-34,-4)+"px");
+    SVET.appendChild(d); setTimeout(()=>d.remove(),650);
+  }
+}
+function zprava(txt, typ){
+  const box = document.getElementById("zprava");
+  const d = document.createElement("div");
+  d.className = "zpr" + (typ?" "+typ:"");
+  d.innerHTML = txt; box.appendChild(d);
+  setTimeout(()=>d.remove(),4000);
+}
+
+/* ============================================================
+   8) HLEDÁNÍ CÍLŮ
+   ============================================================ */
+function nejbliz(pole, x, y, filtr, maxD){
+  let nej=null, nd=maxD||1e9;
+  for(const e of pole){
+    if(e.mrtvy) continue;
+    if(filtr && !filtr(e)) continue;
+    const d = dist2(x,y,e.x,e.y);
+    if(d<nd){nd=d; nej=e;}
+  }
+  return nej;
+}
+function sklad(side, x, y){
+  return nejbliz(G.budovy, x, y, b=>b.side===side && b.hotova && (b.kind==="radnice"||b.kind==="hrad"));
+}
+function nepritelBlizko(e, dosah){
+  return nejbliz(G.ents, e.x, e.y, o=>(o.druh==="jednotka"||o.druh==="budova") && jeNepritel(e.side,o.side) && !o.mrtvy, dosah);
+}
+
+/* ============================================================
+   9) BOJ
+   ============================================================ */
+function ubliz(cil, dmg, utocnik){
+  if(cil.mrtvy) return;
+  cil.hp -= dmg;
+  if(cil.hpBox) cil.hpBox.style.display="block";
+  cil.zasah = 0.18;
+  // ODVETA: kdo schytá ránu, otočí se po útočníkovi (místo aby dál mlátil do zdi)
+  if(utocnik && !utocnik.mrtvy && utocnik.druh==="jednotka"
+     && cil.druh==="jednotka" && cil.kind!=="vesnican" && cil.hp>0){
+    const mlatiBudovu = cil.stav==="utok" && cil.cilE && cil.cilE.druh==="budova";
+    if(cil.stav!=="utok" || mlatiBudovu){
+      if(mlatiBudovu) cil.hlavniCil = cil.cilE;
+      cil.cilE = utocnik; cil.stav = "utok";
+    }
+  }
+  // vesničan není bojovník – když ho někdo napadne, utíká domů
+  if(cil.druh==="jednotka" && cil.kind==="vesnican" && cil.hp>0
+     && utocnik && utocnik.druh==="jednotka" && !(cil.panika>0)){
+    cil.panika = 4;
+    const dom = sklad(cil.side, cil.x, cil.y);
+    if(dom){
+      cil.stav="jdi"; cil.cilE=null;
+      cil.cil = {x:dom.x+nah(-50,50), y:dom.y+nah(40,80)};
+    }
+    if(jeMuj(cil.side) && G.cas - (G.poplachCas||-99) > 12){
+      G.poplachCas = G.cas;
+      zprava("😱 Někdo ti napadl vesničany! Utíkají domů – pošli tam vojáky!","zle");
+      zvuk("poplach");
+    }
+  }
+  if(cil.hp<=0) zabij(cil, utocnik);
+}
+function zabij(e, kdo){
+  if(e.mrtvy) return;
+  e.mrtvy = true;
+  e.el.classList.add("mrtvy");
+  const el = e.el; setTimeout(()=>el.remove(), 520);
+  castice(e.x, e.y-e.vel*0.4, e.druh==="budova"?"#a08b6a":"#ff8a7a", e.druh==="budova"?16:8);
+  zvuk(e.druh==="budova"?"bum":"sek");
+  const H = G.hraci[e.side];
+  if(H){
+    if(e.druh==="jednotka") H.pop = Math.max(0, H.pop-1);
+    if(e.druh==="budova" && e.hotova && e.popPlus) H.popMax = Math.max(5, H.popMax - e.popPlus);
+  }
+  odeber(e);
+  // vyřazen ze hry?
+  if(e.druh==="budova" && (e.kind==="radnice"||e.kind==="hrad") && H && !H.porazen){
+    const zbyva = G.budovy.filter(b=>b.side===e.side && (b.kind==="radnice"||b.kind==="hrad") && !b.mrtvy).length;
+    if(zbyva===0){
+      H.porazen = true;
+      zprava((jeMuj(e.side)? "💀 Přišel jsi o poslední radnici!" : "🏳️ "+H.jm+" je vyřazen ze hry!"),
+             jeMuj(e.side)?"zle":"dobre");
+      vyhodnotKonec();
+    }
+  }
+}
+
+/* Kdo ještě hraje? Vyhrává tým, který zůstal sám. */
+function vyhodnotKonec(){
+  if(G.konec) return;
+  const zivi = G.hraci.filter(h=>!h.porazen);
+  const tymy = [...new Set(zivi.map(h=>h.tym))];
+  if(MY().porazen){ prohra(); return; }
+  if(tymy.length<=1 && zivi.length>0){ vyhra(); }
+}
+function odeber(e){
+  let i = G.ents.indexOf(e); if(i>=0) G.ents.splice(i,1);
+  const p = e.druh==="jednotka"?G.jednotky : e.druh==="budova"?G.budovy : G.zdroje;
+  i = p.indexOf(e); if(i>=0) p.splice(i,1);
+  G.sel = G.sel.filter(s=>s!==e);
+  for(const j of G.jednotky){ if(j.cilE===e){ j.cilE=null; j.stav="stoj"; } }
+}
+
+function vystrel(od, cil, dmg){
+  const d = document.createElement("div");
+  d.className="strela";
+  const x0 = od.x, y0 = od.y - od.vel*(od.druh==="budova"?0.62:0.45);
+  d.style.left="0px"; d.style.top="0px";
+  d.style.transform=`translate(${x0}px,${y0}px)`;
+  d.style.zIndex = 9000;
+  if(od.druh==="budova") d.style.background="linear-gradient(90deg,#fff,#8ecaff)";
+  SVET.appendChild(d);
+  G.strely.push({x:x0,y:y0,x0,y0,cil,dmg,el:d,t:0,dur:Math.max(0.18,dist2(x0,y0,cil.x,cil.y)/620),od});
+  zvuk("luk");
+}
+function updStrely(dt){
+  for(let i=G.strely.length-1;i>=0;i--){
+    const s = G.strely[i];
+    s.t += dt/s.dur;
+    const tx = s.cil.mrtvy? s.cx : s.cil.x, ty = (s.cil.mrtvy? s.cy : s.cil.y) - s.cil.vel*0.4;
+    if(!s.cil.mrtvy){ s.cx=tx; s.cy=ty; }
+    const x = s.x0 + (tx-s.x0)*Math.min(1,s.t), y = s.y0 + (ty-s.y0)*Math.min(1,s.t) - Math.sin(Math.min(1,s.t)*Math.PI)*26;
+    const uh = Math.atan2(ty-s.y0, tx-s.x0)*180/Math.PI;
+    s.el.style.transform = `translate(${x}px,${y}px) rotate(${uh}deg)`;
+    s.el.style.zIndex = 9000;
+    if(s.t>=1){
+      if(!s.cil.mrtvy){ ubliz(s.cil, s.dmg, s.od); castice(tx,ty,"#ffd76e",5); }
+      s.el.remove(); G.strely.splice(i,1);
+    }
+  }
+}
+
+function dosahUtoku(e, cil){
+  const def = e.druh==="budova" ? BUD[e.kind] : JED[e.kind];
+  const m = e.druh==="budova" ? 1 : M(e.side, e.kind+".dostrel");
+  return def.dostrel*m + cil.r;
+}
+function zautoc(e, cil, dt){
+  const def = e.druh==="budova" ? BUD[e.kind] : JED[e.kind];
+  const jeBudova = e.druh==="budova";
+  const dosah = dosahUtoku(e, cil);
+  const d = dist(e,cil);
+  if(d > dosah) return false;
+  e.cd -= dt;
+  if(e.cd<=0){
+    e.cd = jeBudova ? def.rychUtoku : statJ(e.kind, e.side, "rychUtoku");
+    const utokMod = jeBudova ? (e.kind==="vez"? M(e.side,"vezUtok") : 1) : M(e.side, e.kind+".utok");
+    const dmg = def.utok * utokMod * nah(0.85,1.15)
+      * (cil.druh==="budova" && e.kind==="lukostrelec" ? 0.5 : 1)
+      * (cil.druh==="budova" && e.kind==="slon" ? 1.7 : 1)      // slon boří budovy
+      * ((G.hraci[e.side]&&G.hraci[e.side].bot) ? OBTIZNOSTI[G.obt].dmg : 1);   // nepřítel bije slabším podle obtížnosti
+    if(def.strela) vystrel(e, cil, dmg);
+    else{
+      ubliz(cil, dmg, e);
+      castice(cil.x + nah(-10,10), cil.y - cil.vel*0.4, "#ffdca8", 4);
+      zvuk("sek");
+      e.utokAnim = 0.2;
+      if(cil.druh==="jednotka" && Math.random()<0.35) jiskra(cil.x, cil.y-cil.vel*0.5, "-"+Math.round(dmg), "#ff9a8a");
+    }
+  }
+  return true;
+}
+
+/* ============================================================
+   10) JEDNOTKY – CHOVÁNÍ
+   ============================================================ */
+function jdiK(e, tx, ty, dt, odstup){
+  odstup = (odstup==null) ? 3 : odstup;
+  const dx = tx-e.x, dy = ty-e.y, d = Math.hypot(dx,dy);
+  // tolerance 0.6 px – bez ní se kvůli zaokrouhlování nikdy „nedojde" a panáček
+  // věčně přešlapuje kousíček od cíle (a netěží ani nestaví)
+  if(d <= odstup + 0.6) return true;
+  const v = statJ(e.kind, e.side, "rychlost");
+  const kr = Math.min(d - odstup, v*dt);
+  e.x += dx/d*kr; e.y += dy/d*kr;
+  e.x = klam(e.x, 20, SVET_W-20); e.y = klam(e.y, 20, SVET_H-20);
+  if(Math.abs(dx)>2) e.smer = dx<0? -1: 1;
+  e.hop += dt*11;
+  e.hopY = Math.abs(Math.sin(e.hop))*3.2;
+  e.chodi = true;
+  return (d - kr) <= odstup + 0.6;   // právě teď dorazil
+}
+
+const NAKLAD_MAX = 12;
+/* Každý panáček dostane svoje vlastní místečko kolem stromu / skladu,
+   aby se navzájem neodstrkávali a nepodupávali na místě. */
+function slotBod(e, cil, odstup){
+  const a = (e.id * 2.3999632) % (Math.PI*2);
+  return {x: klam(cil.x + Math.cos(a)*odstup, 20, SVET_W-20),
+          y: klam(cil.y + Math.sin(a)*odstup*0.72, 20, SVET_H-20)};
+}
+function tezRychlost(e){
+  let r = 1.6;
+  if(e.cilE && e.cilE.typ) r *= M(e.side, "tezba."+e.cilE.typ);
+  return r;
+}
+
+function updJednotku(e, dt){
+  e.chodi = false;
+  e.kotva = false;
+  if(e.zasah>0){ e.zasah-=dt; e.svgEl.style.filter = "brightness(2.2) saturate(.4)"; }
+  else if(e.svgEl.style.filter) e.svgEl.style.filter="";
+
+  if(e.panika>0) e.panika -= dt;
+  // vesničan, který dotěžil strom, si sám najde další (jako v opravdové strategii)
+  if(e.kind==="vesnican" && e.stav==="stoj" && e.tezar && !(e.panika>0)){
+    if(e.naklad && e.naklad.ks>0){ e.stav="vrat"; e.vratCas=0; e.skladE=null; }
+    else novyZdroj(e);
+  }
+  // automatické bránění
+  if(e.stav==="stoj" && e.kind!=="vesnican"){
+    const c = nepritelBlizko(e, e.kind==="lukostrelec"?230:190);
+    if(c){ e.stav="utok"; e.cilE=c; e.hlidka={x:e.x,y:e.y}; }
+  }
+
+  switch(e.stav){
+    case "jdi":
+      if(jdiK(e, e.cil.x, e.cil.y, dt, 4)) e.stav="stoj";
+      break;
+
+    case "tez": {
+      const z = e.cilE;
+      if(!z || z.mrtvy){ novyZdroj(e); break; }
+      if(e.slotId!==z.id){ e.slot = slotBod(e, z, e.r + z.r + 4); e.slotId = z.id; e.uCile = false; }
+      if(e.uCile && dist2(e.x,e.y,e.slot.x,e.slot.y) > 30) e.uCile = false;   // někdo do něj strčil
+      if(!e.uCile && jdiK(e, e.slot.x, e.slot.y, dt, 7)) e.uCile = true;
+      if(e.uCile){
+        e.kotva = true;                    // stojí pevně, nikdo s ním nešoupe
+        e.swingT = (e.swingT||0) + dt*9;   // máchání sekerou
+        e.swing = Math.sin(e.swingT)*15;
+        z.svgEl.style.transform = "rotate("+(Math.sin(e.swingT*0.9)*2.6).toFixed(2)+"deg)";
+        e.tez = (e.tez||0) + dt*tezRychlost(e);
+        e.tezAnim = (e.tezAnim||0) + dt;
+        if(e.tezAnim>0.36){
+          e.tezAnim=0;
+          castice(z.x+nah(-14,14), z.y-z.vel*0.42, z.typ==="drevo"?"#a8dd9c":(z.typ==="zlato"?"#ffd447":"#c3d6e8"), 4);
+          if(jeMuj(e.side) && Math.random()<0.18) zvuk(z.typ==="drevo"?"sek":"stavba");
+        }
+        if(e.tez>=1){
+          const ks = Math.floor(e.tez); e.tez -= ks;
+          const vzit = Math.min(ks, z.zasoba);
+          z.zasoba -= vzit;
+          e.naklad = e.naklad || {typ:z.typ, ks:0};
+          if(e.naklad.typ!==z.typ) e.naklad = {typ:z.typ, ks:0};
+          e.naklad.ks += vzit;
+          if(z.zasoba<=0){ z.mrtvy=true; z.el.classList.add("mrtvy"); const el=z.el; setTimeout(()=>el.remove(),520); odeber(z); }
+        }
+        if(e.naklad && e.naklad.ks>=NAKLAD_MAX){ e.pametZdroj = z; e.stav="vrat"; e.vratCas=0; e.skladE=null; }
+      }
+      break;
+    }
+
+    case "vrat": {
+      let s = e.skladE;
+      if(!s || s.mrtvy){ s = e.skladE = sklad(e.side, e.x, e.y); }
+      if(!s){ e.stav="stoj"; break; }
+      // POZOR: dosah musí být větší než odstrkávání od budovy v rozestup(),
+      // jinak se vesničan zasekne těsně před skladem a nikdy nic neodevzdá.
+      const dosah = e.r + s.r + 12;
+      e.vratCas = (e.vratCas||0) + dt;
+      if(e.slotSId!==s.id){ e.slotS = slotBod(e, s, dosah-2); e.slotSId = s.id; }
+      const uSkladu = jdiK(e, e.slotS.x, e.slotS.y, dt, 7) || dist(e,s) <= dosah;
+      // záchrana: kdyby se přece jen o něco zadrhl, po chvíli suroviny odevzdá i tak
+      if(uSkladu || (e.vratCas>6 && dist(e,s) < dosah+30)){
+        e.vratCas = 0;
+        if(e.naklad && e.naklad.ks>0){
+          const R = G.hraci[e.side].res;
+          R[e.naklad.typ] += e.naklad.ks;
+          if(jeMuj(e.side)){
+            jiskra(s.x+nah(-20,20), s.y-s.vel*0.6, "+"+e.naklad.ks+" "+IKONA[e.naklad.typ], "#ffe08a");
+            zvuk("mince");
+          }
+          e.naklad = null;
+        }
+        // zpátky ke zdroji
+        if(e.pametZdroj && !e.pametZdroj.mrtvy){ e.cilE = e.pametZdroj; e.stav="tez"; }
+        else novyZdroj(e);
+      }
+      break;
+    }
+
+    case "stav": {
+      const b = e.cilE;
+      if(!b || b.mrtvy || b.hotova){ e.stav="stoj"; e.cilE=null; break; }
+      if(e.slotBId!==b.id){ e.slotB = slotBod(e, b, e.r + b.r + 8); e.slotBId = b.id; }
+      if(jdiK(e, e.slotB.x, e.slotB.y, dt, 7) || dist(e,b) <= e.r + b.r + 16){
+        b.stavitele = (b.stavitele||0) + 1;
+        e.kotva = true;
+        e.swingT = (e.swingT||0) + dt*10;
+        e.swing = Math.sin(e.swingT)*16;
+        e.tezAnim = (e.tezAnim||0)+dt;
+        if(e.tezAnim>0.5){ e.tezAnim=0; castice(b.x+nah(-24,24), b.y-b.vel*0.3, "#e0c89a", 4); if(jeMuj(e.side)) zvuk("stavba"); }
+      }
+      break;
+    }
+
+    case "utok": {
+      const c = e.cilE;
+      if(!c || c.mrtvy){
+        e.cilE=null;
+        if(e.hlavniCil && !e.hlavniCil.mrtvy){ e.cilE=e.hlavniCil; e.hlavniCil=null; break; }
+        e.hlavniCil=null;
+        if(e.straz){ e.stav="jdi"; e.cil={...e.straz}; }
+        else if(e.hlidka){ e.stav="jdi"; e.cil={...e.hlidka}; e.hlidka=null; }
+        else e.stav="stoj";
+        break;
+      }
+      // chytré: cestou k budově si nejdřív vyřídí panáčky, co jsou v cestě
+      if(c.druh==="budova"){
+        e.rozhled = (e.rozhled||0) - dt;
+        if(e.rozhled<=0){
+          e.rozhled = 0.7;
+          const j = nejbliz(G.jednotky, e.x, e.y, o=>jeNepritel(e.side,o.side) && !o.mrtvy, 165);
+          if(j){ e.hlavniCil = c; e.cilE = j; break; }
+        }
+      }
+      if(!zautoc(e, c, dt)) jdiK(e, c.x, c.y, dt, dosahUtoku(e,c) - 6);
+      break;
+    }
+  }
+
+  if(!e.chodi && e.hopY) e.hopY *= 0.8;
+  if(!e.kotva && e.swing) e.swing *= 0.78;
+  // otočení + máchání
+  const flip = e.smer<0? "scaleX(-1)":"";
+  const utokPosun = e.utokAnim>0? ` translateX(${e.smer*4}px)`:"";
+  if(e.utokAnim>0) e.utokAnim-=dt;
+  const rot = (e.swing && Math.abs(e.swing)>0.5)? ` rotate(${e.swing.toFixed(1)}deg)`:"";
+  const t = flip+utokPosun+rot;
+  if(e.lastT!==t){ e.svgEl.style.transform=t; e.lastT=t; }
+  polohuj(e);
+  if(e.hpBox){
+    const pom = e.hp/e.maxHp;
+    if(pom<0.999) e.hpBox.style.display="block";
+    e.hpEl.style.width = Math.max(0,pom*100)+"%";
+  }
+}
+
+/* Vybere surovinu: blízkou, ale ne takovou, kde už se tlačí ostatní. */
+function novyZdroj(e){
+  const typ = e.naklad? e.naklad.typ : (e.pametZdroj? e.pametZdroj.typ : null);
+  const vyber = (stejnyTyp)=>{
+    let nej=null, nejSkore=1e9;
+    for(const z of G.zdroje){
+      if(z.mrtvy) continue;
+      if(stejnyTyp && typ && z.typ!==typ) continue;
+      let obsazeno = 0;
+      for(const j of G.jednotky) if(j!==e && !j.mrtvy && j.side===e.side && j.cilE===z) obsazeno++;
+      const skore = dist(e,z) + obsazeno*95;
+      if(skore<nejSkore){ nejSkore=skore; nej=z; }
+    }
+    return nej;
+  };
+  const z = vyber(true) || vyber(false);
+  if(z){ e.cilE=z; e.pametZdroj=z; e.stav="tez"; e.tezar=true; e.uCile=false; e.slotId=null; }
+  else { e.stav="stoj"; e.tezar=false; }   // nikde už nic není
+}
+
+/* ============================================================
+   11) BUDOVY – VÝROBA A STŘELBA
+   ============================================================ */
+function updBudovu(b, dt){
+  if(b.zasah>0){ b.zasah-=dt; b.svgEl.style.filter="brightness(1.8)"; }
+  else if(b.svgEl.style.filter) b.svgEl.style.filter="";
+
+  if(!b.hotova){
+    const st = b.stavitele||0;
+    if(st>0){
+      const rychlost = (1/BUD[b.kind].cas) * M(b.side,"stavba") * (1 + (st-1)*0.6);
+      b.postup = Math.min(1, b.postup + dt*rychlost);
+      b.hp = Math.max(b.hp, b.maxHp*(0.15+0.85*b.postup));
+      if(b.postupEl) b.postupEl.style.width = (b.postup*100)+"%";
+      if(b.postup>=1){
+        b.hotova = true; b.hp = b.maxHp;
+        b.el.classList.remove("stavba");
+        if(b.postupBox) b.postupBox.remove();
+        if(b.popPlus) zmenPop(b.side, b.popPlus);
+        if(jeMuj(b.side)){ zvuk("hotovo"); zprava("🏗️ "+BUD[b.kind].jm+" je hotová!","dobre"); }
+        // stavitelé jdou zpátky těžit
+        for(const j of G.jednotky) if(j.cilE===b && j.stav==="stav") novyZdroj(j);
+        obnovPanel();
+      }
+    }
+    b.stavitele = 0;
+  }else{
+    // střelba
+    const def = BUD[b.kind];
+    if(def.dostrel){
+      if(!b.cilE || b.cilE.mrtvy || dist(b,b.cilE)>def.dostrel+60)
+        b.cilE = nejbliz(G.ents, b.x, b.y, o=>(o.druh==="jednotka") && jeNepritel(b.side,o.side) && !o.mrtvy, def.dostrel);
+      if(b.cilE) zautoc(b, b.cilE, dt);
+    }
+    // výroba jednotek
+    if(b.fronta.length){
+      const kind = b.fronta[0];
+      b.vyrobaCas -= dt;
+      if(b.vyrobaCas<=0){
+        b.fronta.shift();
+        const uh = nah(0,Math.PI*2);
+        const x = klam(b.x + Math.cos(uh)*(b.r+40), 30, SVET_W-30);
+        const y = klam(b.y + Math.sin(uh)*(b.r+30) + 30, 30, SVET_H-30);
+        const u = pridejJednotku(kind, b.side, x, y);
+        if(jeMuj(b.side)){
+          zvuk("hotovo");
+          if(kind==="vesnican") novyZdroj(u);
+          if(b.rally){ u.stav="jdi"; u.cil={...b.rally}; }
+        }else{
+          if(kind==="vesnican") novyZdroj(u);
+          else { u.stav="stoj"; u.hlidka={x:u.x,y:u.y}; }
+        }
+        if(b.fronta.length) b.vyrobaCas = JED[b.fronta[0]].cas;
+        if(jeMuj(b.side)) obnovPanel();
+      }
+    }
+  }
+  if(b.hpBox){
+    const pom = b.hp/b.maxHp;
+    if(pom<0.999) b.hpBox.style.display="block"; else b.hpBox.style.display="none";
+    b.hpEl.style.width = Math.max(0,pom*100)+"%";
+  }
+}
+
+/* ============================================================
+   12) ODSTRKÁVÁNÍ (aby se nepřekrývali)
+   ============================================================ */
+function rozestup(){
+  const J = G.jednotky;
+  for(let i=0;i<J.length;i++){
+    const a = J[i]; if(a.mrtvy) continue;
+    for(let k=i+1;k<J.length;k++){
+      const b = J[k]; if(b.mrtvy) continue;
+      const dx = b.x-a.x, dy = (b.y-a.y)*1.6;
+      const d = Math.hypot(dx,dy), min = (a.r+b.r)*1.22;
+      if(d>0 && d<min){
+        // kdo těží nebo staví, stojí pevně – uhne jen ten druhý
+        const p = (min-d)/d;
+        if(a.kotva && b.kotva) continue;
+        else if(a.kotva){ b.x += dx*p; b.y += dy*p*0.6; }
+        else if(b.kotva){ a.x -= dx*p; a.y -= dy*p*0.6; }
+        else { a.x -= dx*p/2; a.y -= dy*p*0.3; b.x += dx*p/2; b.y += dy*p*0.3; }
+      }
+    }
+    if(!a.kotva) for(const b of G.budovy){
+      if(b.mrtvy) continue;
+      const dx = a.x-b.x, dy = (a.y-b.y)*1.5, d=Math.hypot(dx,dy), min=a.r+b.r*0.8;
+      if(d>0 && d<min){ const p=(min-d)/d; a.x += dx*p; a.y += dy*p*0.6; }
+    }
+    a.x = klam(a.x,20,SVET_W-20); a.y = klam(a.y,20,SVET_H-20);
+  }
+}
+
+/* ============================================================
+   13) AI POČÍTAČOVÝCH HRÁČŮ (každý bot si hraje svoje)
+   ============================================================ */
+function nejblizsiNepratelskaZakladna(side){
+  let nej=null, nd=1e9;
+  G.hraci.forEach((h,i)=>{
+    if(!jeNepritel(side,i) || h.porazen) return;
+    const b = nejbliz(G.budovy, ZAKL[side].x, ZAKL[side].y, o=>o.side===i && !o.mrtvy);
+    if(b){ const d = dist2(ZAKL[side].x,ZAKL[side].y,b.x,b.y); if(d<nd){nd=d; nej=b;} }
+  });
+  return nej;
+}
+
+function updAI(dt){
+  const O = OBTIZNOSTI[G.obt];
+
+  G.hraci.forEach((H, si)=>{
+    if(!H.bot || H.porazen) return;
+    const zakl = ZAKL[si];
+
+    /* --- ekonomika: vesničané pořád těží --- */
+    for(const j of G.jednotky){
+      if(j.side!==si || j.mrtvy) continue;
+      if(j.kind==="vesnican" && j.stav==="stoj") novyZdroj(j);
+    }
+
+    /* --- stavění a doplňování hlídačů --- */
+    H.aiStavba = (H.aiStavba||0) - dt;
+    if(H.aiStavba<=0){
+      H.aiStavba = O.staviCas * nah(0.85,1.2);
+      const moje = G.budovy.filter(b=>b.side===si && !b.mrtvy);
+      const vezi = moje.filter(b=>b.kind==="vez").length;
+      if(moje.length < 12){
+        let kind = "domek";
+        if(vezi < O.veze && Math.random()<0.4) kind = "vez";
+        else if(!moje.some(b=>b.kind==="kasarna") ) kind = "kasarna";
+        else if(G.obt>=3 && !moje.some(b=>b.kind==="staj") && maBudovu(si,"staj") && Math.random()<0.4) kind = "staj";
+        else if(G.obt>=4 && !moje.some(b=>b.kind==="hrad") && Math.random()<0.3) kind = "hrad";
+        const a = nah(0,Math.PI*2), d = nah(180,320);
+        pridejBudovu(kind, si, klam(zakl.x+Math.cos(a)*d,90,SVET_W-90), klam(zakl.y+Math.sin(a)*d,90,SVET_H-90), true);
+      }
+      const hlidacu = G.jednotky.filter(j=>j.side===si && j.straz && !j.mrtvy).length;
+      if(hlidacu < Math.max(1, Math.round(O.sila*2.4))){
+        const s = pridejJednotku("vojak", si, zakl.x+nah(-150,150), zakl.y+nah(90,200));
+        s.straz = {x:s.x, y:s.y};
+      }
+      // vesničany si taky doplní
+      const vesnicanu = G.jednotky.filter(j=>j.side===si && j.kind==="vesnican" && !j.mrtvy).length;
+      if(vesnicanu < 4+Math.round(O.tezba*3)){
+        const u = pridejJednotku("vesnican", si, zakl.x+nah(-120,120), zakl.y+nah(60,150));
+        novyZdroj(u);
+      }
+    }
+
+    /* --- vlny útoku --- */
+    if(G.cas >= H.dalsiVlna){
+      H.vlnaCislo++;
+      const pocet = Math.max(2, Math.round((1.6 + H.vlnaCislo*0.85*O.rust) * O.sila));
+      const parta = [];
+      const umi = k => maJednotku(si,k);
+      for(let i=0;i<pocet;i++){
+        let kind = "vojak";
+        if(H.vlnaCislo>=3 && i%3===2 && umi("lukostrelec")) kind = "lukostrelec";
+        if(H.vlnaCislo>=4 && i%4===3 && umi("jezdec"))      kind = "jezdec";
+        if(H.vlnaCislo>=7 && i===0 && umi("slon") && Math.random()<0.5) kind = "slon";
+        parta.push(pridejJednotku(kind, si,
+          klam(zakl.x+nah(-180,180),40,SVET_W-40), klam(zakl.y+nah(-180,220),40,SVET_H-40)));
+      }
+      if(G.obt>=2 && H.vlnaCislo>=6 && Math.random()<0.35)
+        parta.push(pridejJednotku("hrdina", si, zakl.x+nah(-100,100), zakl.y+nah(80,180)));
+
+      const cil = nejblizsiNepratelskaZakladna(si);
+      for(const u of parta){
+        if(cil){ u.stav="utok"; u.cilE=cil; }
+        else u.stav="stoj";
+      }
+      H.dalsiVlna = G.cas + O.mezera * nah(0.85,1.2);
+      // varuj jenom když to jde na mě nebo na můj tým
+      if(cil && !jeNepritel(G.ja, cil.side)){
+        zvuk("poplach");
+        zprava("⚔️ ÚTOK! "+H.jm+" ("+CIVS[H.civ].jm+") posílá "+pocet+" bojovníků!","zle");
+      }
+    }
+
+    /* --- chování vojáků tohoto bota --- */
+    for(const j of G.jednotky){
+      if(j.side!==si || j.mrtvy || j.kind==="vesnican") continue;
+      if(j.stav==="utok" && j.cilE && !j.cilE.mrtvy) continue;
+
+      if(j.straz){
+        const c = nejbliz(G.ents, j.straz.x, j.straz.y,
+          o=>jeNepritel(si,o.side) && !o.mrtvy && (o.druh==="jednotka"||o.druh==="budova"), 520);
+        if(c){ j.stav="utok"; j.cilE=c; }
+        else if(j.stav==="stoj" && dist2(j.x,j.y,j.straz.x,j.straz.y)>70){ j.stav="jdi"; j.cil={...j.straz}; }
+      }else if(j.stav==="stoj"){
+        const c = nejbliz(G.jednotky, j.x, j.y, o=>jeNepritel(si,o.side) && !o.mrtvy, 320)
+               || nejbliz(G.budovy,   j.x, j.y, o=>jeNepritel(si,o.side) && !o.mrtvy);
+        if(c){ j.stav="utok"; j.cilE=c; }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   14) KAMERA A PŘIBLÍŽENÍ
+   ============================================================ */
+function vidW(){ return window.innerWidth / G.zoom; }
+function vidH(){ return window.innerHeight / G.zoom; }
+function obnovKameru(){
+  G.cam.x = klam(G.cam.x, 0, Math.max(0, SVET_W - vidW()));
+  G.cam.y = klam(G.cam.y, 0, Math.max(0, SVET_H - vidH()));
+  SVET.style.transform = `scale(${G.zoom}) translate(${-G.cam.x}px,${-G.cam.y}px)`;
+}
+function posunKameru(dx,dy){ G.cam.x += dx/G.zoom; G.cam.y += dy/G.zoom; obnovKameru(); }
+function kameraNa(x,y){ G.cam.x = x - vidW()/2; G.cam.y = y - vidH()/2; obnovKameru(); }
+function nastavZoom(z, kolemX, kolemY){
+  const stary = G.zoom;
+  G.zoom = klam(z, 0.42, 1.6);
+  if(kolemX!=null){
+    const wx = kolemX/stary + G.cam.x, wy = kolemY/stary + G.cam.y;
+    G.cam.x = wx - kolemX/G.zoom; G.cam.y = wy - kolemY/G.zoom;
+  }
+  obnovKameru();
+}
+const naSvetX = cx => cx/G.zoom + G.cam.x;
+const naSvetY = cy => cy/G.zoom + G.cam.y;
+
+/* ============================================================
+   15) VÝBĚR A ROZKAZY
+   ============================================================ */
+function entPod(x,y){
+  let nej=null, nd=1e9, prio=-1;
+  for(const e of G.ents){
+    if(e.mrtvy) continue;
+    const cy = e.y - e.vel*0.42, r = e.vel*(e.druh==="budova"?0.46:0.46);
+    const d = dist2(x,y,e.x,cy);
+    if(d<r){
+      const p = e.druh==="jednotka"?3 : e.druh==="budova"?2 : 1;
+      if(p>prio || (p===prio && d<nd)){ prio=p; nd=d; nej=e; }
+    }
+  }
+  return nej;
+}
+function vyber(pole){
+  for(const e of G.sel) if(e.ringEl) e.ringEl.style.display="none";
+  G.sel = pole.filter(e=>e && !e.mrtvy);
+  for(const e of G.sel) if(e.ringEl) e.ringEl.style.display="block";
+  obnovPanel();
+}
+function vsichniTezit(){
+  let n = 0;
+  for(const j of G.jednotky){
+    if(!jeMuj(j.side) || j.mrtvy || j.kind!=="vesnican") continue;
+    if(j.stav==="stoj" || j.stav==="jdi"){ novyZdroj(j); n++; }
+  }
+  zvuk("klik");
+  zprava(n? ("⛏️ "+n+" vesničanů jde těžit!") : "Všichni vesničani už pracují.", n?"dobre":null);
+}
+function vyberVojsko(){
+  const v = G.jednotky.filter(j=>jeMuj(j.side) && j.kind!=="vesnican" && !j.mrtvy);
+  if(v.length){ vyber(v); zvuk("klik"); zprava("⚔️ Vybráno "+v.length+" vojáků"); }
+  else zprava("Nemáš žádné vojáky. Postav Kasárna!","zle");
+}
+
+function rozkaz(x,y){
+  const moji = G.sel.filter(e=>jeMuj(e.side) && e.druh==="jednotka" && !e.mrtvy);
+  if(!moji.length){
+    const b = G.sel.find(e=>jeMuj(e.side) && e.druh==="budova" && e.hotova);
+    if(b){ b.rally={x,y}; jiskra(x,y,"🚩","#8ef0a0"); zvuk("klik"); }
+    return;
+  }
+  const cil = entPod(x,y);
+  const vesnicani = moji.filter(u=>u.kind==="vesnican");
+  const vojaci = moji.filter(u=>u.kind!=="vesnican");
+
+  if(cil && cil.druh==="zdroj"){
+    for(const u of vesnicani){
+      u.cilE=cil; u.pametZdroj=cil; u.stav="tez"; u.hlidka=null;
+      u.tezar=true; u.uCile=false; u.slotId=null;
+    }
+    for(const u of vojaci){ u.stav="jdi"; u.cil={x,y}; u.cilE=null; u.hlidka=null; }
+    if(vesnicani.length) jiskra(x,y,IKONA[cil.typ],"#ffe08a");
+    zvuk("klik"); return;
+  }
+  if(cil && jeNepritel(G.ja, cil.side)){
+    for(const u of moji){ u.stav="utok"; u.cilE=cil; u.hlidka=null; u.tezar=false; }
+    jiskra(cil.x, cil.y-cil.vel*0.6, "⚔️", "#ff9a8a"); zvuk("klik"); return;
+  }
+  if(cil && jeMuj(cil.side) && cil.druh==="budova" && !cil.hotova){
+    for(const u of vesnicani){ u.stav="stav"; u.cilE=cil; u.hlidka=null; u.tezar=false; u.slotBId=null; }
+    for(const u of vojaci){ u.stav="jdi"; u.cil={x,y}; }
+    jiskra(cil.x, cil.y-cil.vel*0.6, "🔨", "#ffe08a"); zvuk("klik"); return;
+  }
+  const n = moji.length, sl = Math.ceil(Math.sqrt(n));
+  moji.forEach((u,i)=>{
+    const ox = (i%sl - (sl-1)/2) * 42, oy = (Math.floor(i/sl) - (sl-1)/2) * 34;
+    u.stav="jdi"; u.cil={x:klam(x+ox,20,SVET_W-20), y:klam(y+oy,20,SVET_H-20)};
+    u.cilE=null; u.hlidka=null; u.tezar=false;
+  });
+  jiskra(x,y,"➤","#8ef0a0"); zvuk("klik");
+}
+
+/* ============================================================
+   16) STAVĚNÍ
+   ============================================================ */
+function lzeZaplatit(c){ const R=MY().res; for(const k in c) if(R[k] < c[k]) return false; return true; }
+function zaplat(c){ const R=MY().res; for(const k in c) R[k] -= c[k]; obnovHud(); }
+function chybiText(c){
+  const R=MY().res, ch=[];
+  for(const k in c) if(R[k]<c[k]) ch.push(IKONA[k]+" "+NAZEV[k]);
+  return ch.join(" a ");
+}
+function blikni(c){
+  const R=MY().res;
+  for(const k in c) if(R[k]<c[k]){
+    const el = document.getElementById("z_"+k);
+    el.classList.remove("blik"); void el.offsetWidth; el.classList.add("blik");
+  }
+}
+function zacniStavet(kind){
+  const b = BUD[kind], cena = cenaBudovy(kind, G.ja);
+  if(!lzeZaplatit(cena)){ zvuk("chyba"); blikni(cena); zprava("Chybí ti "+chybiText(cena)+"!","zle"); return; }
+  G.stavim = kind;
+  if(!G.ghost){
+    G.ghost = document.createElement("div");
+    G.ghost.className="ent"; G.ghost.style.opacity=".65"; G.ghost.style.zIndex=99999;
+    G.ghost.style.pointerEvents="none";
+    SVET.appendChild(G.ghost);
+  }
+  G.ghost.style.width=b.vel+"px"; G.ghost.style.height=b.vel+"px";
+  G.ghost.innerHTML = budovaSVG(kind, civKey(G.ja), barvaHrace(G.ja).h);
+  G.ghost.style.display="block";
+  zprava(JE_MOBIL? ("Ťukni na trávu, kam "+b.jm+" postavit.") : ("Klikni na trávu, kam "+b.jm+" postavit. (Esc zruší)"));
+}
+function zrusStaveni(){ G.stavim=null; if(G.ghost) G.ghost.style.display="none"; }
+function mistoVolne(kind,x,y){
+  const r = BUD[kind].r;
+  if(x<r+30||y<r+30||x>SVET_W-r-30||y>SVET_H-r-30) return false;
+  for(const e of G.ents){
+    if(e.mrtvy) continue;
+    if(e.druh==="budova" && dist2(x,y,e.x,e.y) < r+e.r+14) return false;
+    if(e.druh==="zdroj"  && dist2(x,y,e.x,e.y) < r+e.r*0.7) return false;
+  }
+  return true;
+}
+function postav(x,y){
+  const kind = G.stavim, cena = cenaBudovy(kind, G.ja);
+  if(!lzeZaplatit(cena)){ zvuk("chyba"); blikni(cena); zrusStaveni(); return; }
+  if(!mistoVolne(kind,x,y)){ zvuk("chyba"); zprava("Tady to nejde postavit – je tam něco jiného!","zle"); return; }
+  zaplat(cena);
+  const nova = pridejBudovu(kind, G.ja, x, y, false);
+  let stavitele = G.sel.filter(e=>e.druh==="jednotka" && jeMuj(e.side) && e.kind==="vesnican" && !e.mrtvy);
+  if(!stavitele.length){
+    const v = nejbliz(G.jednotky, x, y, j=>jeMuj(j.side) && j.kind==="vesnican" && !j.mrtvy);
+    if(v) stavitele=[v];
+  }
+  for(const u of stavitele){ u.stav="stav"; u.cilE=nova; u.hlidka=null; u.tezar=false; u.slotBId=null; }
+  zvuk("stavba");
+  if(!stavitele.length) zprava("Nemáš vesničana, co by to postavil!","zle");
+  zrusStaveni(); obnovPanel();
+}
+
+/* ============================================================
+   17) VÝROBA JEDNOTEK
+   ============================================================ */
+function cvic(b, kind){
+  const c = cenaJednotky(kind, G.ja), H = MY();
+  if(JED[kind].limit){
+    const mam = G.jednotky.filter(j=>jeMuj(j.side) && j.kind===kind && !j.mrtvy).length
+              + G.budovy.reduce((s,x)=>s + (jeMuj(x.side)? x.fronta.filter(f=>f===kind).length:0),0);
+    if(mam>=JED[kind].limit){ zvuk("chyba"); zprava("Hrdina může být jen jeden!","zle"); return; }
+  }
+  if(H.pop + b.fronta.length >= H.popMax){ zvuk("chyba"); zprava("Není místo! Postav Domeček 🏠","zle"); return; }
+  if(!lzeZaplatit(c)){ zvuk("chyba"); blikni(c); zprava("Chybí ti "+chybiText(c)+"!","zle"); return; }
+  zaplat(c);
+  b.fronta.push(kind);
+  if(b.fronta.length===1) b.vyrobaCas = JED[kind].cas;
+  zvuk("klik"); obnovPanel();
+}
+
+/* ============================================================
+   18) PANEL A HUD
+   ============================================================ */
+function obnovHud(){
+  const H = MY();
+  document.getElementById("v_drevo").textContent = Math.floor(H.res.drevo);
+  document.getElementById("v_zelezo").textContent = Math.floor(H.res.zelezo);
+  document.getElementById("v_zlato").textContent = Math.floor(H.res.zlato);
+  document.getElementById("v_pop").textContent = H.pop+"/"+H.popMax;
+}
+function cenaHtml(c){ return Object.keys(c).map(k=>`<span>${IKmini(k)}${c[k]}</span>`).join(" "); }
+function tlacitko(ik,jm,cena,lze,fn,tip){
+  const b = document.createElement("button");
+  b.className = "abtn"+(lze?"":" nelze");
+  b.innerHTML = `<div class="ik">${ik}</div><b>${jm}</b>`+(cena?`<div class="cena">${cena}</div>`:"");
+  b.onclick = ()=>fn();
+  if(!JE_MOBIL){
+    b.onmouseenter = ()=>{ const t=document.getElementById("tip"); t.innerHTML=tip; t.style.display="block"; };
+    b.onmouseleave = ()=>{ document.getElementById("tip").style.display="none"; };
+  }
+  return b;
+}
+function obnovPanel(){
+  const P = document.getElementById("portret"), A = document.getElementById("akce");
+  A.innerHTML="";
+  const e = G.sel[0];
+  if(!e || e.mrtvy){
+    P.innerHTML = `<div class="jm">Nikdo není vybraný</div><div class="st">Klikni na panáčka</div>`;
+    A.appendChild(tlacitko("⚔️","Všichni vojáci","", true, vyberVojsko, "Vybere všechny tvé vojáky (klávesa V)"));
+    A.appendChild(tlacitko("⛏️","Všichni těžit","", true, vsichniTezit, "Pošle nezaměstnané vesničany k nejbližší surovině."));
+    return;
+  }
+  const jeJed = e.druh==="jednotka";
+  const def = jeJed? JED[e.kind] : (e.druh==="budova"? BUD[e.kind] : ZDROJE[e.kind]);
+  const pocet = G.sel.length;
+  const bar = e.side>=0 ? barvaHrace(e.side).h : null;
+  let art = jeJed? svgObal(jednotkaSVG(civKey(e.side), e.kind, bar))
+          : e.druh==="budova"? budovaSVG(e.kind, civKey(e.side), bar) : zdrojSVG(e.kind, e.varianta);
+  let stav = "";
+  if(e.druh==="zdroj") stav = "zbývá "+Math.ceil(e.zasoba)+" "+IKmini(e.typ);
+  else{
+    stav = "❤ "+Math.max(0,Math.ceil(e.hp))+"/"+e.maxHp;
+    if(jeJed && e.naklad) stav += " · nese "+e.naklad.ks+IKmini(e.naklad.typ);
+    if(e.druh==="budova" && !e.hotova) stav = "staví se "+Math.round(e.postup*100)+"%";
+  }
+  P.innerHTML = `<div style="width:60px;height:60px">${art}</div>
+    <div class="jm">${def.jm}${pocet>1?" ×"+pocet:""}</div><div class="st">${stav}</div>`;
+
+  if(e.side>=0 && !jeMuj(e.side)){
+    const H = G.hraci[e.side];
+    A.appendChild(tlacitko(jeNepritel(G.ja,e.side)?"⚔️":"🤝", H.jm, CIVS[H.civ].jm, true, ()=>{},
+      jeNepritel(G.ja,e.side)? "Nepřátelská jednotka nebo budova." : "Tohle patří tvému spojenci."));
+    return;
+  }
+  if(e.druh==="zdroj"){
+    A.appendChild(tlacitko(IK[e.typ],"Surovina","",true,()=>{},
+      "Pošli sem vesničany a budou těžit "+NAZEV[e.typ]+"."));
+    return;
+  }
+  if(jeJed && G.sel.some(u=>u.kind==="vesnican")){
+    for(const k in BUD){
+      if(!maBudovu(G.ja,k)) continue;
+      const b = BUD[k], cena = cenaBudovy(k,G.ja), lze = lzeZaplatit(cena);
+      const hp = Math.round(b.hp * M(G.ja,"budovyHp"));
+      A.appendChild(tlacitko(k==="radnice"?"🏛️":k==="domek"?"🏠":k==="kasarna"?"⚔️":k==="staj"?"🐴":k==="vez"?"🗼":"🏰",
+        b.jm, cenaHtml(cena), lze, ()=>zacniStavet(k),
+        "<b>"+b.jm+"</b><br>"+b.popis+"<br>❤️ "+hp+" životů · Cena: "+cenaHtml(cena)));
+    }
+    A.appendChild(tlacitko("⛏️","Jdi těžit","",true,()=>{ for(const u of G.sel) if(u.kind==="vesnican") novyZdroj(u); zvuk("klik"); },
+      "Pošle vybrané vesničany k nejbližší surovině."));
+  }
+  if(jeJed && G.sel.some(u=>u.kind!=="vesnican")){
+    A.appendChild(tlacitko("🛑","Stůj","",true,()=>{ for(const u of G.sel){u.stav="stoj"; u.cilE=null; u.hlidka=null;} zvuk("klik"); },
+      "Vojáci se zastaví na místě."));
+  }
+  if(e.druh==="budova"){
+    if(!e.hotova){
+      A.appendChild(tlacitko("🔨","Staví se…", Math.round(e.postup*100)+"%", true, ()=>{},
+        "Pošli sem vesničany – čím víc jich staví, tím rychleji to bude."));
+    }else{
+      for(const k of cvicitelne(G.ja, e.kind)){
+        const c = cenaJednotky(k,G.ja), lze = lzeZaplatit(c) && MY().pop<MY().popMax;
+        const hp = statJ(k,G.ja,"hp"), ut = Math.round(statJ(k,G.ja,"utok")), ry = Math.round(statJ(k,G.ja,"rychlost"));
+        const zn = (v,z)=> v>z*1.12? " ⬆️" : (v<z*0.9? " ⬇️" : "");
+        A.appendChild(tlacitko(JED[k].ik, JED[k].jm, cenaHtml(c), lze, ()=>cvic(e,k),
+          "<b>"+JED[k].jm+"</b><br>"+JED[k].popis
+          +"<br>❤️ "+hp+zn(hp,JED[k].hp)+" &nbsp; ⚔️ "+ut+zn(ut,JED[k].utok)
+          +" &nbsp; 👟 "+ry+zn(ry,JED[k].rychlost)+"<br>Cena: "+cenaHtml(c)));
+      }
+      if(e.fronta.length)
+        A.appendChild(tlacitko("⏳","Ve frontě", e.fronta.length+"×", true, ()=>{},
+          "Právě se cvičí: "+e.fronta.map(f=>JED[f].jm).join(", ")));
+      if(BUD[e.kind].dostrel)
+        A.appendChild(tlacitko("🎯","Střílí","dostřel "+BUD[e.kind].dostrel,true,()=>{},"Tahle budova sama střílí po nepřátelích."));
+    }
+  }
+}
+function obnovSkore(){
+  const el = document.getElementById("skore");
+  if(!el.classList.contains("zap")) return;
+  el.innerHTML = G.hraci.map((h,i)=>{
+    const b = BARVY[h.barva];
+    const bud = G.budovy.filter(x=>x.side===i && !x.mrtvy).length;
+    const jed = G.jednotky.filter(x=>x.side===i && !x.mrtvy).length;
+    return `<div class="rad${h.porazen?" mrtvy":""}"><span class="tec" style="background:${b.h}"></span>
+      <b>${h.jm}</b><span style="margin-left:auto;opacity:.8">T${h.tym} · 🏠${bud} · 🧍${jed}</span></div>`;
+  }).join("");
+}
+
+/* ============================================================
+   19) MINIMAPA
+   ============================================================ */
+function kresliMinimapu(){
+  const w = MMC.width, h = MMC.height, sx = w/SVET_W, sy = h/SVET_H;
+  MMX.fillStyle = MAPY[G.mapa].zeme; MMX.fillRect(0,0,w,h);
+  for(const z of G.zdroje){
+    MMX.fillStyle = z.typ==="drevo"?"#2f7a35" : z.typ==="zlato"?"#ffd447":"#c3d6e8";
+    MMX.fillRect(z.x*sx-1.5, z.y*sy-1.5, 3, 3);
+  }
+  for(const b of G.budovy){
+    MMX.fillStyle = barvaHrace(b.side).h;
+    const s = (b.kind==="radnice"||b.kind==="hrad")?8:5;
+    MMX.fillRect(b.x*sx-s/2, b.y*sy-s/2, s, s);
+  }
+  for(const j of G.jednotky){
+    MMX.fillStyle = barvaHrace(j.side).h;
+    MMX.fillRect(j.x*sx-2, j.y*sy-2, 4, 4);
+  }
+  MMX.strokeStyle="#fff"; MMX.lineWidth=2;
+  MMX.strokeRect(G.cam.x*sx, G.cam.y*sy, vidW()*sx, vidH()*sy);
+}
+
+/* ============================================================
+   20) OVLÁDÁNÍ
+   ============================================================ */
+const JE_MOBIL = (navigator.maxTouchPoints||0) > 1 && Math.min(screen.width,screen.height) < 900;
+const klavesy = {};
+let tahne=null, mys={x:0,y:0}, dotykRezim="posun";
+
+function nastavOvladani(){
+  const hra = document.getElementById("hra"), box = document.getElementById("vyber");
+  hra.addEventListener("contextmenu", ev=>ev.preventDefault());
+
+  /* ---------- MYŠ ---------- */
+  hra.addEventListener("mousedown", ev=>{
+    if(ev.target.closest("#panel")||ev.target.closest("#horni")||ev.target.closest("#dotyk")) return;
+    const wx = naSvetX(ev.clientX), wy = naSvetY(ev.clientY);
+    if(ev.button===2){ if(G.stavim){ zrusStaveni(); return; } rozkaz(wx,wy); return; }
+    if(ev.button!==0) return;
+    if(G.stavim){ postav(wx,wy); return; }
+    tahne = {x:ev.clientX, y:ev.clientY, wx, wy};
+  });
+  window.addEventListener("mousemove", ev=>{
+    mys.x=ev.clientX; mys.y=ev.clientY;
+    if(G.stavim && G.ghost) ghostNa(naSvetX(ev.clientX), naSvetY(ev.clientY));
+    if(tahne){
+      const x=Math.min(tahne.x,ev.clientX), y=Math.min(tahne.y,ev.clientY);
+      const w=Math.abs(ev.clientX-tahne.x), h=Math.abs(ev.clientY-tahne.y);
+      if(w>6||h>6){ box.style.display="block"; box.style.left=x+"px"; box.style.top=y+"px";
+        box.style.width=w+"px"; box.style.height=h+"px"; }
+    }
+  });
+  window.addEventListener("mouseup", ev=>{
+    if(!tahne) return;
+    const dx=Math.abs(ev.clientX-tahne.x), dy=Math.abs(ev.clientY-tahne.y);
+    box.style.display="none";
+    if(dx<7&&dy<7) klikVyber(tahne.wx, tahne.wy);
+    else ramecekVyber(tahne.wx, tahne.wy, naSvetX(ev.clientX), naSvetY(ev.clientY));
+    tahne=null;
+  });
+  hra.addEventListener("wheel", ev=>{
+    ev.preventDefault();
+    nastavZoom(G.zoom * (ev.deltaY<0? 1.12 : 0.89), ev.clientX, ev.clientY);
+  }, {passive:false});
+
+  /* ---------- DOTYK ---------- */
+  let doty = null, poslednivzd = 0;
+  hra.addEventListener("touchstart", ev=>{
+    if(ev.target.closest("#panel")||ev.target.closest("#horni")||ev.target.closest("#dotyk")) return;
+    if(ev.touches.length===1){
+      const t = ev.touches[0];
+      doty = {x:t.clientX, y:t.clientY, x0:t.clientX, y0:t.clientY, cas:Date.now(), posun:false};
+      if(dotykRezim==="vyber"){ box.style.display="block"; }
+    }else if(ev.touches.length===2){
+      poslednivzd = Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX, ev.touches[0].clientY-ev.touches[1].clientY);
+      doty = null; box.style.display="none";
+    }
+  }, {passive:false});
+  hra.addEventListener("touchmove", ev=>{
+    ev.preventDefault();
+    if(ev.touches.length===2){
+      const d = Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX, ev.touches[0].clientY-ev.touches[1].clientY);
+      if(poslednivzd) nastavZoom(G.zoom * d/poslednivzd,
+        (ev.touches[0].clientX+ev.touches[1].clientX)/2, (ev.touches[0].clientY+ev.touches[1].clientY)/2);
+      poslednivzd = d; return;
+    }
+    if(!doty || ev.touches.length!==1) return;
+    const t = ev.touches[0], dx = t.clientX-doty.x, dy = t.clientY-doty.y;
+    if(Math.abs(t.clientX-doty.x0)>8 || Math.abs(t.clientY-doty.y0)>8) doty.posun = true;
+    if(dotykRezim==="vyber"){
+      const x=Math.min(doty.x0,t.clientX), y=Math.min(doty.y0,t.clientY);
+      box.style.left=x+"px"; box.style.top=y+"px";
+      box.style.width=Math.abs(t.clientX-doty.x0)+"px"; box.style.height=Math.abs(t.clientY-doty.y0)+"px";
+    }else if(!G.stavim){
+      posunKameru(-dx, -dy);
+    }
+    doty.x=t.clientX; doty.y=t.clientY;
+    if(G.stavim) ghostNa(naSvetX(t.clientX), naSvetY(t.clientY));
+  }, {passive:false});
+  hra.addEventListener("touchend", ev=>{
+    if(!doty){ poslednivzd=0; return; }
+    box.style.display="none";
+    const wx = naSvetX(doty.x), wy = naSvetY(doty.y);
+    if(dotykRezim==="vyber" && doty.posun){
+      ramecekVyber(naSvetX(doty.x0), naSvetY(doty.y0), wx, wy);
+      dotykRezim="posun"; document.getElementById("d_vyber").classList.remove("on");
+    }else if(!doty.posun){
+      if(G.stavim){ postav(wx,wy); }
+      else{
+        const e = entPod(wx,wy);
+        // ťuknu na svoje = vyberu, ťuknu jinam a mám vybráno = pošlu je tam
+        if(e && (jeMuj(e.side) || (e.druh==="zdroj" && !G.sel.length))) klikVyber(wx,wy);
+        else if(G.sel.some(s=>jeMuj(s.side) && s.druh==="jednotka")) rozkaz(wx,wy);
+        else klikVyber(wx,wy);
+      }
+    }
+    doty=null; poslednivzd=0;
+  });
+
+  /* ---------- MINIMAPA ---------- */
+  const mm = document.getElementById("minimapa");
+  let mmTahne=false;
+  const mmSkok = (cx,cy)=>{
+    const r = mm.getBoundingClientRect();
+    kameraNa((cx-r.left)/r.width*SVET_W, (cy-r.top)/r.height*SVET_H);
+  };
+  mm.addEventListener("mousedown", ev=>{ mmTahne=true; mmSkok(ev.clientX,ev.clientY); ev.stopPropagation(); });
+  window.addEventListener("mousemove", ev=>{ if(mmTahne) mmSkok(ev.clientX,ev.clientY); });
+  window.addEventListener("mouseup", ()=>{ mmTahne=false; });
+  mm.addEventListener("touchstart", ev=>{ mmSkok(ev.touches[0].clientX, ev.touches[0].clientY); ev.stopPropagation(); }, {passive:true});
+  mm.addEventListener("touchmove", ev=>{ mmSkok(ev.touches[0].clientX, ev.touches[0].clientY); ev.stopPropagation(); }, {passive:true});
+
+  /* ---------- KLÁVESY ---------- */
+  window.addEventListener("keydown", ev=>{
+    if(document.activeElement && document.activeElement.tagName==="INPUT") return;
+    klavesy[ev.key.toLowerCase()] = true;
+    if(ev.key===" "){ ev.preventDefault(); prepniPauzu(); }
+    if(ev.key==="Escape") zrusStaveni();
+    if(ev.key.toLowerCase()==="v") vyberVojsko();
+    if(ev.key.toLowerCase()==="t") vsichniTezit();
+    if(ev.key==="+"||ev.key==="=") nastavZoom(G.zoom*1.15, window.innerWidth/2, window.innerHeight/2);
+    if(ev.key==="-") nastavZoom(G.zoom*0.87, window.innerWidth/2, window.innerHeight/2);
+  });
+  window.addEventListener("keyup", ev=>{ klavesy[ev.key.toLowerCase()]=false; });
+
+  document.getElementById("b_pauza").onclick = prepniPauzu;
+  document.getElementById("b_skore").onclick = ()=>{
+    document.getElementById("skore").classList.toggle("zap"); obnovSkore();
+  };
+  document.getElementById("d_vyber").onclick = function(){
+    dotykRezim = dotykRezim==="vyber"? "posun":"vyber";
+    this.classList.toggle("on", dotykRezim==="vyber");
+    zprava(dotykRezim==="vyber"? "Táhni prstem přes panáčky – označíš je" : "Posouvání mapy prstem");
+  };
+  document.getElementById("d_vojsko").onclick = vyberVojsko;
+  document.getElementById("d_zoomP").onclick = ()=>nastavZoom(G.zoom*1.18, window.innerWidth/2, window.innerHeight/2);
+  document.getElementById("d_zoomM").onclick = ()=>nastavZoom(G.zoom*0.85, window.innerWidth/2, window.innerHeight/2);
+}
+function ghostNa(wx,wy){
+  const b=BUD[G.stavim];
+  G.ghost.style.transform = `translate(${wx-b.vel/2}px,${wy-b.vel*0.93}px)`;
+  G.ghost.style.filter = mistoVolne(G.stavim,wx,wy)? "drop-shadow(0 0 6px #8ef0a0)":"drop-shadow(0 0 6px #ff5a4a) grayscale(.6)";
+}
+function klikVyber(wx,wy){
+  const e = entPod(wx,wy);
+  if(e){ vyber([e]); zvuk("klik"); } else vyber([]);
+}
+function ramecekVyber(ax,ay,bx,by){
+  const x1=Math.min(ax,bx), x2=Math.max(ax,bx), y1=Math.min(ay,by), y2=Math.max(ay,by);
+  const v = G.jednotky.filter(j=>jeMuj(j.side) && !j.mrtvy && j.x>x1&&j.x<x2&&j.y>y1&&j.y<y2);
+  if(v.length){ vyber(v); zvuk("klik"); } else vyber([]);
+}
+function prepniPauzu(){
+  if(G.konec) return;
+  G.pauza = !G.pauza;
+  document.getElementById("pauza").classList.toggle("zap", G.pauza);
+  document.getElementById("b_pauza").textContent = G.pauza? "▶":"⏸";
+}
+function kameraKlavesy(dt){
+  const v = 900*dt;
+  let dx=0,dy=0;
+  if(klavesy["a"]||klavesy["arrowleft"]) dx-=v;
+  if(klavesy["d"]||klavesy["arrowright"]) dx+=v;
+  if(klavesy["w"]||klavesy["arrowup"]) dy-=v;
+  if(klavesy["s"]||klavesy["arrowdown"]) dy+=v;
+  if(!JE_MOBIL){
+    const m=24;
+    if(mys.y < window.innerHeight-134 && mys.y > 54){
+      if(mys.x<m) dx-=v; else if(mys.x>window.innerWidth-m) dx+=v;
+    }
+    if(mys.y<m+50 && mys.y>2) dy-=v;
+    else if(mys.y>window.innerHeight-m && mys.x<window.innerWidth-400) dy+=v;
+  }
+  if(dx||dy) posunKameru(dx,dy);
+}
+
+/* ============================================================
+   21) HLAVNÍ SMYČKA
+   ============================================================ */
+let posledni = 0, mmCas = 0, panelCas = 0;
+function tik(t){
+  requestAnimationFrame(tik);
+  if(!G.bezi) return;
+  const dt = Math.min(0.05, (t - posledni)/1000 || 0);
+  posledni = t;
+  kameraKlavesy(dt);
+  if(G.pauza || G.konec) return;
+  G.cas += dt;
+
+  for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
+  for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
+  rozestup();
+  updStrely(dt);
+  updAI(dt);
+
+  obnovHud();
+  mmCas += dt; if(mmCas>0.12){ mmCas=0; kresliMinimapu(); }
+  panelCas += dt; if(panelCas>0.4){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
+}
+
+/* ============================================================
+   22) KONEC HRY
+   ============================================================ */
+function vyhra(){
+  G.konec = true;
+  const spojenci = G.hraci.filter(h=>h.tym===MY().tym).map(h=>h.jm).join(", ");
+  document.getElementById("konecNadpis").innerHTML = '<span class="duha">🏆 VÍTĚZSTVÍ!</span>';
+  document.getElementById("konecText").textContent =
+    "Tým "+MY().tym+" ("+spojenci+") ovládl celou zemi Ňuňísků! Trvalo to "
+    + Math.floor(G.cas/60)+" min "+Math.floor(G.cas%60)+" s.";
+  document.getElementById("konec").classList.add("zap");
+  zvuk("hotovo"); setTimeout(()=>zvuk("hotovo"),200); setTimeout(()=>zvuk("hotovo"),400);
+  ohnostroj();
+}
+function prohra(){
+  G.konec = true;
+  document.getElementById("konecNadpis").innerHTML = '<span style="color:#ff8a7a">💀 PROHRA</span>';
+  document.getElementById("konecText").textContent =
+    "Tvoje poslední radnice padla! Příště postav dřív Kasárna a Věže – a nezapomeň na domečky, ať máš dost panáčků.";
+  document.getElementById("konec").classList.add("zap");
+  zvuk("bum");
+}
+function ohnostroj(){
+  let n=0;
+  const iv = setInterval(()=>{
+    const x = G.cam.x + nah(100, vidW()-100), y = G.cam.y + nah(80, vidH()-200);
+    castice(x,y,["#ffd447","#ff8ad0","#8ef0a0","#8ecaff"][nahI(0,3)],18);
+    if(++n>14) clearInterval(iv);
+  },260);
+}
+
+/* ============================================================
+   23) ÚČET HRÁČE (jméno + ikona, pamatuje se)
+   ============================================================ */
+const UCET = {jm:"", ikona:CIVKEYS[0]};
+function nactiUcet(){
+  try{
+    const s = JSON.parse(localStorage.getItem("nunisci-ucet")||"{}");
+    if(s.jm) UCET.jm = s.jm;
+    if(s.ikona && CIVS[s.ikona]) UCET.ikona = s.ikona;
+  }catch(e){}
+  obnovUcetBar();
+}
+function ulozUcet(){
+  try{ localStorage.setItem("nunisci-ucet", JSON.stringify(UCET)); }catch(e){}
+  obnovUcetBar();
+}
+function obnovUcetBar(){
+  document.getElementById("ucetJmeno").textContent = UCET.jm || "ENTER YOUR NAME";
+  document.getElementById("ucetIkona").innerHTML = svgObal(plysak(UCET.ikona,"vesnican",{bezPraporku:1}));
+}
+function maJmeno(){
+  if(UCET.jm) return true;
+  otevri("mJmeno");
+  document.getElementById("poleJmeno").value = "";
+  setTimeout(()=>document.getElementById("poleJmeno").focus(),120);
+  return false;
+}
+
+/* ============================================================
+   24) ÚVODNÍ OBRÁZEK (jako v Age of Empires)
+   ============================================================ */
+function splashSVG(){
+  const kus = (civ,kind,barva,x,y,s,flip)=>
+    `<g transform="translate(${x},${y}) scale(${s*(flip?-1:1)},${s}) translate(-50,-100)">${jednotkaSVG(civ,kind,barva)}</g>`;
+  const strom = (x,y,s,v)=>`<g transform="translate(${x},${y}) scale(${s}) translate(-50,-100)">${zdrojSVG("strom",v)}</g>`;
+  const hrad = (civ,barva,x,y,s)=>`<g transform="translate(${x},${y}) scale(${s}) translate(-50,-100)" opacity="0.95">${budovaSVG("hrad",civ,barva)}</g>`;
+  return `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="nebe" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1b2a4a"/><stop offset="0.42" stop-color="#4a5f8e"/>
+        <stop offset="0.66" stop-color="#c98a5a"/><stop offset="0.8" stop-color="#f0b46a"/></linearGradient>
+      <linearGradient id="zemG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#4d8a44"/><stop offset="1" stop-color="#2f5c2c"/></linearGradient>
+      <radialGradient id="slunce" cx="50%" cy="50%" r="50%">
+        <stop offset="0" stop-color="#fff3c4"/><stop offset="0.5" stop-color="#ffcf6a" stop-opacity=".7"/>
+        <stop offset="1" stop-color="#ffcf6a" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="1600" height="900" fill="url(#nebe)"/>
+    <circle cx="1180" cy="600" r="230" fill="url(#slunce)"/>
+    <circle cx="1180" cy="600" r="62" fill="#fff0c0" opacity=".95"/>
+    <g fill="#2b3a5c" opacity=".85">
+      <path d="M0 600 L180 470 L330 600 Z"/><path d="M250 600 L430 440 L610 600 Z"/>
+      <path d="M980 600 L1130 490 L1290 600 Z"/><path d="M1250 600 L1430 460 L1600 600 Z"/></g>
+    <g fill="#5a6d8c" opacity=".5">
+      <path d="M300 600 L430 480 L520 600 Z"/><path d="M1290 600 L1430 500 L1520 600 Z"/></g>
+    <rect y="596" width="1600" height="304" fill="url(#zemG)"/>
+    <g opacity=".35" fill="#2f5c2c">
+      <ellipse cx="300" cy="700" rx="330" ry="46"/><ellipse cx="1200" cy="760" rx="380" ry="52"/></g>
+    ${hrad("pandici", BARVY[0].h, 470, 618, 2.1)}
+    ${hrad("clawsby", BARVY[1].h, 1120, 604, 1.35)}
+    ${strom(60,660,1.5,1)} ${strom(180,676,1.25,0)} ${strom(700,646,1.15,1)}
+    ${strom(1520,690,1.7,2)} ${strom(1390,656,1.2,1)} ${strom(960,640,1.05,0)}
+    ${kus("bobrici","lukostrelec",BARVY[2].h, 620, 706, 1.55, false)}
+    ${kus("cici","vojak",BARVY[5].h, 415, 726, 1.7, false)}
+    ${kus("mysky","vesnican",BARVY[8].h, 176, 742, 1.35, false)}
+    ${kus("clawsby","jezdec",BARVY[3].h, 900, 800, 2.5, false)}
+    ${kus("pejsci","vojak",BARVY[1].h, 560, 838, 2.15, false)}
+    ${kus("pandici","slon",BARVY[0].h, 1230, 872, 3.15, true)}
+    ${kus("cici","hrdina",BARVY[7].h, 760, 892, 2.5, false)}
+    ${kus("bobrici","vojak",BARVY[4].h, 1520, 878, 2.3, true)}
+  </svg>`;
+}
+
+/* ============================================================
+   25) MENU
+   ============================================================ */
+function otevri(id){ document.getElementById(id).classList.add("zap"); }
+function zavri(id){ document.getElementById(id).classList.remove("zap"); }
+
+function postavMenu(){
+  document.getElementById("splash").innerHTML = splashSVG();
+  obnovUcetBar();
+  // staré ikonky místo emoji v horní liště
+  document.querySelector("#z_drevo span").innerHTML  = IK.drevo;
+  document.querySelector("#z_zelezo span").innerHTML = IK.zelezo;
+  document.querySelector("#z_zlato span").innerHTML  = IK.zlato;
+  document.querySelector("#z_pop span").innerHTML    = IK.domek;
+
+  document.getElementById("ucetBtn").onclick = ()=>{
+    zvuk("klik");
+    document.getElementById("poleJmeno").value = UCET.jm;
+    otevri("mJmeno");
+    setTimeout(()=>document.getElementById("poleJmeno").focus(),120);
+  };
+  document.getElementById("jmenoOk").onclick = ()=>{
+    const v = document.getElementById("poleJmeno").value.trim().slice(0,16);
+    if(!v){ document.getElementById("poleJmeno").focus(); return; }
+    UCET.jm = v; ulozUcet(); zavri("mJmeno"); zvuk("hotovo");
+    postavIkony(); otevri("mIkona");
+  };
+  document.querySelectorAll("[data-zavri]").forEach(b=>b.onclick=()=>{ zavri(b.dataset.zavri); zvuk("klik"); });
+
+  document.getElementById("bSingle").onclick = ()=>{ if(!maJmeno()) return; zvuk("klik"); otevriLobby("single"); };
+  document.getElementById("bMulti").onclick  = ()=>{ if(!maJmeno()) return; zvuk("klik"); otevriLobby("multi"); };
+  document.getElementById("bJoin").onclick   = ()=>{
+    if(!maJmeno()) return;
+    zvuk("klik");
+    document.getElementById("polePozvanka").value="";
+    document.getElementById("joinHlaska").textContent="";
+    document.getElementById("joinKrok2").style.display="none";
+    otevri("mJoin");
+    setTimeout(()=>document.getElementById("polePozvanka").focus(),120);
+  };
+  document.getElementById("bNapoveda").onclick = ()=>{ zvuk("klik"); ukazNapovedu(); };
+  document.getElementById("lobbyZpet").onclick = ()=>{ NET.zavri(); zavri("mLobby"); zvuk("klik"); };
+  document.getElementById("pridejBota").onclick = pridejBota;
+  document.getElementById("startHry").onclick = ()=>{
+    if(G.rezim==="multi" && !NET.jsemHost){ zprava("Hru spouští ten, kdo ji vytvořil."); return; }
+    NET.posli({typ:"start", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed});
+    spustHru();
+  };
+}
+
+function ukazNapovedu(){
+  document.getElementById("napovedaText").innerHTML = JE_MOBIL ? `
+    <b>Na mobilu a tabletu:</b><br>
+    • <b>Ťukni</b> na svého panáčka – vybereš ho<br>
+    • Pak <b>ťukni</b> na strom / zlato / železo = jde těžit, na nepřítele = útočí, na trávu = jde tam<br>
+    • <b>Tažením prstem</b> posouváš mapu, <b>dvěma prsty</b> přibližuješ<br>
+    • Tlačítko <b>▣</b> vpravo přepne na označování tažením (víc panáčků najednou)<br>
+    • Tlačítko <b>⚔️</b> vybere všechny vojáky<br><br>
+    <b>Cíl:</b> zbourat nepřátelské radnice. Vydrž jako poslední tým!` : `
+    • <b>Levé tlačítko</b> – vyber panáčka (nebo táhni myší a vyber víc najednou)<br>
+    • <b>Pravé tlačítko</b> – pošli je tam: na strom/zlato/železo = <b>těží</b>, na nepřítele = <b>útočí</b><br>
+    • <b>W A S D</b> / šipky / okraj obrazovky – posouvej mapu, <b>kolečkem myši</b> přibližuješ<br>
+    • Vyber <b>Radnici</b> a cvič vesničany. Vesničan umí <b>stavět budovy</b><br>
+    • <b>V</b> = všichni vojáci, <b>T</b> = všichni těžit, <b>mezerník</b> = pauza, <b>Esc</b> = zruš stavění<br><br>
+    <b>Cíl:</b> zbourat radnice všech nepřátel. Vydrží-li jen tvůj tým, vyhráváš!`;
+  otevri("mNapoveda");
+}
+
+function postavIkony(){
+  const m = document.getElementById("ikonyMriz");
+  m.innerHTML = "";
+  IKONY.forEach(k=>{
+    const d = document.createElement("button");
+    d.className = "ikonaKarta"+(UCET.ikona===k?" on":"");
+    d.innerHTML = svgObal(plysak(k,"vesnican",{bezPraporku:1})) + `<div>${CIVS[k].emo} ${CIVS[k].jm}</div>`;
+    d.onclick = ()=>{
+      UCET.ikona = k; ulozUcet(); zvuk("klik");
+      m.querySelectorAll(".ikonaKarta").forEach(x=>x.classList.remove("on"));
+      d.classList.add("on");
+      if(lobbyHraci.length){ const me = lobbyHraci.find(h=>h.ja); if(me){ me.ikona=k; NET.oznam(); kresliLobby(); } }
+    };
+    m.appendChild(d);
+  });
+}
+
+/* ============================================================
+   26) LOBBY
+   ============================================================ */
+let lobbyHraci = [];
+let mojeId = null;
+function novyKod(){
+  const zn = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s=""; for(let i=0;i<3;i++) s += zn[Math.floor(Math.random()*zn.length)];
+  return s;
+}
+function volnaBarva(){
+  for(let i=0;i<BARVY.length;i++) if(!lobbyHraci.some(h=>h.barva===i)) return i;
+  return 0;
+}
+function volnyTym(){
+  for(let t=1;t<=5;t++) if(!lobbyHraci.some(h=>h.tym===t)) return t;
+  return 1;
+}
+function otevriLobby(rezim){
+  G.rezim = rezim;
+  G.seed = Math.floor(Math.random()*1e9);
+  mojeId = "j"+Math.floor(Math.random()*1e9);
+  lobbyHraci = [ novyHrac({id:mojeId, jm:UCET.jm, ikona:UCET.ikona, ja:true, bot:false,
+                           civ:CIVKEYS[nahI(0,5)], barva:0, tym:1}) ];
+  lobbyHraci.push(novyHrac({id:"bot"+Date.now(), jm:"Počítač 1", ikona:CIVKEYS[nahI(0,5)],
+                            bot:true, civ:CIVKEYS[nahI(0,5)], barva:1, tym:2}));
+  G.mapa = 0; G.obt = 2;
+  document.getElementById("lobbyNadpis").textContent = rezim==="multi"? "MULTIPLAYER":"SINGLEPLAYER";
+  document.getElementById("lobbyPodnadpis").textContent = rezim==="multi"
+    ? "Řekni kamarádovi kód a on se přidá přes JOIN A GAME"
+    : "Hraješ sám proti počítačům – nikdo další se nepřidá";
+  document.getElementById("kodBox").style.display = rezim==="multi"? "block":"none";
+  if(rezim==="multi") NET.vytvor(); else { G.kod="---"; NET.zavri(); }
+  document.getElementById("kodText").textContent = G.kod;
+  if(rezim==="multi" && !NET.umiSit()){
+    document.getElementById("lobbyPodnadpis").innerHTML =
+      "⚠️ Tahle hra je puštěná ze souboru na počítači, takže se sem <b>kamarád nepřipojí</b>."
+      + "<br>Musíš ji spustit z <b>internetového odkazu</b> – pak JOIN A GAME funguje. Zatím si zahraj proti počítačům.";
+  }
+  kresliMapy(); kresliObtiznosti(); kresliLobby();
+  otevri("mLobby");
+}
+function pridejBota(){
+  if(lobbyHraci.length>=8){ zprava("Víc než 8 hráčů se do jedné hry nevejde."); return; }
+  const n = lobbyHraci.filter(h=>h.bot).length+1;
+  lobbyHraci.push(novyHrac({id:"bot"+Date.now()+n, jm:"Počítač "+n, ikona:CIVKEYS[nahI(0,5)],
+    bot:true, civ:CIVKEYS[nahI(0,5)], barva:volnaBarva(), tym:volnyTym()}));
+  zvuk("klik"); NET.oznam(); kresliLobby();
+}
+function smimMenit(h){
+  if(G.rezim!=="multi") return true;
+  if(NET.jsemHost) return true;
+  return h.id===mojeId;
+}
+function kresliLobby(){
+  const s = document.getElementById("hraciSeznam");
+  s.innerHTML = "";
+  lobbyHraci.forEach((h,i)=>{
+    const r = document.createElement("div");
+    r.className = "hracRadek"+(h.id===mojeId?" ja":"");
+    const smim = smimMenit(h);
+    const civOpt = CIVKEYS.map(k=>`<option value="${k}"${h.civ===k?" selected":""}>${CIVS[k].emo} ${CIVS[k].jm}</option>`).join("");
+    const tymOpt = [1,2,3,4,5].map(t=>`<option value="${t}"${h.tym===t?" selected":""}>Tým ${t}</option>`).join("");
+    r.innerHTML = `
+      <div class="hracIkona">${svgObal(plysak(h.ikona,"vesnican",{bezPraporku:1,barva:BARVY[h.barva].h}))}</div>
+      <div class="hracJm">${h.jm}<small>${h.bot?"🤖 počítač":(h.id===mojeId?"⭐ to jsi ty":"🙂 hráč")}</small></div>
+      <select class="pole sl-civ" ${smim?"":"disabled"}>${civOpt}</select>
+      <select class="pole sl-tym" ${smim?"":"disabled"}>${tymOpt}</select>
+      <button class="barvaBtn" style="background:${BARVY[h.barva].h}" ${smim?"":"disabled"}></button>
+      <div class="sl-obt" style="font-size:11px;opacity:.75">${h.bot? OBTIZNOSTI[G.obt].jm : "—"}</div>
+      <div>${(h.bot||(NET.jsemHost&&h.id!==mojeId&&G.rezim==="multi"))?'<button class="odebrat">×</button>':''}</div>`;
+    r.querySelector(".sl-civ").onchange = e=>{ h.civ = e.target.value; NET.oznam(); kresliLobby(); };
+    r.querySelector(".sl-tym").onchange = e=>{ h.tym = +e.target.value; NET.oznam(); kresliLobby(); };
+    r.querySelector(".barvaBtn").onclick = ()=>{ if(smim) vyberBarvu(h); };
+    const od = r.querySelector(".odebrat");
+    if(od) od.onclick = ()=>{ lobbyHraci = lobbyHraci.filter(x=>x!==h); zvuk("klik"); NET.oznam(); kresliLobby(); };
+    s.appendChild(r);
+  });
+  const poc = lobbyHraci.length;
+  document.getElementById("lobbyPozn").innerHTML =
+    `Hráčů: <b>${poc}/8</b> · mapa <b>${MAPY[G.mapa].jm}</b> · obtížnost <b>${OBTIZNOSTI[G.obt].jm}</b>`
+    + (G.rezim==="multi" ? `<br>Kamarád u <b>stejného počítače</b> otevře hru v dalším okně a dá JOIN A GAME s kódem <b>${G.kod}</b>.` : "");
+}
+function vyberBarvu(h){
+  const p = document.createElement("div");
+  p.className = "prekryv zap";
+  p.innerHTML = `<div class="papir" style="width:min(460px,96vw)">
+    <div class="papirHlava"><div><h2>VYBER SI BARVU</h2>
+      <div class="podnadpis">Podle ní poznáš svoje vojáky a budovy</div></div></div>
+    <div class="barvyMriz"></div>
+    <div class="lobbyPata"><button class="papirBtn sedy">ZAVŘÍT</button></div></div>`;
+  const m = p.querySelector(".barvyMriz");
+  BARVY.forEach((b,i)=>{
+    const obs = lobbyHraci.some(x=>x!==h && x.barva===i);
+    const d = document.createElement("button");
+    d.className = "barvaKarta"+(h.barva===i?" on":"")+(obs?" obsazena":"");
+    d.style.background = `linear-gradient(180deg,${b.h},${b.t})`;
+    d.textContent = b.jm;
+    if(!obs) d.onclick = ()=>{ h.barva=i; zvuk("klik"); p.remove(); NET.oznam(); kresliLobby(); };
+    m.appendChild(d);
+  });
+  p.querySelector(".papirBtn").onclick = ()=>p.remove();
+  document.body.appendChild(p);
+}
+function kresliMapy(){
+  const m = document.getElementById("mapyMriz");
+  m.innerHTML = "";
+  MAPY.forEach((mp,i)=>{
+    const d = document.createElement("button");
+    d.className = "mapaKarta"+(G.mapa===i?" on":"");
+    const cv = document.createElement("canvas"); cv.width=104; cv.height=52;
+    const cx = cv.getContext("2d");
+    cx.fillStyle = mp.zeme; cx.fillRect(0,0,104,52);
+    seedni(i*7919+13);
+    for(let k=0;k<Math.round(34*mp.lesy);k++){ cx.fillStyle="#2f7a35"; cx.fillRect(nah(2,100),nah(2,48),3,3); }
+    for(let k=0;k<Math.round(7*mp.zlato);k++){ cx.fillStyle="#ffd447"; cx.fillRect(nah(2,100),nah(2,48),3,3); }
+    for(let k=0;k<Math.round(7*mp.zelezo);k++){ cx.fillStyle="#dbe7f2"; cx.fillRect(nah(2,100),nah(2,48),3,3); }
+    d.appendChild(cv);
+    d.insertAdjacentHTML("beforeend", `<div>${mp.jm}</div>`);
+    d.title = mp.popis;
+    d.onclick = ()=>{ G.mapa=i; zvuk("klik"); NET.oznam(); kresliMapy(); kresliLobby(); };
+    m.appendChild(d);
+  });
+}
+function kresliObtiznosti(){
+  const r = document.getElementById("obtRada");
+  r.innerHTML = "";
+  OBTIZNOSTI.forEach((o,i)=>{
+    const b = document.createElement("button");
+    b.className = "obtBtn"+(G.obt===i?" on":"");
+    b.innerHTML = o.jm+"<br><span style='font-size:10px;opacity:.75;font-weight:normal'>"+o.cz+"</span>";
+    b.onclick = ()=>{ G.obt=i; zvuk("klik"); NET.oznam(); kresliObtiznosti(); kresliLobby(); };
+    r.appendChild(b);
+  });
+}
+
+/* ============================================================
+   27) SÍŤ – kód hry mezi okny na stejném počítači
+   ============================================================ */
+const NET = {
+  kanal:null, jsemHost:false,
+  vytvor(){
+    this.zavri();
+    G.kod = novyKod();
+    this.jsemHost = true;
+    try{
+      this.kanal = new BroadcastChannel("nunisci-"+G.kod);
+      this.kanal.onmessage = ev=>this.prijmi(ev.data);
+    }catch(e){ this.kanal=null; }
+  },
+  pripoj(kod){
+    this.zavri();
+    G.kod = kod; this.jsemHost = false; G.rezim = "multi";
+    try{
+      this.kanal = new BroadcastChannel("nunisci-"+kod);
+      this.kanal.onmessage = ev=>this.prijmi(ev.data);
+    }catch(e){
+      document.getElementById("joinHlaska").textContent = "Tenhle prohlížeč připojování neumí.";
+      return;
+    }
+    if(!this.umiSit()){
+      document.getElementById("joinHlaska").innerHTML =
+        "⚠️ Hra je puštěná ze souboru na počítači – připojování tu nefunguje.<br>Otevři <b>internetový odkaz na hru</b> a zkus to znovu.";
+      return;
+    }
+    mojeId = "j"+Math.floor(Math.random()*1e9);
+    this.posli({typ:"join", hrac:{id:mojeId, jm:UCET.jm, ikona:UCET.ikona}});
+    document.getElementById("joinHlaska").textContent = "Hledám hru "+kod+"…";
+    clearTimeout(this._t);
+    this._t = setTimeout(()=>{
+      if(!lobbyHraci.length){
+        document.getElementById("joinHlaska").innerHTML =
+          "Hru s kódem <b>"+kod+"</b> jsem nenašel.<br>Musí běžet v <b>jiném okně na tomhle počítači</b> a mít otevřené lobby.";
+        this.zavri();
+      }
+    }, 1400);
+  },
+  zavri(){ if(this.kanal){ try{this.kanal.close();}catch(e){} this.kanal=null; } this.jsemHost=false; },
+  posli(m){
+    if(this.kanal){ try{ this.kanal.postMessage(m); }catch(e){} }
+  },
+  /* funguje posílání mezi okny? (na souboru z plochy většinou ne, na internetu ano) */
+  umiSit(){ return typeof BroadcastChannel==="function" && location.protocol!=="file:"; },
+  oznam(){ if(this.kanal && this.jsemHost) this.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed}); },
+  prijmi(m){
+    if(!m) return;
+    if(m.typ==="join" && this.jsemHost){
+      if(lobbyHraci.length>=8) return;
+      if(lobbyHraci.some(h=>h.id===m.hrac.id)) return;
+      lobbyHraci.push(novyHrac({id:m.hrac.id, jm:m.hrac.jm||"Hráč", ikona:m.hrac.ikona||CIVKEYS[0],
+        bot:false, ja:false, civ:CIVKEYS[nahI(0,5)], barva:volnaBarva(), tym:volnyTym()}));
+      zprava("🙋 Připojil se hráč "+(m.hrac.jm||"?"),"dobre");
+      this.oznam(); kresliLobby();
+    }
+    if(m.typ==="stav" && !this.jsemHost){
+      lobbyHraci = m.hraci.map(h=>novyHrac(Object.assign({},h,{ja:h.id===mojeId})));
+      G.mapa = m.mapa; G.obt = m.obt; G.seed = m.seed;
+      if(!document.getElementById("mLobby").classList.contains("zap")){
+        zavri("mJoin");
+        G.rezim="multi";
+        document.getElementById("lobbyNadpis").textContent = "MULTIPLAYER";
+        document.getElementById("lobbyPodnadpis").textContent = "Připojil ses do hry – měnit můžeš jenom svoje nastavení";
+        document.getElementById("kodBox").style.display = "block";
+        document.getElementById("kodText").textContent = G.kod;
+        document.getElementById("startHry").style.display = "none";
+        document.getElementById("pridejBota").style.display = "none";
+        otevri("mLobby");
+      }
+      kresliMapy(); kresliObtiznosti(); kresliLobby();
+    }
+    if(m.typ==="zmena" && this.jsemHost){
+      const h = lobbyHraci.find(x=>x.id===m.id);
+      if(h){ h[m.pole] = m.hodnota; this.oznam(); kresliLobby(); }
+    }
+    if(m.typ==="start" && !this.jsemHost){
+      lobbyHraci = m.hraci.map(h=>novyHrac(Object.assign({},h,{ja:h.id===mojeId})));
+      G.mapa=m.mapa; G.obt=m.obt; G.seed=m.seed;
+      spustHru();
+    }
+  }
+};
+/* klient posílá změny hostovi */
+const _puvodniOznam = NET.oznam.bind(NET);
+NET.oznam = function(){
+  if(G.rezim==="multi" && !this.jsemHost){
+    const me = lobbyHraci.find(h=>h.id===mojeId);
+    if(me){
+      this.posli({typ:"zmena", id:mojeId, pole:"civ",   hodnota:me.civ});
+      this.posli({typ:"zmena", id:mojeId, pole:"tym",   hodnota:me.tym});
+      this.posli({typ:"zmena", id:mojeId, pole:"barva", hodnota:me.barva});
+      this.posli({typ:"zmena", id:mojeId, pole:"ikona", hodnota:me.ikona});
+    }
+    return;
+  }
+  _puvodniOznam();
+};
+
+/* ============================================================
+   28) START HRY
+   ============================================================ */
+function spustHru(){
+  if(G.bezi) return;              // ať se svět nepostaví omylem dvakrát
+  const me = lobbyHraci.findIndex(h=>h.id===mojeId);
+  G.hraci = lobbyHraci.map(h=>novyHrac(Object.assign({},h)));
+  G.ja = me>=0? me : 0;
+  if(!G.hraci.some((h,i)=>i!==G.ja)){
+    G.hraci.push(novyHrac({jm:"Počítač", bot:true, civ:CIVKEYS[nahI(0,5)], barva:1, tym:2}));
+  }
+  G.hraci.forEach(h=>{ h.porazen=false; h.pop=0; h.popMax=10; h.res={drevo:260,zelezo:120,zlato:180}; });
+
+  zavri("mLobby"); zavri("mJoin");
+  document.getElementById("menu").classList.add("pryc");
+  document.getElementById("hra").classList.add("bezi");
+
+  seedni(G.seed || 12345);
+  postavSvet();
+  G.zoom = JE_MOBIL? 0.62 : 1;
+  obnovKameru();
+  kameraNa(ZAKL[G.ja].x, ZAKL[G.ja].y-40);
+
+  const b = barvaHrace(G.ja);
+  document.getElementById("civznak").innerHTML =
+    `<div style="width:36px;height:36px">${svgObal(jednotkaSVG(civKey(G.ja),"vojak",b.h))}</div>
+     <div><b style="color:${b.h}">${MY().jm}</b><small>${CIVS[civKey(G.ja)].emo} ${CIVS[civKey(G.ja)].jm} · ${MAPY[G.mapa].jm}</small></div>`;
+  obnovHud(); obnovPanel(); kresliMinimapu();
+  G.bezi = true; G.konec=false; G.pauza=false; G.cas=0;
+  zprava("🏛️ Vítej! Vyber vesničany a pošli je těžit ke stromům a k surovinám.","dobre");
+  setTimeout(()=>zprava("💡 Radnice cvičí další vesničany – čím víc jich máš, tím rychleji rosteš!"),4200);
+  ac();
+}
+
+/* ---------------- inicializace ---------------- */
+window.addEventListener("DOMContentLoaded", ()=>{
+  SVET = document.getElementById("svet");
+  SVETOKNO = document.getElementById("svetOkno");
+  HRA  = document.getElementById("hra");
+  MMC  = document.getElementById("mmc");
+  MMX  = MMC.getContext("2d");
+  if(JE_MOBIL) document.body.classList.add("mobil");
+  seedni(Date.now());
+  nactiUcet();
+  postavMenu();
+  postavIkony();
+  nastavOvladani();
+  requestAnimationFrame(tik);
+});
+window.addEventListener("resize", ()=>{ if(G.bezi) obnovKameru(); });
+
+/* ============================================================
+   29) SYNCHRONIZACE HRY MEZI OKNY
+   Hostitel (kdo hru vytvořil) počítá celou hru a rozesílá,
+   co se kde děje. Ostatní okna to jen vykreslují a posílají
+   zpátky rozkazy svých panáčků.
+   ============================================================ */
+const SYNC = {
+  jsemKlient(){ return G.rezim==="multi" && NET.kanal && !NET.jsemHost; },
+  jsemHost(){  return G.rezim==="multi" && NET.kanal &&  NET.jsemHost; },
+  cas:0,
+
+  /* --- hostitel: pošli obrázek světa --- */
+  posli(dt){
+    this.cas += dt;
+    if(this.cas < 0.1) return;
+    this.cas = 0;
+    const e = [];
+    for(const u of G.jednotky) if(!u.mrtvy)
+      e.push([u.id,0,u.kind,u.side,Math.round(u.x),Math.round(u.y),Math.round(u.hp),u.maxHp,1,u.smer]);
+    for(const b of G.budovy) if(!b.mrtvy)
+      e.push([b.id,1,b.kind,b.side,Math.round(b.x),Math.round(b.y),Math.round(b.hp),b.maxHp,b.hotova?1:0,Math.round(b.postup*100)]);
+    for(const z of G.zdroje) if(!z.mrtvy && z.zasoba < z.maxZasoba)
+      e.push([z.id,2,z.kind,-1,Math.round(z.x),Math.round(z.y),Math.round(z.zasoba),z.maxZasoba,1,0]);
+    NET.posli({typ:"snap", cas:G.cas, e,
+      h:G.hraci.map(p=>[Math.round(p.res.drevo),Math.round(p.res.zelezo),Math.round(p.res.zlato),p.pop,p.popMax,p.porazen?1:0])});
+  },
+
+  /* --- klient: nakresli, co přišlo --- */
+  prijmiSnap(s){
+    const videl = new Set();
+    const podleId = new Map();
+    for(const o of G.ents) podleId.set(o.id, o);
+    for(const r of s.e){
+      const [id,dr,kind,side,x,y,hp,maxHp,hot,extra] = r;
+      videl.add(id);
+      let ent = podleId.get(id);
+      if(!ent){
+        if(dr===2) continue;              // zdroj co zmizel a vrátil se neexistuje
+        ent = this.vyrob(id,dr,kind,side,maxHp,x,y);
+        podleId.set(id, ent);
+      }
+      if(dr===2){ ent.zasoba = hp; continue; }
+      ent.tx = x; ent.ty = y;
+      if(ent.x===undefined){ ent.x=x; ent.y=y; }
+      ent.hp = hp; ent.maxHp = maxHp;
+      if(dr===0) ent.smer = extra;
+      if(dr===1){
+        const bylo = ent.hotova;
+        ent.hotova = !!hot; ent.postup = extra/100;
+        if(!bylo && ent.hotova){ ent.el.classList.remove("stavba"); if(ent.postupBox) ent.postupBox.remove(); }
+        if(!ent.hotova && ent.postupEl) ent.postupEl.style.width = extra+"%";
+      }
+      if(ent.hpBox){
+        const pom = ent.hp/ent.maxHp;
+        ent.hpBox.style.display = pom<0.999? "block":"none";
+        ent.hpEl.style.width = Math.max(0,pom*100)+"%";
+      }
+    }
+    // co zmizelo, zmizí i tady
+    for(let i=G.ents.length-1;i>=0;i--){
+      const o = G.ents[i];
+      if(o.druh==="zdroj"){
+        if(o.zasoba<=0 && !o.mrtvy){ o.mrtvy=true; o.el.classList.add("mrtvy"); const el=o.el; setTimeout(()=>el.remove(),520); odeber(o); }
+        continue;
+      }
+      if(!videl.has(o.id) && !o.mrtvy){
+        o.mrtvy = true; o.el.classList.add("mrtvy");
+        castice(o.x, o.y-o.vel*0.4, o.druh==="budova"?"#a08b6a":"#ff8a7a", o.druh==="budova"?14:7);
+        const el=o.el; setTimeout(()=>el.remove(),520);
+        odeber(o);
+      }
+    }
+    s.h.forEach((p,i)=>{
+      const H = G.hraci[i]; if(!H) return;
+      H.res.drevo=p[0]; H.res.zelezo=p[1]; H.res.zlato=p[2];
+      H.pop=p[3]; H.popMax=p[4];
+      if(p[5] && !H.porazen){ H.porazen=true; if(i===G.ja) prohra(); }
+    });
+    G.cas = s.cas;
+    const zivi = G.hraci.filter(h=>!h.porazen);
+    if(!G.konec && zivi.length && [...new Set(zivi.map(h=>h.tym))].length<=1 && !MY().porazen) vyhra();
+  },
+  vyrob(id,dr,kind,side,maxHp,x,y){
+    const def = dr===1? BUD[kind] : JED[kind];
+    const e = {id, druh: dr===1?"budova":"jednotka", kind, side, x, y,
+      r:def.r, vel:def.vel, maxHp, hp:maxHp, stav:"stoj", smer:1, hop:0,
+      hotova: dr===1, postup:1, fronta:[], popPlus:0};
+    G.ents.push(e);
+    (dr===1? G.budovy : G.jednotky).push(e);
+    vytvorEl(e);
+    return e;
+  },
+  /* plynulé dojíždění mezi zprávami */
+  dokresli(dt){
+    for(const u of G.jednotky){
+      if(u.mrtvy || u.tx===undefined) continue;
+      const k = Math.min(1, dt*12);
+      const dx = u.tx-u.x, dy = u.ty-u.y;
+      if(Math.abs(dx)>0.4 || Math.abs(dy)>0.4){
+        u.x += dx*k; u.y += dy*k;
+        u.hop += dt*11; u.hopY = Math.abs(Math.sin(u.hop))*3.2;
+      }else{ u.x=u.tx; u.y=u.ty; if(u.hopY) u.hopY*=0.8; }
+      const t = u.smer<0? "scaleX(-1)":"";
+      if(u.lastT!==t){ u.svgEl.style.transform=t; u.lastT=t; }
+      polohuj(u);
+    }
+    for(const b of G.budovy) if(!b.mrtvy){ b.x=b.tx!==undefined?b.tx:b.x; polohuj(b); }
+  },
+
+  /* --- hostitel provádí rozkazy ostatních --- */
+  provedCizi(m){
+    const side = m.side;
+    if(G.hraci[side]==null || G.hraci[side].porazen) return;
+    const moje = (m.ids||[]).map(id=>G.ents.find(o=>o.id===id)).filter(o=>o && !o.mrtvy && o.side===side);
+    if(m.cmd==="rozkaz"){
+      const puvod = G.sel, puvodJa = G.ja;
+      G.sel = moje; G.ja = side;
+      try{ rozkazLokalne(m.x, m.y); } finally { G.sel = puvod; G.ja = puvodJa; }
+    }
+    if(m.cmd==="postav"){
+      const puvod = G.sel, puvodJa = G.ja, puvodSt = G.stavim;
+      G.sel = moje; G.ja = side; G.stavim = m.kind;
+      try{ postavLokalne(m.x, m.y); } finally { G.sel = puvod; G.ja = puvodJa; G.stavim = puvodSt; }
+    }
+    if(m.cmd==="cvic"){
+      const b = G.ents.find(o=>o.id===m.budovaId);
+      if(b && b.side===side && b.hotova){
+        const puvodJa = G.ja; G.ja = side;
+        try{ cvicLokalne(b, m.kind); } finally { G.ja = puvodJa; }
+      }
+    }
+  }
+};
+
+/* ---- přesměrování: klient rozkazy neprovádí, posílá je hostiteli ---- */
+const rozkazLokalne = rozkaz;
+rozkaz = function(x,y){
+  if(SYNC.jsemKlient()){
+    const ids = G.sel.filter(e=>jeMuj(e.side)).map(e=>e.id);
+    if(!ids.length) return;
+    NET.posli({typ:"cmd", cmd:"rozkaz", side:G.ja, ids, x, y});
+    jiskra(x,y,"➤","#8ef0a0"); zvuk("klik");
+    return;
+  }
+  rozkazLokalne(x,y);
+};
+const postavLokalne = postav;
+postav = function(x,y){
+  if(SYNC.jsemKlient()){
+    if(!mistoVolne(G.stavim,x,y)){ zvuk("chyba"); zprava("Tady to nejde postavit!","zle"); return; }
+    const ids = G.sel.filter(e=>jeMuj(e.side) && e.kind==="vesnican").map(e=>e.id);
+    NET.posli({typ:"cmd", cmd:"postav", side:G.ja, kind:G.stavim, x, y, ids});
+    zvuk("stavba"); zrusStaveni();
+    return;
+  }
+  postavLokalne(x,y);
+};
+const cvicLokalne = cvic;
+cvic = function(b, kind){
+  if(SYNC.jsemKlient()){
+    NET.posli({typ:"cmd", cmd:"cvic", side:G.ja, budovaId:b.id, kind});
+    zvuk("klik");
+    return;
+  }
+  cvicLokalne(b, kind);
+};
+
+/* ---- smyčka: klient nepočítá hru, jen kreslí ---- */
+const tikLokalne = tik;
+tik = function(t){
+  requestAnimationFrame(tik);
+  if(!G.bezi) return;
+  const dt = Math.min(0.05, (t - posledni)/1000 || 0);
+  posledni = t;
+  kameraKlavesy(dt);
+  if(G.pauza || G.konec) return;
+
+  if(SYNC.jsemKlient()){
+    SYNC.dokresli(dt);
+    updStrely(dt);
+    obnovHud();
+    mmCas += dt; if(mmCas>0.12){ mmCas=0; kresliMinimapu(); }
+    panelCas += dt; if(panelCas>0.4){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
+    return;
+  }
+
+  G.cas += dt;
+  for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
+  for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
+  rozestup();
+  updStrely(dt);
+  updAI(dt);
+  if(SYNC.jsemHost()) SYNC.posli(dt);
+
+  obnovHud();
+  mmCas += dt; if(mmCas>0.12){ mmCas=0; kresliMinimapu(); }
+  panelCas += dt; if(panelCas>0.4){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
+};
+
+/* ---- doplnění příjmu zpráv o herní část ---- */
+const prijmiLobby = NET.prijmi.bind(NET);
+NET.prijmi = function(m){
+  if(!m) return;
+  if(m.typ==="snap"){ if(SYNC.jsemKlient() && G.bezi) SYNC.prijmiSnap(m); return; }
+  if(m.typ==="cmd"){ if(SYNC.jsemHost() && G.bezi) SYNC.provedCizi(m); return; }
+  prijmiLobby(m);
+};
+
+/* ============================================================
+   30) PŘÍMÉ SPOJENÍ MEZI POČÍTAČI (P2P přes internet)
+
+   Žádný server neexistuje – proto si hráči jednou vymění
+   "pozvánku" a "odpověď" (krátké kódy). Pak už jde všechno
+   napřímo z počítače na počítač.
+   Hostitel počítá hru, ostatní posílají rozkazy a dostávají
+   zpátky obrázek světa.
+   ============================================================ */
+const LEDOVCE = {iceServers:[{urls:[
+  "stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302",
+  "stun:stun2.l.google.com:19302","stun:stun3.l.google.com:19302"]}]};
+
+/* ---- zabalení kódu (kratší = líp se posílá) ---- */
+async function zabal(obj){
+  const txt = JSON.stringify(obj);
+  try{
+    if(typeof CompressionStream==="function"){
+      const cs = new CompressionStream("deflate-raw");
+      const w = cs.writable.getWriter();
+      w.write(new TextEncoder().encode(txt)); w.close();
+      const buf = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+      let s=""; for(const b of buf) s += String.fromCharCode(b);
+      return "N1"+btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+    }
+  }catch(e){}
+  return "N0"+btoa(unescape(encodeURIComponent(txt))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+async function rozbal(kod){
+  kod = (kod||"").trim().replace(/\s+/g,"");
+  const hlava = kod.slice(0,2), telo = kod.slice(2).replace(/-/g,"+").replace(/_/g,"/");
+  const bin = atob(telo + "=".repeat((4 - telo.length%4)%4));
+  if(hlava==="N1"){
+    const arr = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+    const ds = new DecompressionStream("deflate-raw");
+    const w = ds.writable.getWriter(); w.write(arr); w.close();
+    return JSON.parse(new TextDecoder().decode(await new Response(ds.readable).arrayBuffer()));
+  }
+  return JSON.parse(decodeURIComponent(escape(bin)));
+}
+
+/* ---- binární snímek světa (aby toho po síti neletělo moc) ---- */
+const KINDY = ["vesnican","vojak","lukostrelec","jezdec","slon","hrdina",
+               "radnice","domek","kasarna","staj","vez","hrad"];
+function kindIdx(k){ return KINDY.indexOf(k); }
+
+const P2P = {
+  jeHost:false, spoje:[], mojeSpojeni:null, zapnuto:false,
+  posluchac:null,
+
+  /* ---------- HOSTITEL: vyrob pozvánku pro jednoho kamaráda ---------- */
+  async pozvanka(slot){
+    const pc = new RTCPeerConnection(LEDOVCE);
+    const kanal = pc.createDataChannel("nunisci", {ordered:false, maxRetransmits:0});
+    const spoj = {slot, pc, kanal, stav:"ceka", hracId:null};
+    kanal.binaryType = "arraybuffer";
+    kanal.onopen = ()=>{ spoj.stav="spojeno"; P2P.pripojen(spoj); };
+    kanal.onclose = ()=>{ spoj.stav="odpojeno"; P2P.odpojen(spoj); };
+    kanal.onmessage = ev => P2P.zprava(spoj, ev.data);
+    pc.onconnectionstatechange = ()=>{
+      if(pc.connectionState==="failed"||pc.connectionState==="disconnected"){ spoj.stav="odpojeno"; P2P.odpojen(spoj); }
+    };
+    await pc.setLocalDescription(await pc.createOffer());
+    await this.pockejIce(pc);
+    this.spoje.push(spoj);
+    return await zabal({t:"n", s:pc.localDescription.sdp, kod:G.kod, host:UCET.jm});
+  },
+
+  /* ---------- HOSTITEL: přijmi odpověď od kamaráda ---------- */
+  async odpoved(slot, kod){
+    const spoj = this.spoje.find(s=>s.slot===slot);
+    if(!spoj) throw new Error("Tenhle slot neexistuje.");
+    const d = await rozbal(kod);
+    if(d.t!=="o") throw new Error("Tohle není odpověď od kamaráda.");
+    await spoj.pc.setRemoteDescription({type:"answer", sdp:d.s});
+    spoj.jm = d.jm; spoj.ikona = d.ikona;
+    return true;
+  },
+
+  /* ---------- HRÁČ: připoj se podle pozvánky ---------- */
+  async pripojSe(kod){
+    const d = await rozbal(kod);
+    if(d.t!=="n") throw new Error("Tohle není pozvánka do hry.");
+    const pc = new RTCPeerConnection(LEDOVCE);
+    const spoj = {pc, kanal:null, stav:"ceka"};
+    pc.ondatachannel = ev=>{
+      const k = ev.channel; k.binaryType="arraybuffer";
+      spoj.kanal = k;
+      k.onopen = ()=>{ spoj.stav="spojeno"; P2P.pripojen(spoj); };
+      k.onclose = ()=>{ spoj.stav="odpojeno"; P2P.odpojen(spoj); };
+      k.onmessage = e2 => P2P.zprava(spoj, e2.data);
+    };
+    await pc.setRemoteDescription({type:"offer", sdp:d.s});
+    await pc.setLocalDescription(await pc.createAnswer());
+    await this.pockejIce(pc);
+    this.mojeSpojeni = spoj;
+    this.jeHost = false; this.zapnuto = true;
+    G.kod = d.kod || "???";
+    return {kod: await zabal({t:"o", s:pc.localDescription.sdp, jm:UCET.jm, ikona:UCET.ikona}), host:d.host};
+  },
+
+  pockejIce(pc){
+    return new Promise(res=>{
+      if(pc.iceGatheringState==="complete") return res();
+      const hotovo = ()=>{ clearTimeout(t); res(); };
+      const t = setTimeout(hotovo, 4500);   // po 4,5 s se spokojíme s tím, co máme
+      pc.onicegatheringstatechange = ()=>{ if(pc.iceGatheringState==="complete") hotovo(); };
+    });
+  },
+
+  /* ---------- posílání ---------- */
+  posliVsem(m, kromě){
+    const data = (m instanceof ArrayBuffer)? m : JSON.stringify(m);
+    for(const s of this.spoje){
+      if(s===kromě || !s.kanal || s.kanal.readyState!=="open") continue;
+      try{ s.kanal.send(data); }catch(e){}
+    }
+  },
+  posliHostovi(m){
+    const s = this.mojeSpojeni;
+    if(s && s.kanal && s.kanal.readyState==="open"){
+      try{ s.kanal.send(JSON.stringify(m)); }catch(e){}
+    }
+  },
+  zivychSpoju(){ return this.spoje.filter(s=>s.stav==="spojeno").length; },
+
+  /* ---------- události ---------- */
+  pripojen(spoj){
+    if(this.jeHost){
+      zprava("🔌 Kamarád se připojil!","dobre");
+      // rovnou mu pošlu, jak to teď v lobby vypadá
+      this.posliVsem({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed});
+      kresliP2P();
+    }else{
+      zprava("🔌 Jsi připojený k hostiteli!","dobre");
+      this.posliHostovi({typ:"join", hrac:{id:mojeId, jm:UCET.jm, ikona:UCET.ikona}});
+    }
+    kresliP2P();
+  },
+  odpojen(spoj){
+    if(this.jeHost){
+      const h = lobbyHraci.find(x=>x.id===spoj.hracId);
+      if(h){ zprava("🔌 "+h.jm+" se odpojil – hraje za něj počítač.","zle"); h.bot = true; }
+      kresliP2P(); kresliLobby();
+    }else if(G.bezi){
+      zprava("🔌 Ztratil jsi spojení s hostitelem!","zle");
+    }
+    kresliP2P();
+  },
+  zprava(spoj, data){
+    if(typeof data === "string"){
+      let m; try{ m = JSON.parse(data); }catch(e){ return; }
+      if(m.typ==="join" && this.jeHost) spoj.hracId = m.hrac && m.hrac.id;
+      NET.prijmi(m);
+      if(this.jeHost && (m.typ==="cmd")) return;         // rozkazy dál neposíláme
+    }else{
+      SYNC.prijmiBin(new Uint8Array(data));
+    }
+  },
+  vypni(){
+    for(const s of this.spoje){ try{s.pc.close();}catch(e){} }
+    if(this.mojeSpojeni){ try{this.mojeSpojeni.pc.close();}catch(e){} }
+    this.spoje = []; this.mojeSpojeni = null; this.zapnuto = false; this.jeHost = false;
+  }
+};
+
+/* ============================================================
+   31) BINÁRNÍ SNÍMEK – malý a rychlý
+   ============================================================ */
+SYNC.posledniStav = new Map();
+SYNC.klic = 0;
+
+SYNC.zabalSnimek = function(){
+  const plny = (--this.klic <= 0);
+  if(plny) this.klic = 12;                     // každé ~2 s pošli všechno
+  const zaznamy = [];
+  const pridej = (o, druh, hodnota, prapor)=>{
+    const x = Math.round(o.x), y = Math.round(o.y), hp = Math.max(0,Math.round(hodnota));
+    const klic = x+","+y+","+hp+","+prapor;
+    if(!plny && this.posledniStav.get(o.id)===klic) return;
+    this.posledniStav.set(o.id, klic);
+    zaznamy.push([o.id, druh, kindIdx(o.kind), o.side<0?15:o.side, x, y, hp, prapor]);
+  };
+  for(const u of G.jednotky) if(!u.mrtvy) pridej(u, 0, u.hp, (u.smer<0?1:0));
+  for(const b of G.budovy)   if(!b.mrtvy) pridej(b, 1, b.hp, (b.hotova?1:0) | (Math.round(b.postup*100)<<1));
+  for(const z of G.zdroje)   if(!z.mrtvy && z.zasoba<z.maxZasoba) pridej(z, 2, z.zasoba, 0);
+
+  const zivi = [];
+  for(const o of G.ents) zivi.push(o.id);
+
+  const hl = 8 + G.hraci.length*14 + (plny? 2+zivi.length*3 : 2);
+  const buf = new ArrayBuffer(hl + zaznamy.length*12);
+  const dv = new DataView(buf);
+  let p = 0;
+  dv.setUint8(p++, plny?1:0);
+  dv.setUint8(p++, G.hraci.length);
+  dv.setUint32(p, Math.round(G.cas*100)); p+=4;
+  dv.setUint16(p, zaznamy.length); p+=2;
+  for(const h of G.hraci){
+    dv.setUint32(p, Math.round(h.res.drevo)); p+=4;
+    dv.setUint32(p, Math.round(h.res.zelezo)); p+=4;
+    dv.setUint32(p, Math.round(h.res.zlato)); p+=4;
+    dv.setUint8(p++, Math.min(255,h.pop));
+    dv.setUint8(p++, Math.min(255,h.popMax) | (h.porazen?128:0));
+  }
+  for(const z of zaznamy){
+    dv.setUint16(p, z[0]&0xffff); p+=2;
+    dv.setUint8(p++, z[1]);
+    dv.setUint8(p++, z[2]);
+    dv.setUint8(p++, z[3]);
+    dv.setUint16(p, klam(z[4],0,65535)); p+=2;
+    dv.setUint16(p, klam(z[5],0,65535)); p+=2;
+    dv.setUint16(p, klam(z[6],0,65535)); p+=2;
+    dv.setUint8(p++, z[7]&0xff);
+    dv.setUint8(p++, (z[7]>>8)&0xff);
+  }
+  if(plny){
+    dv.setUint16(p, zivi.length); p+=2;
+    for(const id of zivi){ dv.setUint16(p, id&0xffff); p+=2; dv.setUint8(p++, 0); }
+  }else{
+    dv.setUint16(p, 0); p+=2;
+  }
+  return buf;
+};
+
+SYNC.prijmiBin = function(u8){
+  if(!G.bezi || G.konec) return;
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let p = 0;
+  const plny = dv.getUint8(p++)===1;
+  const pocetHracu = dv.getUint8(p++);
+  const cas = dv.getUint32(p)/100; p+=4;
+  // po síti můžou zprávy dorazit přeházeně – starší už neplatí
+  if(cas < G.cas - 0.05) return;
+  const pocet = dv.getUint16(p); p+=2;
+  for(let i=0;i<pocetHracu;i++){
+    const d = dv.getUint32(p); p+=4;
+    const z = dv.getUint32(p); p+=4;
+    const g = dv.getUint32(p); p+=4;
+    const pop = dv.getUint8(p++);
+    const pm = dv.getUint8(p++);
+    const H = G.hraci[i];
+    if(H){
+      H.res.drevo=d; H.res.zelezo=z; H.res.zlato=g;
+      H.pop=pop; H.popMax=pm&127;
+      if((pm&128) && !H.porazen){ H.porazen=true; if(i===G.ja) prohra(); }
+    }
+  }
+  const podleId = new Map();
+  for(const o of G.ents) podleId.set(o.id, o);
+  for(let i=0;i<pocet;i++){
+    const id = dv.getUint16(p); p+=2;
+    const druh = dv.getUint8(p++);
+    const ki = dv.getUint8(p++);
+    const side = dv.getUint8(p++);
+    const x = dv.getUint16(p); p+=2;
+    const y = dv.getUint16(p); p+=2;
+    const hp = dv.getUint16(p); p+=2;
+    const prapor = dv.getUint8(p) | (dv.getUint8(p+1)<<8); p+=2;
+    let e = podleId.get(id);
+    if(druh===2){ if(e) e.zasoba = hp; continue; }
+    if(!e){
+      e = this.vyrob(id, druh, KINDY[ki], side===15?-1:side, druh===1?BUD[KINDY[ki]].hp:JED[KINDY[ki]].hp, x, y);
+      podleId.set(id, e);
+    }
+    e.tx = x; e.ty = y;
+    if(e.x===undefined){ e.x=x; e.y=y; }
+    e.hp = hp;
+    if(druh===0) e.smer = (prapor&1)? -1 : 1;
+    if(druh===1){
+      const bylo = e.hotova;
+      e.hotova = !!(prapor&1); e.postup = (prapor>>1)/100;
+      if(!bylo && e.hotova){ e.el.classList.remove("stavba"); if(e.postupBox) e.postupBox.remove(); }
+      if(!e.hotova && e.postupEl) e.postupEl.style.width = Math.round(e.postup*100)+"%";
+    }
+    if(e.hpBox){
+      const pom = e.hp/e.maxHp;
+      e.hpBox.style.display = pom<0.999? "block":"none";
+      e.hpEl.style.width = Math.max(0,Math.min(100,pom*100))+"%";
+    }
+  }
+  const kolikZivych = dv.getUint16(p); p+=2;
+  if(plny && kolikZivych){
+    const zivi = new Set();
+    for(let i=0;i<kolikZivych;i++){ zivi.add(dv.getUint16(p)); p+=3; }
+    for(let i=G.ents.length-1;i>=0;i--){
+      const o = G.ents[i];
+      if(o.druh==="zdroj") continue;
+      if(!zivi.has(o.id) && !o.mrtvy){
+        o.mrtvy = true; o.el.classList.add("mrtvy");
+        castice(o.x, o.y-o.vel*0.4, o.druh==="budova"?"#a08b6a":"#ff8a7a", o.druh==="budova"?14:7);
+        const el=o.el; setTimeout(()=>el.remove(),520);
+        odeber(o);
+      }
+    }
+    for(const z of G.zdroje.slice()) if(z.zasoba<=0 && !z.mrtvy){
+      z.mrtvy=true; z.el.classList.add("mrtvy"); const el=z.el; setTimeout(()=>el.remove(),520); odeber(z);
+    }
+  }
+  G.cas = cas;
+  const ziviHraci = G.hraci.filter(h=>!h.porazen);
+  if(!G.konec && ziviHraci.length && [...new Set(ziviHraci.map(h=>h.tym))].length<=1 && !MY().porazen) vyhra();
+};
+
+/* ============================================================
+   32) PROPOJENÍ: síť ↔ hra
+   ============================================================ */
+/* kdo počítá hru a kdo ji jen kreslí */
+SYNC.jsemHost   = ()=> G.rezim==="multi" && (P2P.jeHost || (NET.jsemHost && !!NET.kanal));
+SYNC.jsemKlient = ()=> G.rezim==="multi" && !SYNC.jsemHost() && (!!P2P.mojeSpojeni || !!NET.kanal);
+
+/* posílání: BroadcastChannel (stejný prohlížeč) + P2P (internet) */
+const posliPuvodni = NET.posli.bind(NET);
+NET.posli = function(m){
+  posliPuvodni(m);
+  if(P2P.jeHost) P2P.posliVsem(m);
+  else if(P2P.mojeSpojeni) P2P.posliHostovi(m);
+};
+NET.posliBin = function(buf){
+  if(this.kanal){ try{ this.kanal.postMessage(buf); }catch(e){} }
+  if(P2P.jeHost) P2P.posliVsem(buf);
+};
+/* přijaté ArrayBuffery jsou snímky světa */
+const prijmiPredBin = NET.prijmi.bind(NET);
+NET.prijmi = function(m){
+  if(m instanceof ArrayBuffer){ if(SYNC.jsemKlient()) SYNC.prijmiBin(new Uint8Array(m)); return; }
+  prijmiPredBin(m);
+};
+
+/* hostitel posílá binární snímek ~6× za vteřinu */
+SYNC.posli = function(dt){
+  this.cas += dt;
+  if(this.cas < 0.16) return;
+  this.cas = 0;
+  if(!P2P.zivychSpoju() && !NET.kanal) return;
+  try{ NET.posliBin(this.zabalSnimek()); }catch(e){}
+};
+
+/* ============================================================
+   33) OBRAZOVKA PŘIPOJOVÁNÍ (pozvánky a odpovědi)
+   ============================================================ */
+const SLOTY = [1,2,3,4,5];
+const pozvankyKod = {};
+
+function kresliP2P(){
+  const box = document.getElementById("p2pObsah");
+  const sekce = document.getElementById("p2pSekce");
+  if(!box) return;
+  if(G.rezim!=="multi"){ sekce.style.display="none"; return; }
+  sekce.style.display="block";
+
+  if(!P2P.jeHost && P2P.mojeSpojeni){
+    const ok = P2P.mojeSpojeni.stav==="spojeno";
+    box.innerHTML = `<div class="slot"><span class="tecka ${ok?"on":"ceka"}"></span>
+      <b>${ok?"Jsi ve hře!":"Připojuji…"}</b>
+      <span class="stavTxt">${ok?"Hru řídí hostitel. Až dá START, začne se hrát.":"Kamarád musí vložit tvoji odpověď."}</span></div>`;
+    return;
+  }
+
+  if(typeof RTCPeerConnection!=="function"){
+    box.innerHTML = `<div class="pozn">⚠️ Tenhle prohlížeč neumí přímé spojení. Zkus Chrome nebo Edge.</div>`;
+    return;
+  }
+
+  box.innerHTML = `<div class="pozn" style="margin-bottom:8px">
+    Každému kamarádovi vytvoř <b>jednu pozvánku</b> a pošli mu ji (WhatsApp, Messenger, e-mail…).
+    On ti pošle zpátky <b>odpověď</b>, tu sem vložíš – a je ve hře.
+    <b>Můžete být každý na svém počítači kdekoli na světě.</b></div>`;
+
+  SLOTY.forEach(slot=>{
+    const spoj = P2P.spoje.find(s=>s.slot===slot);
+    const stav = spoj? spoj.stav : "nic";
+    const d = document.createElement("div");
+    d.className = "slot" + (pozvankyKod[slot]&&stav!=="spojeno" ? " otevreno":"");
+    d.innerHTML = `
+      <span class="tecka ${stav==="spojeno"?"on":(stav==="ceka"?"ceka":"")}"></span>
+      <b>Kamarád ${slot}</b>
+      <span class="stavTxt">${stav==="spojeno"? "✅ připojen"+(spoj.jm?" – "+spoj.jm:"") :
+                              stav==="ceka"? "⏳ čeká na odpověď" :
+                              stav==="odpojeno"? "❌ odpojen" : "prázdné místo"}</span>
+      ${stav==="nic"? `<button class="papirBtn vytvor">VYTVOŘIT POZVÁNKU</button>`:""}
+      <div class="rozbal">
+        <div class="krok" style="margin:2px 0"><b>1.</b> Pošli kamarádovi tuhle pozvánku:</div>
+        <textarea class="pole kodPole" rows="3" readonly>${pozvankyKod[slot]||""}</textarea>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="papirBtn kopiruj">📋 ZKOPÍROVAT POZVÁNKU</button>
+        </div>
+        <div class="krok" style="margin:2px 0"><b>2.</b> Vlož sem odpověď, kterou ti pošle zpátky:</div>
+        <textarea class="pole kodPole odpovedPole" rows="3" placeholder="Sem vlož odpověď od kamaráda…"></textarea>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button class="papirBtn zeleny prijmi">PŘIPOJIT KAMARÁDA</button>
+          <span class="pozn hlaska"></span>
+        </div>
+      </div>`;
+    const bVytvor = d.querySelector(".vytvor");
+    if(bVytvor) bVytvor.onclick = async ()=>{
+      bVytvor.disabled = true; bVytvor.textContent = "PŘIPRAVUJI…";
+      try{
+        pozvankyKod[slot] = await P2P.pozvanka(slot);
+        zvuk("hotovo");
+      }catch(e){ zprava("Nepovedlo se vytvořit pozvánku: "+e.message,"zle"); }
+      kresliP2P();
+    };
+    const bKop = d.querySelector(".kopiruj");
+    if(bKop) bKop.onclick = ()=>{
+      const t = d.querySelector("textarea");
+      t.select(); t.setSelectionRange(0,999999);
+      try{ navigator.clipboard.writeText(pozvankyKod[slot]||""); }catch(e){ document.execCommand("copy"); }
+      bKop.textContent = "✅ ZKOPÍROVÁNO"; zvuk("klik");
+      setTimeout(()=>bKop.textContent="📋 ZKOPÍROVAT POZVÁNKU",1800);
+    };
+    const bPrijmi = d.querySelector(".prijmi");
+    if(bPrijmi) bPrijmi.onclick = async ()=>{
+      const pole = d.querySelector(".odpovedPole"), hl = d.querySelector(".hlaska");
+      const kod = pole.value.trim();
+      if(!kod){ hl.textContent = "Nejdřív sem vlož odpověď."; return; }
+      bPrijmi.disabled = true; hl.textContent = "Spojuji…";
+      try{
+        await P2P.odpoved(slot, kod);
+        hl.textContent = "Hotovo, čekám na spojení…";
+      }catch(e){ hl.textContent = "Nepovedlo se: "+e.message; bPrijmi.disabled=false; }
+    };
+    box.appendChild(d);
+  });
+}
+
+/* ---- JOIN A GAME: vlož pozvánku, dostaň odpověď ---- */
+function nastavJoin(){
+  document.getElementById("joinOk").onclick = async ()=>{
+    const kod = document.getElementById("polePozvanka").value.trim();
+    const hl = document.getElementById("joinHlaska");
+    if(!kod){ hl.textContent = "Nejdřív sem vlož pozvánku od kamaráda."; return; }
+    hl.textContent = "Připojuji se… (chvilku to trvá)";
+    try{
+      G.rezim = "multi";
+      mojeId = "j"+Math.floor(Math.random()*1e9);
+      const v = await P2P.pripojSe(kod);
+      document.getElementById("poleOdpoved").value = v.kod;
+      document.getElementById("joinKrok2").style.display = "block";
+      hl.innerHTML = "✅ Odpověď je připravená. <b>Pošli ji kamarádovi</b> – jakmile ji vloží, jsi ve hře.";
+      zvuk("hotovo");
+    }catch(e){
+      hl.textContent = "Nepovedlo se: "+e.message+" (je to opravdu celá pozvánka?)";
+    }
+  };
+  document.getElementById("kopirujOdpoved").onclick = ()=>{
+    const t = document.getElementById("poleOdpoved");
+    t.select(); t.setSelectionRange(0,999999);
+    try{ navigator.clipboard.writeText(t.value); }catch(e){ document.execCommand("copy"); }
+    const b = document.getElementById("kopirujOdpoved");
+    b.textContent = "✅ ZKOPÍROVÁNO"; zvuk("klik");
+    setTimeout(()=>b.textContent="📋 ZKOPÍROVAT ODPOVĚĎ",1800);
+  };
+}
+
+/* ---- hostitel: nový hráč se ohlásil ---- */
+const prijmiPredJoin = NET.prijmi.bind(NET);
+NET.prijmi = function(m){
+  if(!(m instanceof ArrayBuffer) && m && m.typ==="join" && (P2P.jeHost || NET.jsemHost)){
+    if(!lobbyHraci.some(h=>h.id===m.hrac.id) && lobbyHraci.length<8){
+      lobbyHraci.push(novyHrac({id:m.hrac.id, jm:m.hrac.jm||"Hráč", ikona:m.hrac.ikona||CIVKEYS[0],
+        bot:false, ja:false, civ:CIVKEYS[nahI(0,5)], barva:volnaBarva(), tym:volnyTym()}));
+      const sp = P2P.spoje.find(s=>s.hracId===m.hrac.id);
+      if(sp) sp.jm = m.hrac.jm;
+      zprava("🙋 Přidal se hráč "+(m.hrac.jm||"?"),"dobre");
+      NET.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed});
+      kresliLobby(); kresliP2P();
+    }
+    return;
+  }
+  prijmiPredJoin(m);
+  if(!(m instanceof ArrayBuffer) && m && m.typ==="stav") kresliP2P();
+};
+
+/* ---- lobby: režim multi vždy ukáže připojování ---- */
+const otevriLobbyPuvodni = otevriLobby;
+otevriLobby = function(rezim){
+  P2P.vypni();
+  for(const k in pozvankyKod) delete pozvankyKod[k];
+  otevriLobbyPuvodni(rezim);
+  if(rezim==="multi"){ P2P.jeHost = true; P2P.zapnuto = true; }
+  document.getElementById("kodBox").style.display = "none";
+  if(rezim==="multi"){
+    document.getElementById("lobbyPodnadpis").innerHTML =
+      "Vytvoř pozvánku pro každého kamaráda a pošli mu ji. Můžete být <b>každý na svém počítači</b>.";
+  }
+  kresliP2P();
+};
+
+/* ---- start hry: rozešli všem ---- */
+const spustHruPuvodni = spustHru;
+spustHru = function(){
+  spustHruPuvodni();
+  kresliP2P();
+};
+
+/* ---- klient odchází ze hry ---- */
+window.addEventListener("beforeunload", ()=>{ try{ P2P.vypni(); }catch(e){} });
+
+nastavJoin();
+
+</script>
+</body>
+</html>
