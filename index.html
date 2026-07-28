@@ -3588,6 +3588,7 @@ SYNC.klic = 0;
 
 SYNC.zabalSnimek = function(){
   const plny = (--this.klic <= 0);
+  this.plnySnimek = plny;
   if(plny) this.klic = 12;                     // každé ~2 s pošli všechno
   const zaznamy = [];
   const pridej = (o, druh, hodnota, prapor)=>{
@@ -4261,6 +4262,98 @@ window.addEventListener("beforeunload", ()=>{ try{ MAJAK.zavri(); }catch(e){} })
 /* při rušení spojení zavřeme i maják */
 const vypniBezMajaku = P2P.vypni.bind(P2P);
 P2P.vypni = function(){ vypniBezMajaku(); MAJAK.zavri(); };
+
+
+/* ============================================================
+   38) VERZE A KONTROLA SPOJENÍ
+   Aby šlo poznat, kdo má jakou verzi, a co se se spojením děje.
+   ============================================================ */
+const VERZE = "v8";
+
+(function(){
+  const p = document.getElementById("menuPata");
+  if(p) p.innerHTML = "Země Ňuňísků · <b>verze "+VERZE+"</b> · Sepsáno v Zemi Ňuňísků";
+})();
+
+/* --- keyframe (celý svět) posíláme SPOLEHLIVĚ, drobné změny rychle --- */
+SYNC.posli = function(dt){
+  this.cas += dt;
+  if(this.cas < 0.16) return;
+  this.cas = 0;
+  if(!P2P.zivychSpoju() && !NET.kanal) return;
+  try{
+    const buf = this.zabalSnimek();
+    NET.posliBin(buf, this.plnySnimek);
+  }catch(e){}
+};
+NET.posliBin = function(buf, spolehlive){
+  if(this.kanal){ try{ this.kanal.postMessage(buf); }catch(e){} }
+  if(P2P.jeHost) P2P.posliVsem(buf, null, spolehlive);
+};
+P2P.posliVsem = function(m, kromě, spolehlive){
+  const bin = (m instanceof ArrayBuffer);
+  const data = bin? m : JSON.stringify(m);
+  for(const s of this.spoje){
+    if(s===kromě) continue;
+    const rychly = (bin && !spolehlive && s.kanalStav && s.kanalStav.readyState==="open");
+    const k = rychly ? s.kanalStav : s.kanal;
+    if(!k || k.readyState!=="open") continue;
+    try{ k.send(data); }catch(e){}
+  }
+};
+
+/* --- kdy naposled něco přišlo --- */
+SYNC.posledniPrijem = 0;
+const prijmiBinPuvodni = SYNC.prijmiBin.bind(SYNC);
+SYNC.prijmiBin = function(u8){ SYNC.posledniPrijem = Date.now(); return prijmiBinPuvodni(u8); };
+
+/* --- proužek se stavem spojení ve hře --- */
+(function(){
+  const d = document.createElement("div");
+  d.id = "stavSite";
+  d.style.cssText = "position:fixed;left:8px;top:56px;z-index:115;font-size:11.5px;"
+    + "background:rgba(20,15,8,.9);border:2px solid #8a6a2b;border-radius:5px;padding:4px 9px;"
+    + "color:#f4dda0;display:none;font-family:var(--pismo)";
+  document.getElementById("hra").appendChild(d);
+})();
+
+function obnovStavSite(){
+  const d = document.getElementById("stavSite");
+  if(!d) return;
+  if(G.rezim!=="multi" || !G.bezi){ d.style.display="none"; return; }
+  d.style.display = "block";
+  if(SYNC.jsemKlient()){
+    const s = P2P.mojeSpojeni;
+    const kanalOk = s && s.kanal && s.kanal.readyState==="open";
+    const od = SYNC.posledniPrijem? ((Date.now()-SYNC.posledniPrijem)/1000) : 999;
+    if(!kanalOk)
+      d.innerHTML = `<b style="color:#ff8a7a">⚠️ Ztratil jsi spojení s hostitelem</b> · ${VERZE}`;
+    else if(od > 3)
+      d.innerHTML = `<b style="color:#ffc46a">⏳ Čekám na data od hostitele (${Math.round(od)} s)</b> · ${VERZE}`;
+    else
+      d.innerHTML = `🔌 Spojeno s hostitelem · ${VERZE}`;
+  }else if(SYNC.jsemHost()){
+    d.innerHTML = `🔌 Řídíš hru · kamarádů připojeno: <b>${P2P.zivychSpoju()}</b> · ${VERZE}`;
+  }else d.style.display="none";
+}
+
+const tikBezStavu = tik;
+tik = function(t){
+  tikBezStavu(t);
+  if(G.bezi && !G.konec){
+    obnovStavSite.__c = (obnovStavSite.__c||0)+1;
+    if(obnovStavSite.__c % 20 === 0) obnovStavSite();
+  }
+};
+
+/* --- v lobby ukaž verzi, ať se dá porovnat s kamarádem --- */
+const kresliLobbyBezVerze = kresliLobby;
+kresliLobby = function(){
+  kresliLobbyBezVerze();
+  const p = document.getElementById("lobbyPozn");
+  if(p) p.innerHTML += `<br><b>Tvoje verze hry: ${VERZE}</b> – kamarád musí mít stejnou!
+    Když má jinou, ať dá <b>Ctrl+F5</b> (na mobilu obnovit stránku).`;
+};
 
 </script>
 </body>
