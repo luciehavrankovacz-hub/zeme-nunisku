@@ -451,6 +451,21 @@ body.mobil #tip{display:none !important}
     <div class="obtRada" id="obtRada"></div>
   </div>
 
+  <div class="sekce">
+    <h3>Velikost mapy</h3>
+    <div class="obtRada" id="velikostRada"></div>
+  </div>
+
+  <div class="sekce">
+    <h3>Nejvíc panáčků na hráče</h3>
+    <div class="obtRada" id="limitRada"></div>
+  </div>
+
+  <div class="sekce">
+    <h3>Co která civilizace umí</h3>
+    <div id="civTabulka"></div>
+  </div>
+
   <div class="lobbyPata">
     <button class="papirBtn zeleny velky" id="startHry">START GAME</button>
     <button class="papirBtn sedy" id="lobbyZpet">ZPĚT DO MENU</button>
@@ -1553,6 +1568,14 @@ const JED = {
   hrdina:{jm:"Hrdina", ik:"👑", hp:480, r:20, vel:64, rychlost:84, utok:42, dostrel:34, rychUtoku:0.9,
     cena:{zelezo:130,zlato:210}, cas:24, popis:"Legenda tvé civilizace. Nezastavitelný!", limit:1},
 
+  /* KRÁL – o něj se hraje. Když padne, prohráls, i kdyby ti stálo celé město.
+     Silný jako dva sloni (2×640) a umí se prát, takže se dá i použít v bitvě –
+     ale je to sázka, protože jiného už nedostaneš. Nedá se cvičit, každý ho
+     má jednoho od začátku hry. */
+  kral:{jm:"Král", ik:"👑", hp:1280, r:22, vel:74, rychlost:76, utok:82, dostrel:38, rychUtoku:1.0,
+    cena:{}, cas:0, limit:1, kral:1,
+    popis:"O něj se hraje! Když padne, prohrál jsi. Je silný jako dva sloni a umí bojovat – ale opatruj si ho."},
+
   /* ---- obléhací stroje (stroj:1) ----
      Boří budovy, ale samy jsou skoro bezbranné. Šípy, věže a hrady jim skoro neublíží
      (protiStrelam), zato bojovník zblízka je rozseká rychle (protiBlizku). */
@@ -1621,7 +1644,7 @@ const IKONY = CIVKEYS.slice();
    4) STAV HRY
    ============================================================ */
 const G = {
-  hraci:[], ja:0, mapa:0, obt:2, rezim:"single", kod:"---",
+  hraci:[], ja:0, mapa:0, obt:2, velikost:1, limit:1, rezim:"single", kod:"---",
   bezi:false, pauza:false, konec:false,
   ents:[], jednotky:[], budovy:[], zdroje:[], strely:[],
   sel:[], nextId:1, cas:0, cam:{x:0,y:0}, zoom:1, stavim:null, ghost:null
@@ -1638,6 +1661,7 @@ const nahI = (a,b)=>Math.floor(nah(a,b+1));
 function dist(a,b){return Math.hypot(a.x-b.x, a.y-b.y);}
 function dist2(ax,ay,bx,by){return Math.hypot(ax-bx,ay-by);}
 function klam(v,a,b){return v<a?a:(v>b?b:v);}
+function limitJednotek(){ return (LIMITY[G.limit] || LIMITY[1]).n; }
 
 /* Text od cizího hráče NIKDY nevkládat do innerHTML rovnou! Kamarád si může dát
    jméno "<img src=x onerror=...>" a spustil by nám tím svůj kód v prohlížeči.
@@ -1828,7 +1852,8 @@ function pridejDekoraci(kind, x, y, vel){
 }
 function zmenPop(side, popPlus, popUse){
   const h = G.hraci[side]; if(!h) return;
-  if(popPlus) h.popMax = Math.min(90, h.popMax + popPlus);
+  // strop si vybíráš v lobby (100 / 150 / 200 / 300)
+  if(popPlus) h.popMax = Math.min(limitJednotek(), h.popMax + popPlus);
   if(popUse)  h.pop += popUse;
 }
 
@@ -1857,9 +1882,24 @@ function zilaZdroje(kind,cx,cy,n){
   }
 }
 
+/* Velikost mapy – násobí rozměry vybrané mapy. Surovin i lesů se počítá
+   podle plochy, takže na obří mapě jich je úměrně víc. */
+const VELIKOSTI = [
+  {jm:"Small",     cz:"malá – rychlá bitva", n:0.72},
+  {jm:"Normal",    cz:"normální",            n:1},
+  {jm:"Huge",      cz:"obří – je kam růst",  n:1.5},
+  {jm:"Ludicrous", cz:"šílená – hodně místa",n:2.2}
+];
+/* Nejvíc panáčků na hráče (populační strop). */
+const LIMITY = [
+  {jm:"100", n:100}, {jm:"150", n:150}, {jm:"200", n:200}, {jm:"300", n:300}
+];
+
 function postavSvet(){
   const mapa = MAPY[G.mapa];
-  SVET_W = mapa.sirka; SVET_H = mapa.vyska;
+  const nasobek = (VELIKOSTI[G.velikost] || VELIKOSTI[1]).n;
+  SVET_W = Math.round(mapa.sirka * nasobek);
+  SVET_H = Math.round(mapa.vyska * nasobek);
   SVET.style.width = SVET_W+"px"; SVET.style.height = SVET_H+"px";
   SVET.style.backgroundColor = mapa.zeme;
 
@@ -1903,6 +1943,9 @@ function postavSvet(){
     const vesnicanu = h.bot ? 4 : (G.obt<=1 ? 6 : 4);
     for(let k=0;k<vesnicanu;k++)
       pridejJednotku("vesnican", i, z.x+nah(-120,120), z.y+dovnitrY*nah(60,140));
+    /* Král stojí hned u radnice. O něj se hraje – když padne, hráč prohrál,
+       i kdyby mu zůstalo celé město. */
+    pridejJednotku("kral", i, z.x - dovnitrX*60, z.y + dovnitrY*70);
     if(h.bot){
       h.res.drevo = Math.round(h.res.drevo * (0.9+O.tezba*0.3));
       pridejBudovu("kasarna", i, z.x + dovnitrX*190, z.y + dovnitrY*95, true);
@@ -2104,15 +2147,18 @@ function zabij(e, kdo){
     if(e.druh==="budova" && e.hotova && e.popPlus) H.popMax = Math.max(5, H.popMax - e.popPlus);
   }
   odeber(e);
-  // vyřazen ze hry?
-  if(e.druh==="budova" && (e.kind==="radnice"||e.kind==="hrad") && H && !H.porazen){
-    const zbyva = G.budovy.filter(b=>b.side===e.side && (b.kind==="radnice"||b.kind==="hrad") && !b.mrtvy).length;
-    if(zbyva===0){
-      H.porazen = true;
-      zprava((jeMuj(e.side)? "💀 Přišel jsi o poslední radnici!" : "🏳️ "+bezpecnyText(H.jm)+" je vyřazen ze hry!"),
-             jeMuj(e.side)?"zle":"dobre");
-      vyhodnotKonec();
-    }
+  /* Vyřazen ze hry? Nově se hraje o KRÁLE, ne o radnici. Můžeš přijít
+     o všechny budovy a pořád hrát – ale když ti padne král, je konec. */
+  if(e.druh==="jednotka" && e.kind==="kral" && H && !H.porazen){
+    H.porazen = true;
+    zprava((jeMuj(e.side)? "👑💀 Padl ti KRÁL – prohrál jsi!" : "👑 Král hráče "+bezpecnyText(H.jm)+" padl!"),
+           jeMuj(e.side)?"zle":"dobre");
+    vyhodnotKonec();
+  }
+  // o radnici se sice nehraje, ale je dobré vědět, že padla
+  if(e.druh==="budova" && e.kind==="radnice" && H && !H.porazen && jeMuj(e.side)){
+    const zbyva = G.budovy.filter(b=>b.side===e.side && b.kind==="radnice" && !b.mrtvy).length;
+    if(zbyva===0) zprava("🏛️ Přišel jsi o radnici! Postav novou – hraje se ale o krále.","zle");
   }
 }
 
@@ -2263,7 +2309,9 @@ function updJednotku(e, dt){
         if(b){ e.stav="utok"; e.cilE=b; }
       }
     }else{
-      const c = nepritelBlizko(e, e.kind==="lukostrelec"?230:190);
+      /* Král se brání jen nablízko. Kdyby se rozbíhal za nepřáteli jako
+         ostatní, odtáhl by si sám od hradu – a na něm visí celá hra. */
+      const c = nepritelBlizko(e, e.kind==="lukostrelec"?230 : (e.kind==="kral"?120:190));
       if(c){ e.stav="utok"; e.cilE=c; e.hlidka={x:e.x,y:e.y}; }
     }
   }
@@ -2777,6 +2825,12 @@ function mistoVolne(kind,x,y){
       if(jaZed && BUD[e.kind].zed){
         // zdi smí navazovat; vadí, až když si lezou na sebe v OBOU směrech
         if(Math.abs(x-e.x) < ZED_MIN_X && Math.abs(y-e.y) < ZED_MIN_Y) return false;
+      }
+      /* Věž patří do hradby – v opravdové pevnosti stojí v rozích rovnou na zdi.
+         Proto smí být těsně u zdi (a zeď u ní), ale dvě věže vedle sebe pořád ne,
+         aby z toho nešlo udělat souvislou stěnu ze samých střílen. */
+      else if((jaZed && e.kind==="vez") || (kind==="vez" && BUD[e.kind].zed)){
+        if(dist2(x,y,e.x,e.y) < 40) return false;
       }
       else if(dist2(x,y,e.x,e.y) < r+e.r+14) return false;
     }
@@ -3469,7 +3523,7 @@ function postavMenu(){
         return;
       }
     }
-    NET.posli({typ:"start", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, v:VERZE});
+    NET.posli({typ:"start", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit, v:VERZE});
     spustHru();
   };
 }
@@ -3692,7 +3746,7 @@ const NET = {
   },
   /* funguje posílání mezi okny? (na souboru z plochy většinou ne, na internetu ano) */
   umiSit(){ return typeof BroadcastChannel==="function" && location.protocol!=="file:"; },
-  oznam(){ if(this.kanal && this.jsemHost) this.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed}); },
+  oznam(){ if(this.kanal && this.jsemHost) this.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit}); },
   prijmi(m){
     if(!m) return;
     if(m.typ==="join" && this.jsemHost){
@@ -3706,6 +3760,8 @@ const NET = {
     if(m.typ==="stav" && !this.jsemHost){
       lobbyHraci = m.hraci.map(h=>novyHrac(Object.assign({},h,{ja:h.id===mojeId})));
       G.mapa = m.mapa; G.obt = m.obt; G.seed = m.seed;
+      if(m.velikost!=null) G.velikost = m.velikost;
+      if(m.limit!=null) G.limit = m.limit;
       if(!document.getElementById("mLobby").classList.contains("zap")){
         zavri("mJoin");
         G.rezim="multi";
@@ -3747,6 +3803,8 @@ const NET = {
       }
       lobbyHraci = m.hraci.map(h=>novyHrac(Object.assign({},h,{ja:h.id===mojeId})));
       G.mapa=m.mapa; G.obt=m.obt; G.seed=m.seed;
+      if(m.velikost!=null) G.velikost = m.velikost;
+      if(m.limit!=null) G.limit = m.limit;
       spustHru();
     }
   }
@@ -4086,7 +4144,7 @@ async function rozbal(kod){
    které letí po síti – přeházením by kamarádovi naskočily jiné budovy. */
 const KINDY = ["vesnican","vojak","lukostrelec","jezdec","slon","hrdina",
                "radnice","domek","kasarna","staj","vez","hrad",
-               "beranidlo","trebuchet","dilna","hradba","brana"];
+               "beranidlo","trebuchet","dilna","hradba","brana","kral"];
 function kindIdx(k){ return KINDY.indexOf(k); }
 
 const P2P = {
@@ -4168,7 +4226,7 @@ const P2P = {
     if(this.jeHost){
       zprava("🔌 Kamarád se připojil!","dobre");
       // rovnou mu pošlu, jak to teď v lobby vypadá
-      this.posliVsem({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed});
+      this.posliVsem({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit});
       kresliP2P();
     }else{
       zprava("🔌 Jsi připojený k hostiteli!","dobre");
@@ -4586,7 +4644,7 @@ NET.prijmi = function(m){
       const sp = P2P.spoje.find(s=>s.hracId===m.hrac.id);
       if(sp) sp.jm = jm;
       zprava("🙋 Přidal se hráč "+bezpecnyText(jm),"dobre");
-      NET.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed});
+      NET.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit});
       kresliLobby(); kresliP2P();
     }
     return;
@@ -5032,7 +5090,9 @@ P2P.vypni = function(){ vypniBezMajaku(); MAJAK.zavri(); };
    by měl každý stromy jinde.
    v14: hradby, brána a dílna se stroji – nové druhy v KINDY, takže se starou
    verzí by kamarádovi naskakovaly úplně jiné budovy. Oba musíte mít v14. */
-const VERZE = "v14";
+/* v15: král (nový druh v KINDY = jiný tvar snímku světa) a nové volby
+   v lobby (velikost mapy, limit jednotek). Se starou verzí to nesedí. */
+const VERZE = "v15";
 
 (function(){
   const p = document.getElementById("menuPata");
@@ -5663,6 +5723,240 @@ kresliMinimapu = function(){
       if(!MLHA.znam[ry * MLHA.sl + rx]) MMX.fillRect(rx * kx, ry * ky, kx + 1, ky + 1);
   MMX.strokeStyle = "#fff"; MMX.lineWidth = 2;
   MMX.strokeRect(G.cam.x * sx, G.cam.y * sy, vidW() * sx, vidH() * sy);
+};
+
+/* ============================================================
+   42) KRÁL, OPEVNĚNÍ ZÁKLADNY A NOVÉ VOLBY V LOBBY
+   ============================================================ */
+
+/* ---------- KRÁL ----------
+   Plyšák s korunou, pláštěm a žezlem. Je větší než ostatní a má kolem sebe
+   zlatou zář, aby byl v bitvě hned k poznání – hraje se o něj. */
+function kralSVG(civK, barva){
+  const c = CIVS[civK], bar = barva || c.akcent, gid = "kr" + (++__gid);
+  const telo = plysak(civK, "vojak", {bezPraporku:1, bezStinu:1, barva:bar});
+  return `
+  <defs>
+    <radialGradient id="${gid}" cx="50%" cy="55%" r="50%">
+      <stop offset="0" stop-color="#ffe9a8" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#ffd447" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="50" cy="95" rx="30" ry="6" fill="rgba(0,0,0,.28)"/>
+  <ellipse cx="50" cy="58" rx="46" ry="44" fill="url(#${gid})"/>
+  <!-- plášť za panáčkem -->
+  <path d="M28 46 q22 -10 44 0 q4 30 8 46 q-26 8 -60 0 q6 -18 8 -46 Z" fill="${bar}" opacity=".92"/>
+  <path d="M28 46 q22 -10 44 0 q2 12 3 20 q-24 7 -50 0 q2 -8 3 -20 Z" fill="#fff" opacity=".22"/>
+  ${telo}
+  <!-- koruna -->
+  <g>
+    <path d="M33 26 L37 12 L44 21 L50 8 L56 21 L63 12 L67 26 Z" fill="#f0c33c" stroke="#8a6410" stroke-width="1.6" stroke-linejoin="round"/>
+    <rect x="32" y="25" width="36" height="7" rx="3" fill="#f0c33c" stroke="#8a6410" stroke-width="1.5"/>
+    <circle cx="50" cy="28.5" r="2.4" fill="#d63b2a" stroke="#8a2216" stroke-width="1"/>
+    <circle cx="39" cy="28.5" r="1.7" fill="#3b7ddd"/>
+    <circle cx="61" cy="28.5" r="1.7" fill="#4aa83f"/>
+    <circle cx="50" cy="8" r="2.6" fill="#fff6cd" stroke="#8a6410" stroke-width="1.2"/>
+  </g>
+  <!-- žezlo -->
+  <g>
+    <path d="M78 42 V78" stroke="#8a5a2c" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="78" cy="38" r="6" fill="#f0c33c" stroke="#8a6410" stroke-width="1.6"/>
+    <circle cx="76.4" cy="36.4" r="2" fill="#fff6cd" opacity=".9"/>
+  </g>`;
+}
+
+/* zapojení do kreslení jednotek */
+const jednotkaSVGpredKralem = jednotkaSVG;
+jednotkaSVG = function(civK, kind, barva){
+  if(kind === "kral") return kralSVG(civK, barva);
+  return jednotkaSVGpredKralem(civK, kind, barva);
+};
+/* král vidí daleko – je to velitel */
+if(typeof DOHLED !== "undefined") DOHLED.kral = 280;
+
+/* Král se nedá cvičit – kdyby ho někdo zkusil poslat do výroby, nepustíme to. */
+const cvicPredKralem = cvic;
+cvic = function(b, kind){
+  if(kind === "kral"){ zvuk("chyba"); zprava("Král je jenom jeden – nedá se vycvičit.","zle"); return; }
+  return cvicPredKralem(b, kind);
+};
+
+/* Varování, když krále někdo mlátí (ať to nepřehlédneš). */
+let kralVarovano = 0;
+const ublizPredKralem = ubliz;
+ubliz = function(cil, dmg, utocnik){
+  const pred = cil && !cil.mrtvy && cil.kind === "kral" && jeMuj(cil.side) ? cil.hp : null;
+  const r = ublizPredKralem(cil, dmg, utocnik);
+  if(pred !== null && G.cas - kralVarovano > 6){
+    kralVarovano = G.cas;
+    zprava("👑⚠️ NĚKDO TI NAPADL KRÁLE! Braň ho, nebo prohraješ.","zle");
+    zvuk("chyba");
+  }
+  return r;
+};
+
+/* ---------- OPEVNIT ZÁKLADNU ----------
+   Jedním tlačítkem obežene všechny tvoje budovy hradbou: na každé straně
+   jedna brána a v každém rohu věž. Staví jen to, na co máš suroviny. */
+function opevniZakladnu(){
+  const moje = G.budovy.filter(b => jeMuj(b.side) && !b.mrtvy);
+  if(!moje.length){ zprava("Nemáš žádné budovy, které by šlo opevnit.","zle"); return; }
+
+  // obdélník kolem všech budov + rezerva, ať se dovnitř ještě vejde stavět
+  const rez = 150;
+  let x1 = Math.min(...moje.map(b => b.x - b.r)) - rez;
+  let x2 = Math.max(...moje.map(b => b.x + b.r)) + rez;
+  let y1 = Math.min(...moje.map(b => b.y - b.r)) - rez;
+  let y2 = Math.max(...moje.map(b => b.y + b.r)) + rez;
+  x1 = klam(x1, 60, SVET_W - 60); x2 = klam(x2, 60, SVET_W - 60);
+  y1 = klam(y1, 60, SVET_H - 60); y2 = klam(y2, 60, SVET_H - 60);
+
+  const stredX = (x1 + x2) / 2, stredY = (y1 + y2) / 2;
+  const plan = [];   // {kind, x, y}
+
+  // rohy = věže
+  plan.push({kind:"vez", x:x1, y:y1}, {kind:"vez", x:x2, y:y1},
+            {kind:"vez", x:x1, y:y2}, {kind:"vez", x:x2, y:y2});
+
+  /* Zdi po stranách. Uprostřed každé strany necháme bránu, aby se dalo
+     dovnitř a ven – vlastním a spojencům se otevře sama. */
+  const strana = (ax, ay, bx, by) => {
+    const dx = bx - ax, dy = by - ay;
+    const krok = krokZdi(dx, dy), d = Math.hypot(dx, dy);
+    const n = Math.max(2, Math.floor(d / krok));
+    const stred = Math.floor(n / 2);
+    for(let i = 1; i < n; i++){                 // rohy už mají věže
+      const t = i / n;
+      plan.push({kind: i === stred ? "brana" : "hradba", x: ax + dx*t, y: ay + dy*t});
+    }
+  };
+  strana(x1, y1, x2, y1);   // nahoře
+  strana(x1, y2, x2, y2);   // dole
+  strana(x1, y1, x1, y2);   // vlevo
+  strana(x2, y1, x2, y2);   // vpravo
+
+  /* Věže do rohů PRVNÍ – kdyby se stavěly až po zdech, roh už by byl zastavěný
+     a věž by se tam nevešla. Zbytek pak od domova ven. */
+  plan.sort((a, b) => {
+    const va = a.kind === "vez" ? 0 : 1, vb = b.kind === "vez" ? 0 : 1;
+    if(va !== vb) return va - vb;
+    return dist2(a.x, a.y, stredX, stredY) - dist2(b.x, b.y, stredX, stredY);
+  });
+
+  let postaveno = 0, preskoceno = 0, dosly = false;
+  const puvodniStavim = G.stavim;
+  for(const p of plan){
+    if(!lzeZaplatit(cenaBudovy(p.kind, G.ja))){ dosly = true; break; }
+    let x = p.x, y = p.y;
+    if(!mistoVolne(p.kind, x, y)){
+      /* Roh nebo kus zdi může blokovat strom. U věží (rohy pevnosti) za to stojí
+         zkusit kousek vedle – radši pevnost o chlup nakřivo než díra v rohu. */
+      let nasel = false;
+      if(p.kind === "vez"){
+        const smerX = p.x < stredX ? 1 : -1, smerY = p.y < stredY ? 1 : -1;
+        for(const d of [30, 60, 90]){
+          for(const [ox, oy] of [[smerX*d,0],[0,smerY*d],[smerX*d,smerY*d]]){
+            if(mistoVolne(p.kind, p.x+ox, p.y+oy)){ x = p.x+ox; y = p.y+oy; nasel = true; break; }
+          }
+          if(nasel) break;
+        }
+      }
+      if(!nasel){ preskoceno++; continue; }
+    }
+    G.stavim = p.kind;                 // postav() ho po sobě pokaždé zruší
+    postav(x, y);
+    postaveno++;
+  }
+  G.stavim = puvodniStavim;
+  zrusStaveni(); if(typeof skryjNahledZdi === "function") skryjNahledZdi();
+
+  if(!postaveno){ zprava("Opevnění se sem nevejde – kolem je moc překážek.","zle"); return; }
+  zprava("🏰 Stavím opevnění: " + postaveno + " kusů (věže v rozích, brána na každé straně).","dobre");
+  if(preskoceno) zprava("⚠️ " + preskoceno + " kusů se nevešlo – překáží strom nebo budova.","zle");
+  if(dosly) zprava("Došly suroviny, postavil jsem, co šlo.","zle");
+  obnovPanel();
+}
+
+/* tlačítko k vesničanům */
+const obnovPanelPredOpevnenim = obnovPanel;
+obnovPanel = function(){
+  obnovPanelPredOpevnenim();
+  const A = document.getElementById("akce");
+  if(!A) return;
+  const mamVesnicana = G.sel.some(u => jeMuj(u.side) && u.kind === "vesnican" && !u.mrtvy);
+  if(!mamVesnicana || G.konec) return;
+  const c = cenaBudovy("hradba", G.ja);
+  A.appendChild(tlacitko("🏰", "Opevnit základnu", "", true, opevniZakladnu,
+    "<b>Opevnit základnu</b><br>Obežene všechny tvoje budovy hradbou, v rozích postaví věže "
+    + "a na každou stranu bránu.<br>Cena podle velikosti základny – postaví se, na co máš "
+    + "(jeden kus zdi " + cenaHtml(c) + ")."));
+};
+
+/* ---------- NOVÉ VOLBY V LOBBY ---------- */
+function kresliVelikosti(){
+  const r = document.getElementById("velikostRada");
+  if(!r) return;
+  r.innerHTML = "";
+  VELIKOSTI.forEach((v, i) => {
+    const b = document.createElement("button");
+    b.className = "obtBtn" + (G.velikost === i ? " on" : "");
+    b.innerHTML = v.jm + "<br><span style='font-size:10px;opacity:.75;font-weight:normal'>" + v.cz + "</span>";
+    b.onclick = () => {
+      if(G.rezim === "multi" && !NET.jsemHost){ zprava("Velikost mapy vybírá ten, kdo hru vytvořil."); return; }
+      G.velikost = i; zvuk("klik"); NET.oznam(); kresliVelikosti(); kresliLobby();
+    };
+    r.appendChild(b);
+  });
+}
+function kresliLimity(){
+  const r = document.getElementById("limitRada");
+  if(!r) return;
+  r.innerHTML = "";
+  LIMITY.forEach((l, i) => {
+    const b = document.createElement("button");
+    b.className = "obtBtn" + (G.limit === i ? " on" : "");
+    b.innerHTML = "max " + l.jm + "<br><span style='font-size:10px;opacity:.75;font-weight:normal'>panáčků</span>";
+    b.onclick = () => {
+      if(G.rezim === "multi" && !NET.jsemHost){ zprava("Limit vybírá ten, kdo hru vytvořil."); return; }
+      G.limit = i; zvuk("klik"); NET.oznam(); kresliLimity(); kresliLobby();
+    };
+    r.appendChild(b);
+  });
+}
+/* Co která civilizace umí – text už v datech byl, ale nikde se neukazoval. */
+function kresliCivTabulku(){
+  const el = document.getElementById("civTabulka");
+  if(!el) return;
+  el.innerHTML = CIVKEYS.map(k => {
+    const c = CIVS[k];
+    const chybi = (c.nema || []).map(u => JED[u] ? JED[u].jm : u).join(", ");
+    return `<div style="display:flex;gap:9px;align-items:flex-start;padding:6px 0;border-bottom:1px solid rgba(138,106,43,.35)">
+      <div style="width:44px;flex:none">${svgObal(plysak(k, "vesnican", {bezPraporku:1}))}</div>
+      <div style="flex:1;min-width:0">
+        <b>${c.emo} ${bezpecnyText(c.jm)}</b>
+        <span style="opacity:.7;font-size:11px"> – ${bezpecnyText(c.nazev || "")}</span>
+        <div style="font-size:11.5px;margin-top:2px">${bezpecnyText(c.silne || "")}</div>
+        <div style="font-size:11.5px;opacity:.85">${bezpecnyText(c.slabe || "")}</div>
+        ${chybiRadek(chybi)}
+      </div></div>`;
+  }).join("");
+}
+function chybiRadek(chybi){
+  return chybi ? `<div style="font-size:11px;opacity:.75;margin-top:1px">🚫 Neumí: ${bezpecnyText(chybi)}</div>` : "";
+}
+
+/* překreslit i nové sekce, kdykoli se překresluje lobby */
+const kresliLobbyPredVolbami = kresliLobby;
+kresliLobby = function(){
+  kresliLobbyPredVolbami.apply(this, arguments);
+  kresliVelikosti(); kresliLimity(); kresliCivTabulku();
+};
+
+/* v poznámce pod lobby ať je vidět, co je nastavené */
+const otevriLobbyPredVolbami = otevriLobby;
+otevriLobby = function(rezim){
+  otevriLobbyPredVolbami.apply(this, arguments);
+  kresliVelikosti(); kresliLimity(); kresliCivTabulku();
 };
 
 </script>
