@@ -4271,7 +4271,7 @@ P2P.vypni = function(){ vypniBezMajaku(); MAJAK.zavri(); };
    38) VERZE A KONTROLA SPOJENÍ
    Aby šlo poznat, kdo má jakou verzi, a co se se spojením děje.
    ============================================================ */
-const VERZE = "v10";
+const VERZE = "v11";
 
 (function(){
   const p = document.getElementById("menuPata");
@@ -4391,18 +4391,25 @@ const TIKAC = {
     const ted = performance.now();
     const od = ted - posledni;
     if(od < 90) return;                      // obrázek se kreslí normálně, nech to být
-    const dt = Math.min(0.05, od/1000);
     posledni = ted;
     // kdo jen kouká, ať mu aspoň nezamrznou panáčci na místě
-    if(SYNC.jsemKlient()){ SYNC.dokresli(dt); return; }
-    // hostiteli musí hra běžet dál, i když má okno na pozadí
-    G.cas += dt;
-    for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
-    for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
-    rozestup();
-    updStrely(dt);
-    updAI(dt);
-    if(SYNC.jsemHost()) SYNC.posli(dt);
+    if(SYNC.jsemKlient()){ SYNC.dokresli(Math.min(0.1, od/1000)); return; }
+
+    /* Hostiteli musí hra běžet dál – a hlavně STEJNĚ RYCHLE.
+       Jeden krok smí být nejvýš 0,05 s (jinak by panáčci "skákali"),
+       tak jich uděláme víc za sebou, ať se čas dožene. */
+    let zbyva = Math.min(0.5, od/1000);
+    while(zbyva > 0.001){
+      const dt = Math.min(0.05, zbyva);
+      zbyva -= dt;
+      G.cas += dt;
+      for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
+      for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
+      rozestup();
+      updStrely(dt);
+      updAI(dt);
+      if(SYNC.jsemHost()) SYNC.posli(dt);
+    }
   }
 };
 TIKAC.start();
@@ -4467,6 +4474,115 @@ obnovStavSite = function(){
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible"){ zamek=null; drz(); } });
   setInterval(drz, 5000);
 })();
+
+
+/* ============================================================
+   42) PLYNULEJŠÍ POHYB U KAMARÁDŮ
+   ============================================================ */
+/* posíláme častěji (10× za vteřinu místo 6×) */
+const posliSnimekPred = SYNC.posli.bind(SYNC);
+SYNC.posli = function(dt){
+  this.cas += dt;
+  if(this.cas < 0.1) return;
+  this.cas = 0;
+  if(!P2P.zivychSpoju() && !NET.kanal) return;
+  try{
+    const buf = this.zabalSnimek();
+    NET.posliBin(buf, this.plnySnimek);
+    this.chyba = null;
+  }catch(e){
+    this.chyba = e.message;
+    console.error("Snímek se nepovedlo poslat:", e);
+  }
+};
+
+/* jeden pokus o znovuposlání – ztracený balíček už tolik neseká */
+udelejKanaly = function(pc, spoj){
+  zapojKanaly(spoj, pc.createDataChannel("rozkazy"));
+  zapojKanaly(spoj, pc.createDataChannel("stav", {ordered:false, maxRetransmits:1}));
+};
+
+/* plynulé dojíždění: panáček dojede na novou pozici zhruba
+   za dobu, než přijde další zpráva – ne trhaně, ale ani se zpožděním */
+SYNC.dokresli = function(dt){
+  for(const u of G.jednotky){
+    if(u.mrtvy || u.tx===undefined) continue;
+    const dx = u.tx-u.x, dy = u.ty-u.y;
+    const d = Math.hypot(dx,dy);
+    if(d > 260){                       // po velkém skoku (zaseklo se spojení) nesmyslně necválej
+      u.x = u.tx; u.y = u.ty; u.hopY = 0;
+    }else if(d > 0.6){
+      const k = Math.min(1, dt/0.11);
+      u.x += dx*k; u.y += dy*k;
+      if(d > 2){ u.hop += dt*11; u.hopY = Math.abs(Math.sin(u.hop))*3.2; }
+      else if(u.hopY) u.hopY *= 0.8;
+    }else{
+      u.x = u.tx; u.y = u.ty;
+      if(u.hopY) u.hopY *= 0.8;
+    }
+    const t = u.smer<0? "scaleX(-1)":"";
+    if(u.lastT!==t){ u.svgEl.style.transform=t; u.lastT=t; }
+    polohuj(u);
+  }
+  for(const b of G.budovy) if(!b.mrtvy){ if(b.tx!==undefined) b.x=b.tx; polohuj(b); }
+};
+
+/* ============================================================
+   43) TLAČÍTKA "TĚŽIT" A "STŮJ" MUSÍ TAKY JÍT PŘES HOSTITELE
+   (u kamaráda se hra nepočítá, takže lokálně by nic neudělala)
+   ============================================================ */
+const provedCiziPred = SYNC.provedCizi.bind(SYNC);
+SYNC.provedCizi = function(m){
+  const side = m.side;
+  if(G.hraci[side]==null || G.hraci[side].porazen) return;
+  const moje = (m.ids||[]).map(id=>G.ents.find(o=>o.id===id))
+                          .filter(o=>o && !o.mrtvy && o.side===side);
+  if(m.cmd==="tezit"){
+    for(const u of moje) if(u.kind==="vesnican") novyZdroj(u);
+    return;
+  }
+  if(m.cmd==="vsichniTezit"){
+    for(const j of G.jednotky){
+      if(j.side!==side || j.mrtvy || j.kind!=="vesnican") continue;
+      if(j.stav==="stoj" || j.stav==="jdi") novyZdroj(j);
+    }
+    return;
+  }
+  if(m.cmd==="stuj"){
+    for(const u of moje){ u.stav="stoj"; u.cilE=null; u.hlidka=null; u.tezar=false; }
+    return;
+  }
+  provedCiziPred(m);
+};
+
+/* --- kamarád posílá místo provádění --- */
+const vsichniTezitLokalne = vsichniTezit;
+vsichniTezit = function(){
+  if(SYNC.jsemKlient()){
+    NET.posli({typ:"cmd", cmd:"vsichniTezit", side:G.ja});
+    zvuk("klik");
+    zprava("⛏️ Posílám vesničany těžit…");
+    return;
+  }
+  vsichniTezitLokalne();
+};
+
+/* tlačítka v panelu, která se dělají uvnitř obnovPanel */
+const obnovPanelPred = obnovPanel;
+obnovPanel = function(){
+  obnovPanelPred();
+  if(!SYNC.jsemKlient()) return;
+  const A = document.getElementById("akce");
+  if(!A) return;
+  const mojeIds = ()=>G.sel.filter(e=>jeMuj(e.side)).map(e=>e.id);
+  A.querySelectorAll(".abtn").forEach(b=>{
+    const jm = b.querySelector("b") ? b.querySelector("b").textContent : "";
+    if(jm==="Jdi těžit")
+      b.onclick = ()=>{ NET.posli({typ:"cmd", cmd:"tezit", side:G.ja, ids:mojeIds()}); zvuk("klik"); };
+    else if(jm==="Stůj")
+      b.onclick = ()=>{ NET.posli({typ:"cmd", cmd:"stuj", side:G.ja, ids:mojeIds()}); zvuk("klik"); };
+  });
+};
 
 </script>
 </body>
