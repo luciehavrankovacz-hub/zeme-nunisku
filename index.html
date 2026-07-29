@@ -3605,8 +3605,11 @@ SYNC.zabalSnimek = function(){
   const zivi = [];
   for(const o of G.ents) zivi.push(o.id);
 
+  /* POZOR: jeden záznam = 13 bajtů (2 id + 1 druh + 1 kind + 1 hráč
+     + 2 x + 2 y + 2 hp + 2 příznaky). Dřív tu bylo 12 a zápis přetekl –
+     hodilo to chybu, hostitel přestal posílat a všem zamrzl svět. */
   const hl = 8 + G.hraci.length*14 + (plny? 2+zivi.length*3 : 2);
-  const buf = new ArrayBuffer(hl + zaznamy.length*12);
+  const buf = new ArrayBuffer(hl + zaznamy.length*13);
   const dv = new DataView(buf);
   let p = 0;
   dv.setUint8(p++, plny?1:0);
@@ -4268,7 +4271,7 @@ P2P.vypni = function(){ vypniBezMajaku(); MAJAK.zavri(); };
    38) VERZE A KONTROLA SPOJENÍ
    Aby šlo poznat, kdo má jakou verzi, a co se se spojením děje.
    ============================================================ */
-const VERZE = "v8";
+const VERZE = "v10";
 
 (function(){
   const p = document.getElementById("menuPata");
@@ -4284,7 +4287,11 @@ SYNC.posli = function(dt){
   try{
     const buf = this.zabalSnimek();
     NET.posliBin(buf, this.plnySnimek);
-  }catch(e){}
+    this.chyba = null;
+  }catch(e){
+    this.chyba = e.message;      // ať se chyba neztratí – ukáže se v proužku stavu
+    console.error("Snímek se nepovedlo poslat:", e);
+  }
 };
 NET.posliBin = function(buf, spolehlive){
   if(this.kanal){ try{ this.kanal.postMessage(buf); }catch(e){} }
@@ -4354,6 +4361,112 @@ kresliLobby = function(){
   if(p) p.innerHTML += `<br><b>Tvoje verze hry: ${VERZE}</b> – kamarád musí mít stejnou!
     Když má jinou, ať dá <b>Ctrl+F5</b> (na mobilu obnovit stránku).`;
 };
+
+
+/* ============================================================
+   39) HRA BĚŽÍ, I KDYŽ JE OKNO NA POZADÍ
+
+   Prohlížeč uspí requestAnimationFrame, jakmile okno není vidět.
+   Hostitel ale počítá hru pro všechny – když usne on, zamrzne
+   svět i kamarádům a nikdo nemůže nic dělat.
+   Proto tiká navíc Web Worker (ten prohlížeč neuspává).
+   ============================================================ */
+const TIKAC = {
+  worker:null, zaloha:null,
+
+  start(){
+    if(this.worker || this.zaloha) return;
+    try{
+      const kod = "var i=setInterval(function(){postMessage(1);},40);";
+      const blob = new Blob([kod], {type:"application/javascript"});
+      this.worker = new Worker(URL.createObjectURL(blob));
+      this.worker.onmessage = ()=>this.krok();
+    }catch(e){
+      this.zaloha = setInterval(()=>this.krok(), 60);   // kdyby Worker nešel
+    }
+  },
+
+  krok(){
+    if(!G.bezi || G.pauza || G.konec) return;
+    const ted = performance.now();
+    const od = ted - posledni;
+    if(od < 90) return;                      // obrázek se kreslí normálně, nech to být
+    const dt = Math.min(0.05, od/1000);
+    posledni = ted;
+    // kdo jen kouká, ať mu aspoň nezamrznou panáčci na místě
+    if(SYNC.jsemKlient()){ SYNC.dokresli(dt); return; }
+    // hostiteli musí hra běžet dál, i když má okno na pozadí
+    G.cas += dt;
+    for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
+    for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
+    rozestup();
+    updStrely(dt);
+    updAI(dt);
+    if(SYNC.jsemHost()) SYNC.posli(dt);
+  }
+};
+TIKAC.start();
+
+/* ============================================================
+   40) NÁHRADNÍ CESTA, KDYŽ ROUTER NEPUSTÍ PŘÍMÉ SPOJENÍ
+   (veřejný přeposílací server zdarma – použije se jen když je potřeba)
+   ============================================================ */
+LEDOVCE.iceServers.push(
+  {urls:"turn:openrelay.metered.ca:80", username:"openrelayproject", credential:"openrelayproject"},
+  {urls:"turn:openrelay.metered.ca:443", username:"openrelayproject", credential:"openrelayproject"},
+  {urls:"turn:openrelay.metered.ca:443?transport=tcp", username:"openrelayproject", credential:"openrelayproject"}
+);
+
+/* ============================================================
+   41) LEPŠÍ HLÁŠENÍ STAVU
+   ============================================================ */
+obnovStavSite = function(){
+  const d = document.getElementById("stavSite");
+  if(!d) return;
+  if(G.rezim!=="multi" || !G.bezi){ d.style.display="none"; return; }
+  d.style.display = "block";
+
+  if(SYNC.jsemKlient()){
+    const s = P2P.mojeSpojeni;
+    const kanalOk = s && s.kanal && s.kanal.readyState==="open";
+    const od = SYNC.posledniPrijem? ((Date.now()-SYNC.posledniPrijem)/1000) : 999;
+    if(!kanalOk){
+      d.style.borderColor = "#ff6a5a";
+      d.innerHTML = `<b style="color:#ff8a7a">⚠️ Ztratil jsi spojení s hostitelem</b> · ${VERZE}`;
+    }else if(od > 4){
+      d.style.borderColor = "#e8a52a";
+      d.innerHTML = `<b style="color:#ffc46a">⏳ Hostitel neposílá data (${Math.round(od)} s)</b>`
+        + `<br><span style="font-size:10.5px">Ať nezavírá ani neminimalizuje okno s hrou.</span> · ${VERZE}`;
+    }else{
+      d.style.borderColor = "#8a6a2b";
+      d.innerHTML = `🔌 Hraješ s hostitelem · ${VERZE}`;
+    }
+  }else if(SYNC.jsemHost()){
+    const n = P2P.zivychSpoju();
+    if(SYNC.chyba){
+      d.style.borderColor = "#ff6a5a";
+      d.innerHTML = `<b style="color:#ff8a7a">⚠️ Chyba posílání:</b> ${SYNC.chyba} · ${VERZE}`;
+    }else{
+      d.style.borderColor = n? "#8a6a2b" : "#e8a52a";
+      d.innerHTML = n
+        ? `🔌 Řídíš hru · kamarádů: <b>${n}</b> · ${VERZE}`
+        : `<b style="color:#ffc46a">⚠️ Nikdo připojený</b> · ${VERZE}`;
+    }
+  }else d.style.display="none";
+};
+
+/* při hraní ve více lidech drž okno „vzhůru" */
+(function(){
+  let zamek = null;
+  const drz = async ()=>{
+    try{
+      if(navigator.wakeLock && G.bezi && G.rezim==="multi" && document.visibilityState==="visible" && !zamek)
+        zamek = await navigator.wakeLock.request("screen");
+    }catch(e){}
+  };
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible"){ zamek=null; drz(); } });
+  setInterval(drz, 5000);
+})();
 
 </script>
 </body>
