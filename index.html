@@ -3056,8 +3056,14 @@ function nastavOvladani(){
       if(G.stavim){ postav(wx,wy); }
       else{
         const e = entPod(wx,wy);
+        const mamVesnicany = G.sel.some(s=>jeMuj(s.side) && s.kind==="vesnican" && !s.mrtvy);
+        /* Ťuknutí na SVOU ROZESTAVĚNOU budovu, když mám vybrané vesničany,
+           musí být rozkaz "jdi to dostavět", ne výběr té budovy. Jinak se na
+           mobilu rozdělaná stavba nedala dokončit vůbec – na počítači na to
+           je pravé tlačítko, na dotyku nic takového není. */
+        if(e && jeMuj(e.side) && e.druh==="budova" && !e.hotova && mamVesnicany) rozkaz(wx,wy);
         // ťuknu na svoje = vyberu, ťuknu jinam a mám vybráno = pošlu je tam
-        if(e && (jeMuj(e.side) || (e.druh==="zdroj" && !G.sel.length))) klikVyber(wx,wy);
+        else if(e && (jeMuj(e.side) || (e.druh==="zdroj" && !G.sel.length))) klikVyber(wx,wy);
         else if(G.sel.some(s=>jeMuj(s.side) && s.druh==="jednotka")) rozkaz(wx,wy);
         else klikVyber(wx,wy);
       }
@@ -5354,8 +5360,13 @@ const MLHA = {
     if(this.cv && this.cv.parentNode) this.cv.parentNode.removeChild(this.cv);
     this.cv = document.createElement("canvas");
     this.cv.width = this.sl; this.cv.height = this.ra;
+    /* z-index MUSÍ být nad vším, co se ve světě kreslí, jinak se to prosvítí
+       skrz tmu a je vidět, kde je soupeř. Nad mlhou zůstává jen náhled
+       stavění (99998/99999), což je v pořádku – to je tvoje vlastní pomůcka.
+       Co je pod ní: panáčci (z-index = jejich y, max ~2600), střely 9000,
+       částice 9400, jiskry s čísly poškození 9500. */
     this.cv.style.cssText =
-      "position:absolute;left:0;top:0;pointer-events:none;z-index:9000;" +
+      "position:absolute;left:0;top:0;pointer-events:none;z-index:9800;" +
       "width:" + SVET_W + "px;height:" + SVET_H + "px;filter:blur(6px)";
     SVET.appendChild(this.cv);
     this.ctx = this.cv.getContext("2d");
@@ -5462,6 +5473,20 @@ polohuj = function(e){
     return;
   }
   return polohujPredMlhou(e);
+};
+
+/* ---- efekty v neprozkoumané tmě vůbec nevyrábíme ----
+   Mlha je sice překryje, ale takhle se ani nevytvoří – takže se neprosvítí
+   ani omylem a hra si ušetří stovky zbytečných DOM prvků za vteřinu. */
+const casticePredMlhou = castice;
+castice = function(x, y, barva, n){
+  if(MLHA.zap && MLHA.znam && !MLHA.vidimBod(x, y)) return;
+  return casticePredMlhou(x, y, barva, n);
+};
+const jiskraPredMlhou = jiskra;
+jiskra = function(x, y, text, barva){
+  if(MLHA.zap && MLHA.znam && !MLHA.vidimBod(x, y)) return;
+  return jiskraPredMlhou(x, y, text, barva);
 };
 
 /* ---- výběr: co nevidíš, nejde označit ani na to klikat ---- */
