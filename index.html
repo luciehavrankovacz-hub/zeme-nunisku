@@ -284,7 +284,7 @@ select.pole:disabled,input.pole:disabled{opacity:.55}
 #minimapa{width:180px;height:112px;flex:none;background:#0d1220;border:2px solid #6d5628;border-radius:10px;
   position:relative;overflow:hidden;cursor:crosshair;align-self:flex-end}
 #minimapa canvas{display:block;width:100%;height:100%}
-#zprava{position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:200;pointer-events:none;
+#zprava{position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:500;pointer-events:none;
   display:flex;flex-direction:column;align-items:center;gap:5px;width:min(96vw,620px)}
 .zpr{background:linear-gradient(180deg,rgba(48,36,16,.96),rgba(20,15,8,.96));
   border:2px solid var(--zlata2);border-radius:4px;padding:7px 18px;font-size:15px;letter-spacing:.5px;
@@ -490,7 +490,6 @@ body.mobil #tip{display:none !important}
     <div id="minimapa"><canvas id="mmc" width="360" height="240"></canvas></div>
   </div>
 
-  <div id="zprava"></div>
   <div id="pauza">⏸ PAUZA<br><span style="font-size:17px;opacity:.8">(mezerník)</span></div>
   <div id="konec">
     <h2 id="konecNadpis"></h2>
@@ -502,6 +501,9 @@ body.mobil #tip{display:none !important}
     </div>
   </div>
 </div>
+
+<!-- hlasky jsou MIMO #hra, aby byly videt i v menu a v lobby -->
+<div id="zprava"></div>
 
 <script>
 "use strict";
@@ -3445,11 +3447,29 @@ function postavMenu(){
     setTimeout(()=>document.getElementById("polePozvanka").focus(),120);
   };
   document.getElementById("bNapoveda").onclick = ()=>{ zvuk("klik"); ukazNapovedu(); };
-  document.getElementById("lobbyZpet").onclick = ()=>{ NET.zavri(); zavri("mLobby"); zvuk("klik"); };
+  /* ZPĚT musí zavřít i P2P a maják – jinak hostitel zůstane u ohlašovny
+     zaregistrovaný pod svým kódem a kamarád se připojí do lobby, které už
+     nikdo nemá otevřené. */
+  document.getElementById("lobbyZpet").onclick = ()=>{
+    NET.zavri();
+    try{ if(typeof P2P!=="undefined") P2P.vypni(); }catch(e){}
+    zavri("mLobby"); zvuk("klik");
+  };
   document.getElementById("pridejBota").onclick = pridejBota;
   document.getElementById("startHry").onclick = ()=>{
     if(G.rezim==="multi" && !NET.jsemHost){ zprava("Hru spouští ten, kdo ji vytvořil."); return; }
-    NET.posli({typ:"start", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed});
+    /* Nespouštět, dokud je někdo připojený, ale ještě nezapsaný mezi hráče –
+       jinak by mu hra začala bez jeho místa v seznamu. */
+    if(G.rezim==="multi" && NET.jsemHost && typeof P2P!=="undefined"){
+      const ceka = P2P.spoje.filter(s=>s.stav!=="odpojeno"
+        && (!s.hracId || !lobbyHraci.some(h=>h.id===s.hracId)));
+      if(ceka.length){
+        zprava("⏳ Ještě se " + ceka.length + (ceka.length===1?" kamarád přihlašuje":" kamarádi přihlašují")
+             + ", počkej vteřinku a dej start znovu.","zle");
+        return;
+      }
+    }
+    NET.posli({typ:"start", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, v:VERZE});
     spustHru();
   };
 }
@@ -3714,6 +3734,17 @@ const NET = {
       }
     }
     if(m.typ==="start" && !this.jsemHost){
+      /* Různé verze = jiná mapa, jiné budovy, jiný tvar snímku světa.
+         Radši to říct rovnou, než aby se hra rozsypala v půlce. */
+      if(m.v && m.v !== VERZE){
+        zprava("⚠️ Kamarád má jinou verzi hry ("+m.v+"), ty máš "+VERZE
+             +". Dejte oba Ctrl+F5.","zle");
+        const hl = document.getElementById("joinHlaska");
+        if(hl) hl.innerHTML = "⚠️ <b>Každý máte jinou verzi hry</b><br>Ty "+VERZE
+             + ", kamarád " + m.v + ". Dejte oba <b>Ctrl+F5</b> a zkuste to znovu.";
+        try{ P2P.vypni(); }catch(e){}
+        return;
+      }
       lobbyHraci = m.hraci.map(h=>novyHrac(Object.assign({},h,{ja:h.id===mojeId})));
       G.mapa=m.mapa; G.obt=m.obt; G.seed=m.seed;
       spustHru();
@@ -3742,6 +3773,18 @@ NET.oznam = function(){
 function spustHru(){
   if(G.bezi) return;              // ať se svět nepostaví omylem dvakrát
   const me = lobbyHraci.findIndex(h=>h.id===mojeId);
+  /* POZOR: dřív tu bylo `G.ja = me>=0? me : 0`. Když hostitel spustil hru
+     dřív, než kamaráda stihl zapsat do seznamu, kamarád se tiše prohlásil za
+     hráče 0 – tedy za HOSTITELE. Viděl a ovládal cizí vojsko a jeho rozkazy
+     hostitel zahazoval. Radši to poctivě přiznáme a hru nespustíme. */
+  if(me < 0 && G.rezim === "multi" && !NET.jsemHost){
+    zprava("⚠️ Hostitel spustil hru dřív, než tě stihl zapsat. Připoj se prosím znovu.","zle");
+    const hl = document.getElementById("joinHlaska");
+    if(hl) hl.innerHTML = "⚠️ <b>Hostitel spustil hru moc brzo</b><br>"
+      + "Nestihl tě zapsat mezi hráče. Ať udělá novou hru a připoj se znovu.";
+    try{ P2P.vypni(); }catch(e){}
+    return;
+  }
   G.hraci = lobbyHraci.map(h=>novyHrac(Object.assign({},h)));
   G.ja = me>=0? me : 0;
   if(!G.hraci.some((h,i)=>i!==G.ja)){
@@ -4516,6 +4559,23 @@ function nastavJoin(){
 const prijmiPredJoin = NET.prijmi.bind(NET);
 NET.prijmi = function(m){
   if(!(m instanceof ArrayBuffer) && m && m.typ==="join" && (P2P.jeHost || NET.jsemHost)){
+    /* Kdo přijde, když hra už běží, se nesmí tiše přidat do seznamu hráčů –
+       ve hře pro něj není místo (G.hraci se zmrazí při startu) a kamarád by
+       jen zíral na "Připojuji…" donekonečna. Buď se vrací do rozehrané hry
+       (to zvládne bot-flag v P2P.zprava), nebo mu slušně řekneme, ať počká. */
+    /* proId: zpráva jde všem spojením, ale platí jen pro toho jednoho –
+       ostatní, kteří v klidu hrají, ji musí ignorovat. */
+    const znamy = lobbyHraci.some(h=>h.id===m.hrac.id);
+    if(G.bezi && !znamy){
+      P2P.posliVsem({typ:"plno", duvod:"bezi", proId:m.hrac.id});
+      zprava("🙋 Někdo se chtěl připojit, ale hra už běží.","zle");
+      return;
+    }
+    if(G.bezi && znamy){ return; }          // vrátil se, o zbytek se stará P2P.zprava
+    if(!znamy && lobbyHraci.length>=8){
+      P2P.posliVsem({typ:"plno", duvod:"plno", proId:m.hrac.id});
+      return;
+    }
     if(!lobbyHraci.some(h=>h.id===m.hrac.id) && lobbyHraci.length<8){
       // jméno od cizího hráče očistíme hned na vstupu a ikonu bereme jen ze seznamu,
       // ať se do lobby nedostane nic, co by se dalo zneužít
@@ -4529,6 +4589,18 @@ NET.prijmi = function(m){
       NET.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed});
       kresliLobby(); kresliP2P();
     }
+    return;
+  }
+  /* ---- kamarád: hostitel mě odmítl, ať vím proč ---- */
+  if(!(m instanceof ArrayBuffer) && m && m.typ==="plno"
+     && !NET.jsemHost && !P2P.jeHost && m.proId === mojeId){
+    const hl = document.getElementById("joinHlaska");
+    const bezi = m.duvod === "bezi";
+    if(hl) hl.innerHTML = bezi
+      ? "⏳ <b>Hra už začala bez tebe</b><br>Ať kamarád po dohrání udělá novou hru a připoj se znovu."
+      : "🚪 <b>U kamaráda je plno</b><br>Hraje už s osmi hráči.";
+    zprava(bezi ? "⏳ Hra už začala – nestihl ses připojit." : "🚪 U kamaráda je plno.","zle");
+    try{ P2P.vypni(); }catch(e){}
     return;
   }
   prijmiPredJoin(m);
@@ -4673,9 +4745,20 @@ P2P.majakHost = function(m){
     const src = m.src;
     const spojId = (m.payload && m.payload.connectionId) || "dc_nunisci";
     if(this.spoje.some(s=>s.peer===src && s.stav!=="odpojeno")) return;   // už ho řešíme
-    if(this.spoje.filter(s=>s.stav!=="odpojeno").length >= 5) return;
+    /* 7 kamarádů + hostitel = 8 hráčů, jak slibuje lobby. A když je plno,
+       musí se to říct – dřív se to jen mlčky zahodilo a kamarád koukal do
+       prázdna, dokud mu po 20 vteřinách nevyskočilo nepravdivé hlášení. */
+    if(this.spoje.filter(s=>s.stav!=="odpojeno").length >= 7){
+      MAJAK.posli(src, "ANSWER", {chyba:"PLNO"}, spojId);
+      return;
+    }
+    if(m.payload && m.payload.v && m.payload.v !== VERZE){
+      MAJAK.posli(src, "ANSWER", {chyba:"VERZE", v:VERZE}, spojId);
+      return;
+    }
     const pc = new RTCPeerConnection(LEDOVCE);
-    const spoj = {pc, kanal:null, stav:"ceka", peer:src, spojId, slot:this.spoje.length+1};
+    const spoj = {pc, kanal:null, stav:"ceka", peer:src, spojId, slot:this.spoje.length+1,
+                  fronta:[], pripraven:false};
     this.spoje.push(spoj);
     pc.ondatachannel = ev => zapojKanaly(spoj, ev.channel);
     pc.onicecandidate = ev => { if(ev.candidate) MAJAK.posli(src, "CANDIDATE", {candidate:ev.candidate}, spojId); };
@@ -4688,6 +4771,10 @@ P2P.majakHost = function(m){
         await pc.setLocalDescription(await pc.createAnswer());
         MAJAK.posli(src, "ANSWER", {sdp:pc.localDescription}, spojId);
         spoj.jm = ocistiJmeno(m.payload.jm); spoj.ikona = m.payload.ikona;
+        /* adresy, které dorazily dřív než tohle, teď teprve smíme použít */
+        spoj.pripraven = true;
+        for(const c of spoj.fronta) spoj.pc.addIceCandidate(c).catch(()=>{});
+        spoj.fronta.length = 0;
         kresliP2P();
       }catch(e){ spoj.stav="odpojeno"; kresliP2P(); }
     })();
@@ -4695,7 +4782,10 @@ P2P.majakHost = function(m){
   if(m.type==="CANDIDATE"){
     const spoj = this.spoje.find(s=>s.peer===m.src);
     if(spoj && m.payload && m.payload.candidate){
-      spoj.pc.addIceCandidate(m.payload.candidate).catch(()=>{});
+      /* Adresa může dorazit dřív, než je hotový setRemoteDescription. Dřív se
+         v tu chvíli mlčky zahodila a spojení se pak občas vůbec nenavázalo. */
+      if(spoj.pripraven) spoj.pc.addIceCandidate(m.payload.candidate).catch(()=>{});
+      else (spoj.fronta = spoj.fronta || []).push(m.payload.candidate);
     }
   }
 };
@@ -4721,20 +4811,39 @@ P2P.pripojKodem = function(kod){
       udelejKanaly(pc, spoj);
       pc.onicecandidate = ev => { if(ev.candidate) MAJAK.posli(cil, "CANDIDATE", {candidate:ev.candidate}, spojId); };
 
-      let odpovedeno = false;
+      let odpovedeno = false, pripraven = false;
+      const frontaAdres = [];
       await MAJAK.pripoj(mojeIdMajak, m=>{
         if(m.type==="ANSWER" && !odpovedeno){
+          /* hostitel může místo spojení poslat důvod, proč to nejde */
+          if(m.payload && m.payload.chyba==="PLNO"){
+            chyba(new Error("U kamaráda je plno – hraje už s osmi hráči.")); return;
+          }
+          if(m.payload && m.payload.chyba==="VERZE"){
+            chyba(new Error("Máte každý jinou verzi hry (ty "+VERZE+", kamarád "
+              +(m.payload.v||"?")+"). Dejte oba Ctrl+F5 a zkuste to znovu.")); return;
+          }
           odpovedeno = true;
-          pc.setRemoteDescription(m.payload.sdp).catch(()=>{});
+          pc.setRemoteDescription(m.payload.sdp).then(()=>{
+            pripraven = true;
+            for(const c of frontaAdres) pc.addIceCandidate(c).catch(()=>{});
+            frontaAdres.length = 0;
+          }).catch(()=>{});
         }
         if(m.type==="CANDIDATE" && m.payload && m.payload.candidate){
-          pc.addIceCandidate(m.payload.candidate).catch(()=>{});
+          // adresa může dorazit dřív než odpověď – schovat si ji, ne zahodit
+          if(pripraven) pc.addIceCandidate(m.payload.candidate).catch(()=>{});
+          else frontaAdres.push(m.payload.candidate);
         }
-        if(m.type==="EXPIRE"){ chyba(new Error("NENALEZEN")); }
+        if(m.type==="EXPIRE"){
+          chyba(new Error("Hru s kódem "+kod+" jsem nenašel. Zkontroluj písmenka "
+            +"a ať má kamarád otevřené lobby."));
+        }
       });
 
       await pc.setLocalDescription(await pc.createOffer());
-      MAJAK.posli(cil, "OFFER", {sdp:pc.localDescription, jm:UCET.jm, ikona:UCET.ikona}, spojId);
+      MAJAK.posli(cil, "OFFER",
+        {sdp:pc.localDescription, jm:UCET.jm, ikona:UCET.ikona, v:VERZE}, spojId);
 
       // čekáme, až se kanál otevře
       const zacatek = Date.now();
@@ -4897,11 +5006,16 @@ document.getElementById("poleKod").addEventListener("keydown", ev=>{
   if(ev.key==="Enter") document.getElementById("joinKodOk").click();
 });
 
-/* --- při startu hry maják už nepotřebujeme --- */
+/* --- maják necháváme běžet i po startu hry ---
+   Dřív se 1,5 s po startu zavíral. Mělo to dva ošklivé následky:
+   kamarád, který se zrovna spojoval, přišel o zbytek adres a spadl do
+   prázdna – a kdo vypadl, neměl se kudy vrátit. Tep majáku je jedna zpráva
+   za 5 vteřin, takže ho klidně necháme otevřený celou partii.
+   Zavře se sám při P2P.vypni() (konec hry, návrat do menu) a při zavření
+   okna, viz níž. */
 const spustHruBezMajaku = spustHru;
 spustHru = function(){
-  spustHruBezMajaku();
-  setTimeout(()=>MAJAK.zavri(), 1500);
+  spustHruBezMajaku.apply(this, arguments);
 };
 window.addEventListener("beforeunload", ()=>{ try{ MAJAK.zavri(); }catch(e){} });
 
@@ -4958,8 +5072,22 @@ P2P.posliVsem = function(m, kromě, spolehlive){
 
 /* --- kdy naposled něco přišlo --- */
 SYNC.posledniPrijem = 0;
+SYNC.chybaPrijmu = null;
 const prijmiBinPuvodni = SYNC.prijmiBin.bind(SYNC);
-SYNC.prijmiBin = function(u8){ SYNC.posledniPrijem = Date.now(); return prijmiBinPuvodni(u8); };
+/* POZOR na pořadí: značka času se smí nastavit AŽ po úspěšném rozbalení.
+   Dřív se nastavovala předem a rozbalování nemělo žádné ošetření chyby –
+   takže když snímek přišel poškozený, výjimka spadla do prázdna, svět
+   zamrzl a proužek u toho vesele svítil „Spojeno". */
+SYNC.prijmiBin = function(u8){
+  try{
+    const r = prijmiBinPuvodni(u8);
+    SYNC.posledniPrijem = Date.now();
+    SYNC.chybaPrijmu = null;
+    return r;
+  }catch(e){
+    SYNC.chybaPrijmu = e.message || "neznámá chyba";
+  }
+};
 
 /* --- proužek se stavem spojení ve hře --- */
 (function(){
@@ -4982,6 +5110,9 @@ function obnovStavSite(){
     const od = SYNC.posledniPrijem? ((Date.now()-SYNC.posledniPrijem)/1000) : 999;
     if(!kanalOk)
       d.innerHTML = `<b style="color:#ff8a7a">⚠️ Ztratil jsi spojení s hostitelem</b> · ${VERZE}`;
+    else if(SYNC.chybaPrijmu)
+      d.innerHTML = `<b style="color:#ff8a7a">⚠️ Data od hostitele nedávají smysl</b>`
+        + `<br><span style="font-size:10.5px">Nejspíš máte každý jinou verzi – dejte oba Ctrl+F5.</span> · ${VERZE}`;
     else if(od > 3)
       d.innerHTML = `<b style="color:#ffc46a">⏳ Čekám na data od hostitele (${Math.round(od)} s)</b> · ${VERZE}`;
     else
