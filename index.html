@@ -1531,9 +1531,9 @@ const BUD = {
     popis:"Staví BERANIDLO a TREBUCHET – stroje, které boří nepřátelské budovy.",
     cvici:["beranidlo","trebuchet"]},
   /* zed:1 = hradba/brána. Vydrží mnohem víc než ostatní budovy a staví se do řady tažením. */
-  hradba:{jm:"Hradba", hp:1300, r:26, vel:64, cena:{drevo:25,zelezo:10}, cas:6, zed:1,
+  hradba:{jm:"Hradba", hp:1300, r:26, vel:64, cena:{drevo:12,zelezo:3}, cas:5, zed:1,
     popis:"Pevná zeď. Vydrží mnohem víc než ostatní budovy a nepřátele zdrží.", cvici:[]},
-  brana:{jm:"Brána", hp:1200, r:26, vel:70, cena:{drevo:40,zelezo:15}, cas:9, zed:1, brana:1,
+  brana:{jm:"Brána", hp:1200, r:26, vel:70, cena:{drevo:24,zelezo:6}, cas:8, zed:1, brana:1,
     popis:"Sama se otevře tobě i spojencům. Nepřítele nepustí.", cvici:[]}
 };
 
@@ -2242,10 +2242,28 @@ function updJednotku(e, dt){
     if(e.naklad && e.naklad.ks>0){ e.stav="vrat"; e.vratCas=0; e.skladE=null; }
     else novyZdroj(e);
   }
-  // automatické bránění (stroje se nebrání samy – musíš jim říct, do čeho mlátit)
-  if(e.stav==="stoj" && e.kind!=="vesnican" && !JED[e.kind].stroj){
-    const c = nepritelBlizko(e, e.kind==="lukostrelec"?230:190);
-    if(c){ e.stav="utok"; e.cilE=c; e.hlidka={x:e.x,y:e.y}; }
+  // automatické bránění
+  if(e.stav==="stoj" && e.kind!=="vesnican"){
+    if(JED[e.kind].stroj){
+      /* Stroj si sám najde další BUDOVU – aby po zboření cíle pokračoval
+         a nezůstal stát (vypadalo to, že vystřelí jednou a dost).
+         Tři pravidla, ať to není otravné ani nefér:
+         - po „Stůj" (klid) si nehledá nic, dokud mu něco nerozkážeš
+         - hledá jen na svůj DOHLED, ne až na dostřel – jinak by trebuchet
+           střílel do černé mlhy na budovu, kterou jsi ještě neobjevil
+         - nehledá každý krok, ale 2x za vteřinu (jinak by to při víc strojích
+           procházelo všechny budovy pořád dokola) */
+      e.hledaniCd = (e.hledaniCd||0) - dt;
+      if(!e.klid && e.hledaniCd <= 0){
+        e.hledaniCd = 0.5;
+        const dosah = (typeof DOHLED!=="undefined" && DOHLED[e.kind]) || 200;
+        const b = nejbliz(G.budovy, e.x, e.y, o=>jeNepritel(e.side,o.side) && !o.mrtvy, dosah);
+        if(b){ e.stav="utok"; e.cilE=b; }
+      }
+    }else{
+      const c = nepritelBlizko(e, e.kind==="lukostrelec"?230:190);
+      if(c){ e.stav="utok"; e.cilE=c; e.hlidka={x:e.x,y:e.y}; }
+    }
   }
 
   switch(e.stav){
@@ -2678,6 +2696,7 @@ function rozkaz(x,y){
     if(b){ b.rally={x,y}; jiskra(x,y,"🚩","#8ef0a0"); zvuk("klik"); }
     return;
   }
+  for(const u of moji) u.klid = false;   // nový rozkaz ruší „Stůj"
   const cil = entPod(x,y);
   const vesnicani = moji.filter(u=>u.kind==="vesnican");
   const vojaci = moji.filter(u=>u.kind!=="vesnican");
@@ -2745,9 +2764,20 @@ function zrusStaveni(){ G.stavim=null; if(G.ghost) G.ghost.style.display="none";
 function mistoVolne(kind,x,y){
   const r = BUD[kind].r;
   if(x<r+30||y<r+30||x>SVET_W-r-30||y>SVET_H-r-30) return false;
+  const jaZed = !!BUD[kind].zed;
   for(const e of G.ents){
     if(e.mrtvy) continue;
-    if(e.druh==="budova" && dist2(x,y,e.x,e.y) < r+e.r+14) return false;
+    if(e.druh==="budova"){
+      /* Hradby a brány mají na sebe NAVAZOVAT, takže smí stát těsně u sebe.
+         Odstup 14 px navíc platí jen mezi normálními budovami – kvůli němu
+         se dřív z tažené řady postavil jen každý druhý kus a mezera pak
+         nešla doplnit ani ručně. */
+      if(jaZed && BUD[e.kind].zed){
+        // zdi smí navazovat; vadí, až když si lezou na sebe v OBOU směrech
+        if(Math.abs(x-e.x) < ZED_MIN_X && Math.abs(y-e.y) < ZED_MIN_Y) return false;
+      }
+      else if(dist2(x,y,e.x,e.y) < r+e.r+14) return false;
+    }
     if(e.druh==="zdroj"  && dist2(x,y,e.x,e.y) < r+e.r*0.7) return false;
   }
   return true;
@@ -2860,7 +2890,7 @@ function obnovPanel(){
       "Pošle vybrané vesničany k nejbližší surovině."));
   }
   if(jeJed && G.sel.some(u=>u.kind!=="vesnican")){
-    A.appendChild(tlacitko("🛑","Stůj","",true,()=>{ for(const u of G.sel){u.stav="stoj"; u.cilE=null; u.hlidka=null;} zvuk("klik"); },
+    A.appendChild(tlacitko("🛑","Stůj","",true,()=>{ for(const u of G.sel){u.stav="stoj"; u.cilE=null; u.hlidka=null; u.klid=true;} zvuk("klik"); },
       "Vojáci se zastaví na místě."));
   }
   if(e.druh==="budova"){
@@ -3084,8 +3114,27 @@ function ghostNa(wx,wy){
 /* ============================================================
    HRADBY – staví se tažením, celá řada najednou
    ============================================================ */
-const ZED_KROK = 46;      // rozestup kusů zdi, ať na sebe navazují
-const ZED_MAX  = 40;      // strop, ať se jedním tahem nepostaví půl mapy
+/* POZOR na tvar kresby: kus zdi je ve viewBoxu široký ~102, ale vysoký jen ~53.
+   V dílku 64 px to znamená asi 65 px na šířku, ale jen 34 px na výšku. Rozestup
+   proto NESMÍ být stejný do stran a dolů – s jedním číslem zůstávala ve svislé
+   zdi díra. Vodorovně tedy 60, svisle 30, šikmo něco mezi. */
+const ZED_KROK_X = 60;    // rozestup kusů zdi do stran
+const ZED_KROK_Y = 30;    // rozestup kusů zdi nahoru/dolů
+const ZED_MAX    = 60;    // strop, ať se jedním tahem nepostaví půl mapy
+/* Nejmenší povolená vzdálenost dvou kusů zdi. Taky musí být zvlášť pro obě osy
+   a MENŠÍ než rozestup, jinak si řada odmítne vlastní kusy – přesně tohle
+   dělalo ty mezery, které nešly doplnit. Musí být menší i než ŠIKMÝ krok
+   (ten má složky asi 42 a 21), jinak si šikmá zeď odmítne každý druhý kus. */
+const ZED_MIN_X  = 38;
+const ZED_MIN_Y  = 18;
+/* Krok podle směru tahu: vodorovně ZED_KROK_X, svisle ZED_KROK_Y, šikmo plynule
+   mezi tím (jde o bod na elipse s těmihle poloosami). */
+function krokZdi(dx, dy){
+  const d = Math.hypot(dx, dy);
+  if(d < 1) return ZED_KROK_X;
+  const cx = Math.abs(dx)/d/ZED_KROK_X, cy = Math.abs(dy)/d/ZED_KROK_Y;
+  return 1 / Math.sqrt(cx*cx + cy*cy);
+}
 /* Body, kam přijdou jednotlivé kusy zdi. Táhne se po přímce, ale drží se
    svislice/vodorovnice, když je tah skoro rovný – líp se to staví. */
 function bodyZdi(x1,y1,x2,y2){
@@ -3093,10 +3142,11 @@ function bodyZdi(x1,y1,x2,y2){
   if(Math.abs(dx) > Math.abs(dy)*3) dy = 0;
   else if(Math.abs(dy) > Math.abs(dx)*3) dx = 0;
   const d = Math.hypot(dx,dy);
-  const n = Math.min(ZED_MAX, Math.floor(d/ZED_KROK)+1);
+  const krok = krokZdi(dx, dy);
+  const n = Math.min(ZED_MAX, Math.floor(d/krok)+1);
   const out = [];
   for(let i=0;i<n;i++){
-    const t = d>0? (i*ZED_KROK)/d : 0;
+    const t = d>0? (i*krok)/d : 0;
     out.push({x: klam(x1+dx*t,40,SVET_W-40), y: klam(y1+dy*t,40,SVET_H-40)});
   }
   return out;
@@ -3132,10 +3182,10 @@ function postavZed(x1,y1,x2,y2){
   if(!kind || !BUD[kind].zed) return;
   const body = bodyZdi(x1,y1,x2,y2);
   const predtim = G.budovy.length;
-  let n = 0, drahe = false;
+  let n = 0, drahe = false, preskoceno = 0;
   for(const bod of body){
     if(!lzeZaplatit(cenaBudovy(kind,G.ja))){ drahe = true; break; }
-    if(!mistoVolne(kind,bod.x,bod.y)) continue;
+    if(!mistoVolne(kind,bod.x,bod.y)){ preskoceno++; continue; }
     G.stavim = kind;                 // postav() ho po sobě pokaždé zruší
     postav(bod.x, bod.y);
     n++;
@@ -3150,6 +3200,9 @@ function postavZed(x1,y1,x2,y2){
   if(!n) zprava("Tady zeď nejde postavit – něco tam překáží.","zle");
   else{
     zprava("🧱 Stavím "+n+(n===1?" kus":(n<5?" kusy":" kusů"))+" zdi.","dobre");
+    // ať hráč neháda, proč je v řadě díra
+    if(preskoceno) zprava("⚠️ "+preskoceno+(preskoceno===1?" kus":(preskoceno<5?" kusy":" kusů"))
+                          +" se nevešlo – překáží strom nebo budova.","zle");
     if(drahe) zprava("Došly suroviny, postavil jsem, co šlo.","zle");
   }
   obnovPanel();
@@ -5155,7 +5208,8 @@ SYNC.provedCizi = function(m){
     return;
   }
   if(m.cmd==="stuj"){
-    for(const u of moje){ u.stav="stoj"; u.cilE=null; u.hlidka=null; u.tezar=false; }
+    // klid=true: stroj si po zastavení sám nehledá nový cíl, dokud mu něco nerozkážeš
+    for(const u of moje){ u.stav="stoj"; u.cilE=null; u.hlidka=null; u.tezar=false; u.klid=true; }
     return;
   }
   provedCiziPred(m);
@@ -5252,6 +5306,207 @@ SYNC.dokresli = function(dt){
     }
     this.predRes[k] = R[k];
   }
+};
+
+/* ============================================================
+   41) MLHA VÁLKY – co jsi neprozkoumal, je černé
+   ============================================================
+   Jak to funguje:
+   - Mapa je rozdělená na políčka 40x40 px. O každém si pamatujeme dvě věci:
+     ZNÁM (už jsem tam někdy byl) a VIDÍM (koukám se tam právě teď).
+   - Vidění dávají jen TVOJE a SPOJENCOVY jednotky a budovy, každá do svého
+     dohledu. Nepřátelské ne.
+   - Kreslí se to jako maličký obrázek (90x65 bodů), který se roztáhne přes
+     celou mapu – proto je to skoro zadarmo, i když má mapa 3600x2600 px.
+   - Je to POUZE VIDITELNOST, do hry to nezasahuje. Kdyby zasahovalo, rozešel
+     by se svět hostitele a kamaráda. Každý si počítá svou mlhu sám.
+
+   Vypnout se dá jedním řádkem: MLHA.zap = false (a MLHA.znam.fill(1)). */
+
+/* Kdo jak daleko vidí. Věž a hrad jsou rozhledny, jezdec je zvěd.
+   Trebuchet vidí 300, ale dostřelí 340 – na ten kousek navíc mu musíš cíl
+   ukázat sám. Dohled strojů je zároveň to, kam si SAMY smí vzít další cíl
+   (p4a), takže moc malý dohled by znamenal, že se po zboření budovy zastaví. */
+const DOHLED = {
+  vesnican:170, vojak:200, lukostrelec:240, jezdec:260, slon:210, hrdina:260,
+  beranidlo:210, trebuchet:300,
+  radnice:300, domek:180, kasarna:220, staj:220, vez:330, hrad:380,
+  dilna:220, hradba:190, brana:190
+};
+
+const MLHA = {
+  zap: true,
+  krok: 40,
+  sl: 0, ra: 0,
+  znam: null, vidim: null,
+  cv: null, ctx: null, img: null,
+  hodiny: null,
+
+  dohled(e){ return DOHLED[e.kind] || 200; },
+
+  start(){
+    this.sl = Math.ceil(SVET_W / this.krok);
+    this.ra = Math.ceil(SVET_H / this.krok);
+    const n = this.sl * this.ra;
+    this.znam  = new Uint8Array(n);
+    this.vidim = new Uint8Array(n);
+
+    if(this.cv && this.cv.parentNode) this.cv.parentNode.removeChild(this.cv);
+    this.cv = document.createElement("canvas");
+    this.cv.width = this.sl; this.cv.height = this.ra;
+    this.cv.style.cssText =
+      "position:absolute;left:0;top:0;pointer-events:none;z-index:9000;" +
+      "width:" + SVET_W + "px;height:" + SVET_H + "px;filter:blur(6px)";
+    SVET.appendChild(this.cv);
+    this.ctx = this.cv.getContext("2d");
+    this.img = this.ctx.createImageData(this.sl, this.ra);
+
+    if(this.hodiny) clearInterval(this.hodiny);
+    /* Vlastní tep – s herní smyčkou to nemá co dělat, je to jen obrázek.
+       Na pozadí si to prohlížeč sám zpomalí, což vůbec nevadí. */
+    this.hodiny = setInterval(() => this.tik(), 160);
+    this.tik();
+  },
+
+  konec(){
+    if(this.hodiny){ clearInterval(this.hodiny); this.hodiny = null; }
+  },
+
+  mujTym(){
+    const h = G.hraci[G.ja];
+    return h ? h.tym : -1;
+  },
+  spojenec(side){
+    if(side < 0) return false;
+    const h = G.hraci[side];
+    return !!h && h.tym === this.mujTym();
+  },
+
+  prepocitej(){
+    this.vidim.fill(0);
+    const k = this.krok, sl = this.sl, ra = this.ra;
+    for(const e of G.ents){
+      if(e.mrtvy || e.druh === "zdroj") continue;
+      if(!this.spojenec(e.side)) continue;
+      const r = this.dohled(e), rr = r * r;
+      const c0 = Math.max(0, Math.floor((e.x - r) / k)), c1 = Math.min(sl - 1, Math.floor((e.x + r) / k));
+      const r0 = Math.max(0, Math.floor((e.y - r) / k)), r1 = Math.min(ra - 1, Math.floor((e.y + r) / k));
+      for(let ry = r0; ry <= r1; ry++){
+        const dy = (ry + 0.5) * k - e.y, dyy = dy * dy, radek = ry * sl;
+        for(let rx = c0; rx <= c1; rx++){
+          const dx = (rx + 0.5) * k - e.x;
+          if(dx * dx + dyy <= rr){ const i = radek + rx; this.vidim[i] = 1; this.znam[i] = 1; }
+        }
+      }
+    }
+  },
+
+  vykresli(){
+    const d = this.img.data;
+    for(let i = 0, j = 0; i < this.znam.length; i++, j += 4){
+      d[j] = 0; d[j + 1] = 0; d[j + 2] = 0;
+      d[j + 3] = this.vidim[i] ? 0 : (this.znam[i] ? 105 : 255);
+    }
+    this.ctx.putImageData(this.img, 0, 0);
+  },
+
+  index(x, y){
+    const cx = Math.floor(x / this.krok), cy = Math.floor(y / this.krok);
+    if(cx < 0 || cy < 0 || cx >= this.sl || cy >= this.ra) return -1;
+    return cy * this.sl + cx;
+  },
+  znamBod(x, y){ const i = this.index(x, y); return i < 0 ? true : !!this.znam[i]; },
+  vidimBod(x, y){ const i = this.index(x, y); return i < 0 ? true : !!this.vidim[i]; },
+
+  /* Panáčky nepřítele vidíš, jen když se tam právě koukáš.
+     Budovy a stromy zůstanou, jakmile je jednou objevíš (jako v Age of Empires). */
+  viditelna(e){
+    if(!this.zap || !this.znam) return true;
+    if(this.spojenec(e.side)) return true;
+    const i = this.index(e.x, e.y);
+    if(i < 0) return true;
+    return e.druh === "jednotka" ? !!this.vidim[i] : !!this.znam[i];
+  },
+
+  uplatni(){
+    for(const e of G.ents){
+      const skryt = !this.viditelna(e);
+      if(e.mlhaSkryt === skryt) continue;
+      e.mlhaSkryt = skryt;
+      /* Panáčkům nastavuje display polohuj() (kvůli ořezu podle kamery),
+         ať se o něj nepereme. Budovy a stromy si řídíme sami. */
+      if(e.druh !== "jednotka" && e.el) e.el.style.display = skryt ? "none" : "";
+    }
+  },
+
+  tik(){
+    if(!this.zap || !G.bezi || !this.znam) return;
+    this.prepocitej();
+    this.vykresli();
+    this.uplatni();
+  }
+};
+
+/* zapnout při startu hry a zhasnout po jejím konci */
+const spustHruPredMlhou = spustHru;
+spustHru = function(){
+  spustHruPredMlhou.apply(this, arguments);
+  try{ MLHA.start(); }catch(e){ console.warn("mlha:", e); }
+};
+
+/* ---- panáčci schovaní mlhou se nekreslí (ořez podle kamery je v polohuj) ---- */
+const polohujPredMlhou = polohuj;
+polohuj = function(e){
+  if(e.mlhaSkryt && e.druh === "jednotka"){
+    if(!e.mimo){ e.mimo = true; e.el.style.display = "none"; }
+    return;
+  }
+  return polohujPredMlhou(e);
+};
+
+/* ---- výběr: co nevidíš, nejde označit ani na to klikat ---- */
+const entPodPredMlhou = entPod;
+entPod = function(x, y){
+  const e = entPodPredMlhou(x, y);
+  if(e && MLHA.zap && e.mlhaSkryt) return null;
+  return e;
+};
+const ramecekVyberPredMlhou = ramecekVyber;
+ramecekVyber = function(x1, y1, x2, y2){
+  ramecekVyberPredMlhou(x1, y1, x2, y2);
+  if(MLHA.zap) vyber(G.sel.filter(e => !e.mlhaSkryt));
+};
+
+/* ---- minimapa: neprozkoumané je černé, nepřátele vidíš jen tam, kam koukáš ---- */
+const kresliMinimapuPredMlhou = kresliMinimapu;
+kresliMinimapu = function(){
+  if(!MLHA.zap || !MLHA.znam) return kresliMinimapuPredMlhou();
+  const w = MMC.width, h = MMC.height, sx = w / SVET_W, sy = h / SVET_H;
+  MMX.fillStyle = MAPY[G.mapa].zeme; MMX.fillRect(0, 0, w, h);
+  for(const z of G.zdroje){
+    if(!MLHA.znamBod(z.x, z.y)) continue;
+    MMX.fillStyle = z.typ === "drevo" ? "#2f7a35" : z.typ === "zlato" ? "#ffd447" : "#c3d6e8";
+    MMX.fillRect(z.x * sx - 1.5, z.y * sy - 1.5, 3, 3);
+  }
+  for(const b of G.budovy){
+    if(!MLHA.viditelna(b)) continue;
+    MMX.fillStyle = barvaHrace(b.side).h;
+    const s = (b.kind === "radnice" || b.kind === "hrad") ? 8 : 5;
+    MMX.fillRect(b.x * sx - s / 2, b.y * sy - s / 2, s, s);
+  }
+  for(const j of G.jednotky){
+    if(!MLHA.viditelna(j)) continue;
+    MMX.fillStyle = barvaHrace(j.side).h;
+    MMX.fillRect(j.x * sx - 2, j.y * sy - 2, 4, 4);
+  }
+  /* černý závoj přes neprozkoumané */
+  const kx = MLHA.krok * sx, ky = MLHA.krok * sy;
+  MMX.fillStyle = "rgba(0,0,0,.82)";
+  for(let ry = 0; ry < MLHA.ra; ry++)
+    for(let rx = 0; rx < MLHA.sl; rx++)
+      if(!MLHA.znam[ry * MLHA.sl + rx]) MMX.fillRect(rx * kx, ry * ky, kx + 1, ky + 1);
+  MMX.strokeStyle = "#fff"; MMX.lineWidth = 2;
+  MMX.strokeRect(G.cam.x * sx, G.cam.y * sy, vidW() * sx, vidH() * sy);
 };
 
 </script>
