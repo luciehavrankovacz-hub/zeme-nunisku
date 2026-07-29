@@ -3598,7 +3598,10 @@ SYNC.zabalSnimek = function(){
     this.posledniStav.set(o.id, klic);
     zaznamy.push([o.id, druh, kindIdx(o.kind), o.side<0?15:o.side, x, y, hp, prapor]);
   };
-  for(const u of G.jednotky) if(!u.mrtvy) pridej(u, 0, u.hp, (u.smer<0?1:0));
+  /* příznaky: 1 = kouká doleva, 2 = zrovna těží/staví, 4 = bojuje
+     (aby si kamarád mohl dokreslit mávání sekerou a jiskry) */
+  for(const u of G.jednotky) if(!u.mrtvy) pridej(u, 0, u.hp,
+    (u.smer<0?1:0) | (u.kotva?2:0) | (u.stav==="utok"?4:0));
   for(const b of G.budovy)   if(!b.mrtvy) pridej(b, 1, b.hp, (b.hotova?1:0) | (Math.round(b.postup*100)<<1));
   for(const z of G.zdroje)   if(!z.mrtvy && z.zasoba<z.maxZasoba) pridej(z, 2, z.zasoba, 0);
 
@@ -4271,7 +4274,7 @@ P2P.vypni = function(){ vypniBezMajaku(); MAJAK.zavri(); };
    38) VERZE A KONTROLA SPOJENÍ
    Aby šlo poznat, kdo má jakou verzi, a co se se spojením děje.
    ============================================================ */
-const VERZE = "v11";
+const VERZE = "v12";
 
 (function(){
   const p = document.getElementById("menuPata");
@@ -4582,6 +4585,70 @@ obnovPanel = function(){
     else if(jm==="Stůj")
       b.onclick = ()=>{ NET.posli({typ:"cmd", cmd:"stuj", side:G.ja, ids:mojeIds()}); zvuk("klik"); };
   });
+};
+
+
+/* ============================================================
+   44) EFEKTY I U KAMARÁDA
+   Hostitel posílá v příznacích, že panáček zrovna pracuje.
+   Mávání sekerou, jiskry a "+12" si kamarád dokreslí sám.
+   ============================================================ */
+SYNC.dokresli = function(dt){
+  for(const u of G.jednotky){
+    if(u.mrtvy || u.tx===undefined) continue;
+    const dx = u.tx-u.x, dy = u.ty-u.y, d = Math.hypot(dx,dy);
+    if(d > 260){ u.x=u.tx; u.y=u.ty; u.hopY=0; }
+    else if(d > 0.6){
+      const k = Math.min(1, dt/0.11);
+      u.x += dx*k; u.y += dy*k;
+      if(d > 2){ u.hop += dt*11; u.hopY = Math.abs(Math.sin(u.hop))*3.2; }
+      else if(u.hopY) u.hopY *= 0.8;
+    }else{
+      u.x=u.tx; u.y=u.ty;
+      if(u.hopY) u.hopY *= 0.8;
+    }
+
+    /* zrovna kope / kácí / staví → mávej a odletují třísky */
+    if(u.tezi){
+      u.swingT = (u.swingT||0) + dt*9;
+      u.swing = Math.sin(u.swingT)*15;
+      u.castCas = (u.castCas||0) + dt;
+      if(u.castCas > 0.36){
+        u.castCas = 0;
+        if(!u.zdrojCache || u.zdrojCache.mrtvy)
+          u.zdrojCache = nejbliz(G.zdroje, u.x, u.y, null, 95);
+        const z = u.zdrojCache;
+        castice(u.x + nah(-14,14), u.y - (z? z.vel*0.42 : 34),
+          z ? (z.typ==="drevo" ? "#a8dd9c" : (z.typ==="zlato" ? "#ffd447" : "#c3d6e8"))
+            : "#e0c89a", 4);
+      }
+    }else{
+      u.swing = u.swing ? u.swing*0.78 : 0;
+      u.zdrojCache = null;
+    }
+
+    const flip = u.smer<0 ? "scaleX(-1)" : "";
+    const rot = (u.swing && Math.abs(u.swing)>0.5) ? ` rotate(${u.swing.toFixed(1)}deg)` : "";
+    const t = flip + rot;
+    if(u.lastT!==t){ u.svgEl.style.transform = t; u.lastT = t; }
+    polohuj(u);
+  }
+  for(const b of G.budovy) if(!b.mrtvy){ if(b.tx!==undefined) b.x=b.tx; polohuj(b); }
+
+  /* přibyly suroviny → vyskočí "+12" nad radnicí a cinkne to */
+  const R = MY().res;
+  if(!this.predRes) this.predRes = {drevo:R.drevo, zelezo:R.zelezo, zlato:R.zlato};
+  for(const k in this.predRes){
+    const pribylo = Math.round(R[k] - this.predRes[k]);
+    if(pribylo > 0){
+      const s = sklad(G.ja, G.cam.x + vidW()/2, G.cam.y + vidH()/2);
+      if(s){
+        jiskra(s.x + nah(-20,20), s.y - s.vel*0.6, "+"+pribylo+" "+IKONA[k], "#ffe08a");
+        zvuk("mince");
+      }
+    }
+    this.predRes[k] = R[k];
+  }
 };
 
 </script>
