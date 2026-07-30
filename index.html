@@ -3486,6 +3486,7 @@ function tik(t){
   for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
   rozestup();
   updBrany(dt);
+  updOpevneni(dt);
   updStrely(dt);
   updAI(dt);
 
@@ -4245,6 +4246,7 @@ tik = function(t){
   for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
   rozestup();
   updBrany(dt);
+  updOpevneni(dt);
   updStrely(dt);
   updAI(dt);
   if(SYNC.jsemHost()) SYNC.posli(dt);
@@ -5090,7 +5092,12 @@ P2P.pripojKodem = function(kod){
         if(spoj.stav==="spojeno"){ clearInterval(hlidac); hotovo(true); }
         else if(Date.now()-zacatek > 20000){
           clearInterval(hlidac);
-          chyba(new Error(odpovedeno? "Spojení se nepodařilo navázat." : "Hru s tímhle kódem jsem nenašel."));
+          /* Místo holého "nepodařilo se" řekneme PROČ – hlavně jestli to
+             nevypadá na mobilní data / přísný router (viz CESTY v p13b). */
+          const proc = (typeof procSeNespojilo === "function") ? procSeNespojilo() : "";
+          chyba(new Error(odpovedeno
+            ? ("Spojení se nepodařilo navázat. " + proc)
+            : "Hru s tímhle kódem jsem nenašel. Zkontroluj písmenka a ať má kamarád otevřené lobby."));
         }
       }, 250);
     }catch(e){ chyba(e); }
@@ -5402,6 +5409,11 @@ const TIKAC = {
       for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
       for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
       rozestup();
+      /* POZOR: co je v hlavní smyčce (p5/p7b), musí být i tady, jinak se to
+         na pozadí přestane dít. Při slučování větví se to už jednou ztratilo
+         a brány se v skryté záložce zasekly zavřené. */
+      updBrany(dt);
+      updOpevneni(dt);
       updStrely(dt);
       updAI(dt);
       if(SYNC.jsemHost()) SYNC.posli(dt);
@@ -5414,11 +5426,56 @@ TIKAC.start();
    40) NÁHRADNÍ CESTA, KDYŽ ROUTER NEPUSTÍ PŘÍMÉ SPOJENÍ
    (veřejný přeposílací server zdarma – použije se jen když je potřeba)
    ============================================================ */
+/* POZOR (měřeno 30. 7. 2026): na některých sítích nedá ANI JEDEN z těchhle
+   serverů kandidáta typu "relay" – hlásí chybu 701 (host lookup). Když se to
+   stane, hráč za přísným routerem nebo na MOBILNÍCH DATECH se nespojí vůbec.
+   Proto jich je tu víc od různých poskytovatelů: stačí, když zabere jeden.
+   Mrtvá adresa nic nestojí, ICE ji jen přeskočí.
+   Jestli to bude dělat potíže i dál, jediné spolehlivé řešení je placený
+   TURN (viz PREDANI-2.md). */
 LEDOVCE.iceServers.push(
   {urls:"turn:openrelay.metered.ca:80", username:"openrelayproject", credential:"openrelayproject"},
   {urls:"turn:openrelay.metered.ca:443", username:"openrelayproject", credential:"openrelayproject"},
-  {urls:"turn:openrelay.metered.ca:443?transport=tcp", username:"openrelayproject", credential:"openrelayproject"}
+  {urls:"turn:openrelay.metered.ca:443?transport=tcp", username:"openrelayproject", credential:"openrelayproject"},
+  {urls:"turn:staticauth.openrelay.metered.ca:80", username:"openrelayproject", credential:"openrelayproject"},
+  {urls:"turn:staticauth.openrelay.metered.ca:443", username:"openrelayproject", credential:"openrelayproject"},
+  {urls:"turn:staticauth.openrelay.metered.ca:443?transport=tcp", username:"openrelayproject", credential:"openrelayproject"},
+  {urls:"turns:staticauth.openrelay.metered.ca:443", username:"openrelayproject", credential:"openrelayproject"}
 );
+
+/* ---- co se vůbec podařilo sehnat za cesty ke kamarádovi ----
+   Když spojení selže, tohle rozhodne, jestli mu řekneme "zkus Wi-Fi"
+   (žádná přeposílací cesta) nebo něco jiného. */
+const CESTY = {relay:0, srflx:0, host:0, chyba:0, kodChyby:0};
+(function(){
+  const Puvodni = window.RTCPeerConnection;
+  if(typeof Puvodni !== "function") return;
+  const Nove = function(cfg){
+    const pc = new Puvodni(cfg);
+    pc.addEventListener("icecandidate", ev => {
+      const c = ev.candidate && ev.candidate.candidate || "";
+      if(/ typ relay/.test(c)) CESTY.relay++;
+      else if(/ typ srflx/.test(c)) CESTY.srflx++;
+      else if(/ typ host/.test(c)) CESTY.host++;
+    });
+    pc.addEventListener("icecandidateerror", ev => {
+      CESTY.chyba++; if(!CESTY.kodChyby) CESTY.kodChyby = ev.errorCode || 0;
+    });
+    return pc;
+  };
+  Nove.prototype = Puvodni.prototype;
+  window.RTCPeerConnection = Nove;
+})();
+/* Srozumitelné vysvětlení, proč se to nespojilo. */
+function procSeNespojilo(){
+  if(!CESTY.relay && !CESTY.srflx)
+    return "Nepodařilo se zjistit tvoji adresu na internetu. Zkontroluj připojení "
+         + "a jestli něco neblokuje síť (školní wifi, rodičovská kontrola).";
+  if(!CESTY.relay)
+    return "Zdá se, že jeden z vás má přísný router nebo je na MOBILNÍCH DATECH. "
+         + "Zkuste oba běžnou Wi-Fi – přes mobilní data se hra spojí jen občas.";
+  return "Spojení se nepovedlo. Zkuste to znovu, nebo ať kamarád udělá novou hru.";
+}
 
 /* ============================================================
    41) LEPŠÍ HLÁŠENÍ STAVU
@@ -7832,6 +7889,975 @@ function civRadek(k, c, nema, druhy){
    ale procesoru se uleví (spolu s tím, že updAI běží jen 5×/s).
    ------------------------------------------------------------ */
 if(typeof mmCas !== "undefined"){ /* mmCas je v p5, práh 0.12 s necháme */ }
+
+
+/* ============================================================
+   47) OPEVNIT ZÁKLADNU – pořádně
+   ============================================================
+   Zadání od Daníka: jedno kliknutí naplánuje opevnění tak, aby se dovnitř
+   nikdo nedostal, udělá bránu a pár věží, a pak se to POSTUPNĚ staví, jak
+   přibývají suroviny.
+
+   TŘI VĚCI, KTERÉ MUSÍ SEDĚT (a v první verzi neseděly – díky Codexu):
+
+   1) STROMY A RUDY JEDNOTKY NEZASTAVUJÍ. rozestup() odstrkuje jen od BUDOV,
+      voda a skála se řeší přes TEREN. Les tedy NENÍ přirozená hradba – kdo
+      ho bere jako hranici, nechá v opevnění díru, kterou nepřítel projde.
+      Proto se dvorek přes stromy rozlévá dál a zeď se staví až za nimi.
+
+   2) CHODÍ SE I ŠIKMO. Hranice se proto počítá přes OSM sousedů. Se čtyřmi
+      by mezi dvěma zdmi zůstala rohová skulina.
+
+   3) ZEĎ BLOKUJE ELIPSU, ne kruh. rozestup() počítá dy×1.5, takže hradba
+      (r=26) zastaví pěšáka (r=14) asi do 35 px vodorovně, ale jen do 23 px
+      svisle. Kontrola těsnosti proto rasterizuje elipsu – ne poloměr.
+
+   Postup:
+     A) dvorek  – zaplavení kolem budov přes průchozí políčka (stromy taky)
+     B) hranice – políčka dvorku, ze kterých se dá ven; tam přijde zeď
+     C) kontrola– zaplavení OD KRAJE MAPY dovnitř; nesmí dojít k mým budovám
+     D) fronta  – staví se po jednom, jak jsou suroviny; zeď dřív než věže
+
+   Multiplayer: plánuje a staví VŽDYCKY hostitel, kamarád jen pošle rozkaz.
+   ============================================================ */
+
+const OPEV = {
+  krok: 15,              // políčko plánovače i kontroly (jemné, ať neuteče díra)
+  maxPolicek: 9000,      // strop dvorku (víc už znamená nepostavitelně dlouhou zeď)
+  maxKusu: 260,          // strop na počet kusů zdi
+  dosah: 1400,           // jak daleko od středu základny smí dvorek sahat
+  // jak daleko hradba odstrčí pěšáka (viz rozestup(): a.r + b.r*0.8, dy×1.5)
+  blokX: 14 + 26 * 0.8,          // ≈ 34.8
+  blokY: (14 + 26 * 0.8) / 1.5   // ≈ 23.2
+};
+
+/* ---------- předpočítaná mřížka ----------
+   Naivní verze ptala pro KAŽDÉ políčko na všechny budovy a stromy: při
+   240×174 políčkách a 800 stromech to je 33 milionů porovnání a plánování
+   trvalo minuty. Proto se překážky jednou "otisknou" do mřížky – tím se
+   z toho stane součet přes budovy, ne přes políčka. */
+const OPEVM = {platna:false, sl:0, ra:0, blok:null, strom:null, stav:null};
+
+function opevMrizku(){
+  const k = OPEV.krok;
+  const sl = Math.ceil(SVET_W / k), ra = Math.ceil(SVET_H / k);
+  const blok = new Uint8Array(sl*ra), strom = new Uint8Array(sl*ra);
+
+  // okraj mapy
+  for(let cx = 0; cx < sl; cx++)
+    for(const cy of [0, 1, ra-2, ra-1]) if(cy>=0 && cy<ra) blok[cy*sl+cx] = 1;
+  for(let cy = 0; cy < ra; cy++)
+    for(const cx of [0, 1, sl-2, sl-1]) if(cx>=0 && cx<sl) blok[cy*sl+cx] = 1;
+
+  // voda a skála
+  if(typeof TEREN !== "undefined" && TEREN.pripraven){
+    for(let cy = 0; cy < ra; cy++)
+      for(let cx = 0; cx < sl; cx++)
+        if(!TEREN.sucho((cx+0.5)*k, (cy+0.5)*k)) blok[cy*sl+cx] = 1;
+  }
+  // budovy: elipsa, jak odstrkuje rozestup()
+  const otisk = (x, y, rx, ry, pole) => {
+    const c0 = Math.max(0, Math.floor((x-rx)/k)), c1 = Math.min(sl-1, Math.floor((x+rx)/k));
+    const r0 = Math.max(0, Math.floor((y-ry)/k)), r1 = Math.min(ra-1, Math.floor((y+ry)/k));
+    for(let cy = r0; cy <= r1; cy++)
+      for(let cx = c0; cx <= c1; cx++){
+        const dx = ((cx+0.5)*k - x)/rx, dy = ((cy+0.5)*k - y)/ry;
+        if(dx*dx + dy*dy < 1) pole[cy*sl+cx] = 1;
+      }
+  };
+  for(const b of G.budovy){
+    if(b.mrtvy) continue;
+    const r = 14 + b.r*0.8;
+    otisk(b.x, b.y, r, r/1.5, blok);
+  }
+  for(const z of G.zdroje){
+    if(z.mrtvy) continue;
+    otisk(z.x, z.y, z.r+18, z.r+18, strom);
+  }
+  OPEVM.platna = true; OPEVM.sl = sl; OPEVM.ra = ra; OPEVM.blok = blok; OPEVM.strom = strom;
+  OPEVM.stav = new Uint8Array(sl*ra);   // 0 = nevíme, 1 = dá se stavět, 2 = nedá
+  return OPEVM;
+}
+/* Projde tudy PĚŠÁK? Pozor: stromy a rudy ne-blokují (jen brání stavění). */
+function opevPruchozi(x, y){
+  if(!OPEVM.platna) opevMrizku();
+  const cx = Math.floor(x/OPEV.krok), cy = Math.floor(y/OPEV.krok);
+  if(cx<0||cy<0||cx>=OPEVM.sl||cy>=OPEVM.ra) return false;
+  return !OPEVM.blok[cy*OPEVM.sl + cx];
+}
+/* Stojí na tom místě strom nebo ruda? (Zeď tam zatím nepostavíš.) */
+function opevStrom(x, y){
+  if(!OPEVM.platna) opevMrizku();
+  const cx = Math.floor(x/OPEV.krok), cy = Math.floor(y/OPEV.krok);
+  if(cx<0||cy<0||cx>=OPEVM.sl||cy>=OPEVM.ra) return false;
+  return !!OPEVM.strom[cy*OPEVM.sl + cx];
+}
+
+/* Postaví se sem OPRAVDU kus hradby? Tohle je ta otázka, na které předchozí
+   verze padala: plán počítal jen se stromy, ale hra odmítne stavět i kvůli
+   rudě nebo těsnému sousedství jiné budovy. Takový kus se pak nikdy
+   nepostavil a v hradbě zůstala díra, kterou nepřítel prošel. Ptáme se proto
+   rovnou té funkce, která o stavění rozhoduje. */
+function opevLzeStavet(x, y){
+  if(x < 40 || y < 40 || x > SVET_W-40 || y > SVET_H-40) return false;
+  /* mistoVolne projde všechny budovy i všechny stromy, takže jedno volání
+     stojí dost. Při látání děr se na stejné políčko ptáme opakovaně, proto
+     si odpověď pamatujeme; paměť se zahodí spolu s mřížkou. */
+  if(!OPEVM.platna) opevMrizku();
+  const cx = Math.floor(x/OPEV.krok), cy = Math.floor(y/OPEV.krok);
+  if(cx<0||cy<0||cx>=OPEVM.sl||cy>=OPEVM.ra) return false;
+  const i = cy*OPEVM.sl + cx;
+  const z = OPEVM.stav[i];
+  if(z) return z === 1;
+  let ok = false;
+  try{ ok = !!mistoVolne("hradba", x, y); }catch(e){ ok = false; }
+  OPEVM.stav[i] = ok ? 1 : 2;
+  return ok;
+}
+
+const OSM = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+
+/* ---------- A) + B) plán ---------- */
+function naplanujOpevneni(side){
+  /* Tvrdý časový strop. Plánování běží v jednom kuse, takže co trvá vteřinu,
+     hráč vidí jako zamrznutí hry. Když čas dojde, radši vrátíme hrubší (ale
+     pořád těsnící) obvod než dokonalý, na který se čeká. */
+  const doKdy = performance.now() + 700;
+  OPEVM.platna = false; opevMrizku();     // svět se mohl změnit
+  const vsechny = G.budovy.filter(b => b.side === side && !b.mrtvy);
+  /* Vlastní zdi a věže do jádra nepočítáme – jinak by každé další kliknutí
+     obepnulo předchozí pevnost ještě větším kruhem. */
+  const jadro = vsechny.filter(b => !(BUD[b.kind] && (BUD[b.kind].zed || b.kind === "vez")));
+  if(!jadro.length) return {chyba:"Nemáš žádné budovy, které by šlo opevnit."};
+
+  const k = OPEV.krok;
+  const sl = Math.ceil(SVET_W / k), ra = Math.ceil(SVET_H / k);
+  const idx = (cx, cy) => cy * sl + cx;
+  const bx = cx => (cx + 0.5) * k, by = cy => (cy + 0.5) * k;
+  const stred = {
+    x: jadro.reduce((s,b)=>s+b.x,0) / jadro.length,
+    y: jadro.reduce((s,b)=>s+b.y,0) / jadro.length
+  };
+  /* Dvorek jen kolem budov, ne do celého okolí. Obvod kruhu o poloměru 1400
+     je skoro 9000 px, což je přes 250 kusů zdi – nepostavitelné a k ničemu.
+     Bereme nejvzdálenější budovu + rezervu, ať se dovnitř ještě vejde stavět. */
+  let maxR = 0;
+  for(const b of jadro) maxR = Math.max(maxR, dist2(b.x, b.y, stred.x, stred.y) + b.r);
+  const dosah = Math.min(OPEV.dosah, maxR + 150);
+
+  // semínka: průchozí políčka těsně kolem každé budovy jádra
+  const dvorek = new Set(), fronta = [];
+  for(const b of jadro){
+    for(let a = 0; a < Math.PI*2; a += Math.PI/10){
+      for(const odsad of [10, 26, 44]){
+        const sx = b.x + Math.cos(a)*(b.r + odsad), sy = b.y + Math.sin(a)*(b.r + odsad);
+        if(!opevPruchozi(sx, sy)) continue;
+        const i = idx(Math.floor(sx/k), Math.floor(sy/k));
+        if(!dvorek.has(i)){ dvorek.add(i); fronta.push(i); }
+        break;
+      }
+    }
+  }
+  if(!dvorek.size) return {chyba:"Kolem tvých budov není kam postavit zeď."};
+
+  /* Body, ke kterým se nepřítel nesmí dostat = okolí chráněných budov.
+     Používá je rychlá kontrola těsnosti při prořezávání. */
+  opevJadroBody = [];
+  for(const b of jadro)
+    for(let a = 0; a < Math.PI*2; a += Math.PI/8){
+      const px = b.x + Math.cos(a)*(b.r + 20), py = b.y + Math.sin(a)*(b.r + 20);
+      const cx = Math.floor(px/k), cy = Math.floor(py/k);
+      if(cx>=0 && cy>=0 && cx<sl && cy<ra) opevJadroBody.push(cy*sl+cx);
+    }
+
+  /* A) dvorek: rozlije se přes všechna PRŮCHOZÍ políčka (i přes les!), dokud
+     nenarazí na vodu, skálu, budovu nebo na dosah. */
+  let hlava = 0;
+  while(hlava < fronta.length && dvorek.size < OPEV.maxPolicek){
+    const i = fronta[hlava++];
+    const cx = i % sl, cy = (i / sl) | 0;
+    for(const [dx,dy] of OSM){
+      const nx = cx+dx, ny = cy+dy;
+      if(nx<1||ny<1||nx>=sl-1||ny>=ra-1) continue;
+      const j = idx(nx, ny);
+      if(dvorek.has(j)) continue;
+      const px = bx(nx), py = by(ny);
+      if(!opevPruchozi(px, py)) continue;
+      if(dist2(px, py, stred.x, stred.y) > dosah) continue;
+      dvorek.add(j); fronta.push(j);
+    }
+  }
+
+  /* B) hranice: políčko dvorku, které přes OSM sousedů vede ven na průchozí
+     políčko. Kde je voda/skála/budova, zeď netřeba. Kde stojí strom, posuneme
+     hranici dovnitř – na strom se stavět nedá a čekat na vytěžení by nechalo
+     díru; radši obezdíme kousek blíž. */
+  const hranice = [];
+  for(const i of dvorek){
+    const cx = i % sl, cy = (i / sl) | 0;
+    let ven = false;
+    for(const [dx,dy] of OSM){
+      const nx = cx+dx, ny = cy+dy;
+      if(nx<0||ny<0||nx>=sl||ny>=ra) continue;
+      if(dvorek.has(idx(nx,ny))) continue;
+      if(opevPruchozi(bx(nx), by(ny))){ ven = true; break; }
+    }
+    if(ven) hranice.push({cx, cy, x:bx(cx), y:by(cy)});
+  }
+  if(!hranice.length)
+    return {chyba:"Základna je už uzavřená vodou nebo skálou – opevnění netřeba."};
+
+  /* Okno pro kontrolu těsnosti: dvorek i s hranicí a pár políček rezervy.
+     Musí být o kus větší než zeď, aby zaplavování mělo kde začít venku. */
+  let bc0 = sl, bc1 = 0, br0 = ra, br1 = 0;
+  for(const i of dvorek){
+    const cx = i % sl, cy = (i / sl) | 0;
+    if(cx < bc0) bc0 = cx; if(cx > bc1) bc1 = cx;
+    if(cy < br0) br0 = cy; if(cy > br1) br1 = cy;
+  }
+  opevBox = {
+    c0: Math.max(1, bc0-4), c1: Math.min(sl-2, bc1+4),
+    r0: Math.max(1, br0-4), r1: Math.min(ra-2, br1+4)
+  };
+
+  /* Kusy zdi: na KAŽDÉ hraniční políčko, kam se dá stavět. Kde to nejde
+     (strom, ruda, těsno u budovy), hledáme náhradu o pár políček dovnitř –
+     ne jen o jedno, jak to dělala první verze; jedno políčko často nestačí,
+     protože les má u kraje víc řad. Co se nedá nahradit, se do plánu vůbec
+     nedostane a díru po něm zalátá opravné kolo níž. */
+  const jeVeDvorku = (cx, cy) => dvorek.has(idx(cx, cy));
+  function najdiMisto(h){
+    if(opevLzeStavet(h.x, h.y)) return {x:h.x, y:h.y};
+    // vlnka dovnitř dvorku, nejbližší políčko, kam se dá stavět
+    const videl = new Set([idx(h.cx, h.cy)]);
+    let vlna = [[h.cx, h.cy]];
+    for(let krok = 0; krok < 3; krok++){
+      const dalsi = [];
+      for(const [cx, cy] of vlna)
+        for(const [dx, dy] of OSM){
+          const nx = cx+dx, ny = cy+dy, j = idx(nx, ny);
+          if(videl.has(j) || !jeVeDvorku(nx, ny)) continue;
+          videl.add(j);
+          const px = bx(nx), py = by(ny);
+          if(opevLzeStavet(px, py)) return {x:px, y:py};
+          dalsi.push([nx, ny]);
+        }
+      vlna = dalsi;
+    }
+    return null;
+  }
+  const klic = new Set();
+  let vzato = [];
+  for(const h of hranice){
+    if(performance.now() > doKdy)
+      return {chyba:"Základna je moc rozlezlá – opevnit se nedá spočítat. "
+                  + "Zkus budovy blíž k sobě."};
+    const m = najdiMisto(h);
+    if(!m) continue;
+    const kk = Math.round(m.x) + "_" + Math.round(m.y);
+    if(klic.has(kk)) continue;
+    klic.add(kk); vzato.push(m);
+  }
+
+  /* Opravná kola: když to pořád netěsní, přidáme zeď tam, kudy nepřítel
+     prolézá – na políčka dvorku, na která zaplavení zvenku dosáhlo. Tím se
+     obvod postupně stáhne k jádru, až se uzavře. */
+  const tesniBez = (kusy) => opevneniTesniRychle(side, kusy);
+  for(let kolo = 0; kolo < 6 && performance.now() < doKdy && !tesniBez(vzato); kolo++){
+    const skuliny = opevKudyProleze(side, vzato, dvorek, sl);
+    if(!skuliny.length) break;
+    let pridano = 0;
+    for(const j of skuliny){
+      const cx = j % sl, cy = (j / sl) | 0;
+      const m = najdiMisto({cx, cy, x:bx(cx), y:by(cy)});
+      if(!m) continue;
+      const kk = Math.round(m.x) + "_" + Math.round(m.y);
+      if(klic.has(kk)) continue;
+      klic.add(kk); vzato.push(m); pridano++;
+    }
+    if(!pridano) break;
+  }
+  if(!tesniBez(vzato))
+    return {chyba:"Tady se základna uzavřít nedá – je moc roztažená nebo "
+                + "kolem stojí les. Zkus budovy blíž k sobě."};
+
+  /* Prořezání: projdeme kusy a každý zkusíme vynechat. Když to pořád těsní,
+     necháme ho pryč. Kontrola je rychlá (mřížka i okno jsou předpočítané),
+     takže si to můžeme dovolit i pro dvě stě kusů. */
+  for(let i = vzato.length - 1; i >= 0 && performance.now() < doKdy; i--){
+    const bez = vzato.slice(0, i).concat(vzato.slice(i + 1));
+    if(tesniBez(bez)) vzato = bez;
+  }
+
+  if(vzato.length > OPEV.maxKusu)
+    return {chyba:"Základna je moc rozlezlá (" + vzato.length + " kusů zdi). "
+                + "Postav budovy blíž k sobě."};
+
+  /* Brány a věže. Věže NIKDY nenahrazují kus hradby (jsou drahé a když na ně
+     nezbude, zůstala by v obvodu díra) – stojí kousek za zdí, uvnitř. */
+  const plan = vzato.map(p => ({kind:"hradba", x:p.x, y:p.y, cekaNaStrom:!!p.cekaNaStrom}));
+  const n = plan.length;
+  if(n >= 8){
+    plan[0].kind = "brana";
+    if(n >= 26) plan[Math.floor(n/2)].kind = "brana";
+  }
+  const vezi = Math.max(2, Math.min(5, Math.round(n/22)));
+  for(let v = 0; v < vezi; v++){
+    const p = plan[Math.floor((v + 0.5) * n / vezi)];
+    if(!p) continue;
+    const dovnitr = Math.atan2(stred.y - p.y, stred.x - p.x);
+    const vx = p.x + Math.cos(dovnitr)*58, vy = p.y + Math.sin(dovnitr)*58;
+    if(opevPruchozi(vx, vy) && !opevStrom(vx, vy)) plan.push({kind:"vez", x:vx, y:vy, extra:true});
+  }
+  return {plan, dvorek:dvorek.size, stred, jadro:jadro.map(b => b.id)};
+}
+
+/* ---------- rychlá kontrola těsnosti (pro prořezávání) ----------
+   Stejná myšlenka jako opevneniTesni, ale bez hlášek a s předpočítanou
+   mřížkou: zdi se otisknou do kopie a zaplaví se OD KRAJE MAPY dovnitř.
+   Volá se stokrát za sebou, proto to musí být levné. */
+let opevJadroBody = null;      // políčka, ke kterým se nepřítel nesmí dostat
+/* Okno kolem základny. Zaplavovat kvůli jedné kontrole celou mapu (93 600
+   políček) trvalo 35 ms, a protože se při prořezávání kontroluje každý kus
+   zvlášť, dělalo to 2,4 s zamrznutí na jedno kliknutí. Stačí okolí základny:
+   co je za okrajem okna, je bezpochyby venku, takže zaplavování může začít
+   rovnou na jeho hraně. */
+let opevBox = null;
+function opevneniTesniRychle(side, kusy){
+  const mapa = opevZaplav(side, kusy);
+  for(const i of (opevJadroBody || [])) if(mapa[i] === 2) return false;
+  return true;
+}
+/* Otiskne zdi a zaplaví okolí zvenku. 2 = sem se nepřítel dostane. */
+function opevZaplav(side, kusy){
+  if(!OPEVM.platna) opevMrizku();
+  const k = OPEV.krok, sl = OPEVM.sl, ra = OPEVM.ra;
+  const mapa = Uint8Array.from(OPEVM.blok);      // 1 = neprůchozí
+  const B = opevBox || {c0:2, c1:sl-3, r0:2, r1:ra-3};
+
+  const rx = OPEV.blokX, ry = OPEV.blokY;
+  const otisk = (x, y) => {
+    const c0 = Math.max(0, Math.floor((x-rx)/k)), c1 = Math.min(sl-1, Math.floor((x+rx)/k));
+    const r0 = Math.max(0, Math.floor((y-ry)/k)), r1 = Math.min(ra-1, Math.floor((y+ry)/k));
+    for(let cy = r0; cy <= r1; cy++)
+      for(let cx = c0; cx <= c1; cx++){
+        const dx = ((cx+0.5)*k - x)/rx, dy = ((cy+0.5)*k - y)/ry;
+        if(dx*dx + dy*dy < 1) mapa[cy*sl+cx] = 1;
+      }
+  };
+  for(const p of kusy) otisk(p.x, p.y);
+  for(const b of G.budovy)
+    if(!b.mrtvy && b.side === side && BUD[b.kind] && (BUD[b.kind].zed || b.kind === "vez"))
+      otisk(b.x, b.y);
+
+  // zaplavení od hrany okna dovnitř
+  const fronta = new Int32Array((B.c1-B.c0+1) * (B.r1-B.r0+1));
+  let patka = 0, hlava = 0;
+  for(let cx = B.c0; cx <= B.c1; cx++)
+    for(const cy of [B.r0, B.r1]){
+      const i = cy*sl+cx; if(!mapa[i]){ mapa[i] = 2; fronta[patka++] = i; }
+    }
+  for(let cy = B.r0; cy <= B.r1; cy++)
+    for(const cx of [B.c0, B.c1]){
+      const i = cy*sl+cx; if(!mapa[i]){ mapa[i] = 2; fronta[patka++] = i; }
+    }
+  while(hlava < patka){
+    const i = fronta[hlava++];
+    const cx = i % sl, cy = (i / sl) | 0;
+    for(let d = 0; d < 8; d++){
+      const nx = cx + OSM[d][0], ny = cy + OSM[d][1];
+      if(nx < B.c0 || ny < B.r0 || nx > B.c1 || ny > B.r1) continue;
+      const j = ny*sl+nx;
+      if(mapa[j]) continue;
+      mapa[j] = 2; fronta[patka++] = j;
+    }
+  }
+  return mapa;
+}
+
+/* Která políčka dvorku nepřítel obsadí? (Tedy kudy je díra.) Vrací je
+   seřazená od jádra – nejdřív se zaceluje to, co je nejblíž radnici. */
+function opevKudyProleze(side, kusy, dvorek, sl){
+  const mapa = opevZaplav(side, kusy);
+  const ven = [];
+  for(const i of dvorek) if(mapa[i] === 2) ven.push(i);
+  if(!ven.length || !opevJadroBody || !opevJadroBody.length) return ven;
+  const jx = (opevJadroBody[0] % sl), jy = (opevJadroBody[0] / sl) | 0;
+  ven.sort((a, b) => {
+    const ax = a % sl, ay = (a / sl) | 0, bx2 = b % sl, by2 = (b / sl) | 0;
+    return ((ax-jx)**2 + (ay-jy)**2) - ((bx2-jx)**2 + (by2-jy)**2);
+  });
+  return ven.slice(0, 120);
+}
+
+/* ---------- C) kontrola těsnosti ----------
+   Zaplavíme OD KRAJE MAPY dovnitř (robustnější než od radnice – základna
+   může mít víc vnitřních kapes) a díváme se, jestli se dostaneme k některé
+   chráněné budově. Zdi (hotové i plánované) blokují svou ELIPSOU. */
+function opevneniTesni(side, plan){
+  OPEVM.platna = false; opevMrizku();
+  const k = OPEV.krok, sl = Math.ceil(SVET_W/k), ra = Math.ceil(SVET_H/k);
+  const zdi = [];
+  for(const p of (plan || [])) zdi.push(p);
+  for(const b of G.budovy)
+    if(!b.mrtvy && b.side === side && BUD[b.kind] && (BUD[b.kind].zed || b.kind === "vez"))
+      zdi.push({x:b.x, y:b.y});
+
+  const blokZdi = (x, y) => {
+    for(const z of zdi){
+      const dx = (x - z.x) / OPEV.blokX, dy = (y - z.y) / OPEV.blokY;
+      if(dx*dx + dy*dy < 1) return true;
+    }
+    return false;
+  };
+  const jadro = G.budovy.filter(b => b.side === side && !b.mrtvy
+    && !(BUD[b.kind] && (BUD[b.kind].zed || b.kind === "vez")));
+  if(!jadro.length) return {tesni:false, duvod:"nemám co chránit"};
+
+  const videl = new Uint8Array(sl*ra), fronta = [];
+  for(let cx = 1; cx < sl-1; cx++){
+    for(const cy of [1, ra-2]){
+      const i = cy*sl+cx; if(!videl[i]){ videl[i] = 1; fronta.push(i); }
+    }
+  }
+  for(let cy = 1; cy < ra-1; cy++){
+    for(const cx of [1, sl-2]){
+      const i = cy*sl+cx; if(!videl[i]){ videl[i] = 1; fronta.push(i); }
+    }
+  }
+  let hlava = 0;
+  while(hlava < fronta.length){
+    const i = fronta[hlava++];
+    const cx = i % sl, cy = (i / sl) | 0;
+    for(const [dx,dy] of OSM){
+      const nx = cx+dx, ny = cy+dy;
+      if(nx<1||ny<1||nx>=sl-1||ny>=ra-1) continue;
+      const j = ny*sl+nx;
+      if(videl[j]) continue;
+      const px = (nx+0.5)*k, py = (ny+0.5)*k;
+      if(!opevPruchozi(px, py)) continue;      // voda, skála, budova
+      if(blokZdi(px, py)) continue;            // zeď
+      videl[j] = 1; fronta.push(j);
+    }
+  }
+  // dostal se útočník k některé chráněné budově?
+  for(const b of jadro){
+    for(let a = 0; a < Math.PI*2; a += Math.PI/8){
+      const px = b.x + Math.cos(a)*(b.r + 20), py = b.y + Math.sin(a)*(b.r + 20);
+      const cx = Math.floor(px/k), cy = Math.floor(py/k);
+      if(cx<0||cy<0||cx>=sl||cy>=ra) continue;
+      if(videl[cy*sl+cx]) return {tesni:false, duvod:"díra – nepřítel dojde k " + BUD[b.kind].jm};
+    }
+  }
+  return {tesni:true};
+}
+
+/* ---------- D) postupné stavění ---------- */
+function zacniOpevneni(side){
+  const v = naplanujOpevneni(side);
+  if(v.chyba){ if(jeMuj(side)) zprava(v.chyba, "zle"); return false; }
+  /* Prázdný plán = kolem dokola voda nebo skála. Ať to hráč ví, jinak by
+     klikal do prázdna a myslel si, že je tlačítko rozbité. */
+  if(!v.plan.length){
+    if(jeMuj(side)) zprava("Sem po zemi nikdo nedojde – základnu chrání voda a skály. "
+                         + "Pozor ale na lodě!", "dobre");
+    return false;
+  }
+  const t = opevneniTesni(side, v.plan.filter(p => p.kind !== "vez"));
+  const H = G.hraci[side];
+  if(!H) return false;
+  /* Zeď dřív než věže: věže jsou drahé a bez nich obvod pořád těsní. */
+  v.plan.sort((a,b) => (a.kind === "vez" ? 1 : 0) - (b.kind === "vez" ? 1 : 0));
+  H.opevneni = {fronta: v.plan, cas: 0, cekam: 0, tesnilo: t.tesni};
+  if(jeMuj(side)){
+    let drevo = 0, zelezo = 0;
+    v.plan.forEach(p => { const c = cenaBudovy(p.kind, side);
+                          drevo += c.drevo||0; zelezo += c.zelezo||0; });
+    zprava("🏰 Plán opevnění: " + v.plan.length + " kusů, asi " + drevo + " dřeva a "
+         + zelezo + " železa. Staví se postupně." + (t.tesni ? "" : " ⚠️ Nepůjde uzavřít úplně."), "dobre");
+  }
+  return true;
+}
+function zrusOpevneni(side){
+  const H = G.hraci[side];
+  if(H && H.opevneni){ H.opevneni = null; if(jeMuj(side)) zprava("Opevnění zrušeno.","zle"); }
+}
+
+function updOpevneni(dt){
+  if(typeof SYNC !== "undefined" && SYNC.jsemKlient && SYNC.jsemKlient()) return;
+  for(let side = 0; side < G.hraci.length; side++){
+    const H = G.hraci[side];
+    if(!H || !H.opevneni || H.porazen) continue;
+    const O = H.opevneni;
+    O.cas -= dt;
+    if(O.cas > 0) continue;
+    O.cas = 0.6;
+
+    if(!O.fronta.length){
+      H.opevneni = null;
+      if(jeMuj(side)) zprava("🏰 Opevnění je hotové!", "dobre");
+      continue;
+    }
+    let postaveno = false;
+    for(let i = 0; i < O.fronta.length; i++){
+      const p = O.fronta[i];
+      const cena = cenaBudovy(p.kind, side);
+      let mam = true;
+      for(const s in cena) if(H.res[s] < cena[s]) mam = false;
+      if(!mam) continue;
+      if(!mistoVolne(p.kind, p.x, p.y)) continue;    // strom nebo jiná budova
+      for(const s in cena) H.res[s] -= cena[s];
+      const b = pridejBudovu(p.kind, side, p.x, p.y, false);
+      const ves = G.jednotky.filter(u => u.side === side && u.kind === "vesnican"
+                                      && !u.mrtvy && !u.naPalube);
+      if(ves.length){
+        const kdo = ves.sort((a,c) => dist2(a.x,a.y,p.x,p.y) - dist2(c.x,c.y,p.x,p.y))[0];
+        kdo.stav = "stav"; kdo.cilE = b; kdo.hlidka = null; kdo.slotBId = null;
+      }
+      O.fronta.splice(i, 1);
+      postaveno = true;
+      break;
+    }
+    if(!postaveno){
+      O.cekam += 0.6;
+      if(O.cekam > 25){        // dlouho nic – třeba mezitím zmizel strom
+        O.cekam = 0;
+        const nove = naplanujOpevneni(side);
+        if(!nove.chyba && nove.plan.length <= O.fronta.length + 30){
+          nove.plan.sort((a,b) => (a.kind==="vez"?1:0) - (b.kind==="vez"?1:0));
+          O.fronta = nove.plan;
+        }
+      }
+    }else O.cekam = 0;
+  }
+}
+
+/* ---------- zapojení ---------- */
+opevniZakladnu = function(){
+  if(typeof SYNC !== "undefined" && SYNC.jsemKlient && SYNC.jsemKlient()){
+    NET.posli({typ:"cmd", cmd:"opevnit", side:G.ja});
+    zvuk("klik"); zprava("🏰 Posílám požadavek na opevnění…");
+    return;
+  }
+  zacniOpevneni(G.ja);
+  obnovPanel();
+};
+if(typeof SYNC !== "undefined" && SYNC.provedCizi){
+  const provedCiziPredOpevnenim = SYNC.provedCizi.bind(SYNC);
+  SYNC.provedCizi = function(m){
+    if(m.cmd === "opevnit"){
+      if(G.hraci[m.side] && !G.hraci[m.side].porazen) zacniOpevneni(m.side);
+      return;
+    }
+    if(m.cmd === "opevnitZrus"){ zrusOpevneni(m.side); return; }
+    return provedCiziPredOpevnenim(m);
+  };
+}
+const obnovPanelPredOpevnenim2 = obnovPanel;
+obnovPanel = function(){
+  obnovPanelPredOpevnenim2();
+  const A = document.getElementById("akce");
+  if(!A || G.konec) return;
+  const H = G.hraci[G.ja];
+  if(!H || !H.opevneni) return;
+  const zbyva = H.opevneni.fronta.length;
+  A.appendChild(tlacitko("⏳", "Opevnění: zbývá " + zbyva, "", true, ()=>{},
+    "<b>Opevnění se staví</b><br>Zbývá " + zbyva + " kusů. Staví se postupně, "
+    + "jak přibývají suroviny. Když místo zabírá strom, počká se, až ho někdo vytěží."));
+  A.appendChild(tlacitko("✖️", "Zrušit opevnění", "", true, ()=>{
+    if(typeof SYNC !== "undefined" && SYNC.jsemKlient && SYNC.jsemKlient())
+      NET.posli({typ:"cmd", cmd:"opevnitZrus", side:G.ja});
+    else zrusOpevneni(G.ja);
+    obnovPanel();
+  }, "Přestane stavět zbytek opevnění."));
+};
+
+
+/* ============================================================
+   48) ABY SE TO NESEKALO
+
+   Změřeno v headless Chrome (8 hráčů, mapa „Zelená pláň", jeden krok hry,
+   dt = 0,05 s). Rozpočet na krok je 50 ms, jinak hra viditelně cuká:
+
+     jednotek                 150      300      450      800
+     rozestup()              6,12 ms  16,61 ms 36,77 ms 119,87 ms
+     hledání nepřátel        ~10 ms   ~13 ms   ~14 ms
+     kresliMinimapu() (1×)                     15,22 ms  37,55 ms
+
+   Při 450 jednotkách spolykal rozestup() 61 % celého jádra. Důvod je vždycky
+   stejný: KAŽDÝ se ptá KAŽDÉHO. Dvojic je n²/2, takže při 450 jednotkách
+   94 395 porovnání – a ta čísla rostou s kvadrátem, takže velká bitva, na
+   kterou se všichni těší, sekala nejvíc.
+
+   Lék je taky pořád stejný: rozdělit svět na čtverečky a ptát se jen
+   sousedů. Ze 450² se stane 450 × „pár lidí okolo". Chování hry se
+   nemění – jen se přestane počítat to, co stejně vyjde nula.
+   ============================================================ */
+
+/* ---------- A) mřížka nad všemi objekty (pro hledání nejbližšího) ----------
+   nejbliz(G.ents, …) prohledávalo celé pole 981 objektů. Volá se z hlídání
+   nepřátel (41× za krok) i z věží. Mřížka se přestaví jednou za herní krok,
+   takže je vždycky čerstvá – žádné zastaralé pozice. */
+const ENTM = {bunka:96, sl:0, ra:0, hlava:null, dalsi:null, cas:-1, pocet:0};
+
+function entMrizku(){
+  const E = G.ents, n = E.length, c = ENTM.bunka;
+  const sl = Math.max(1, Math.ceil(SVET_W/c)), ra = Math.max(1, Math.ceil(SVET_H/c));
+  if(!ENTM.hlava || ENTM.hlava.length < sl*ra) ENTM.hlava = new Int32Array(sl*ra);
+  if(!ENTM.dalsi || ENTM.dalsi.length < n)     ENTM.dalsi = new Int32Array(n + 256);
+  ENTM.sl = sl; ENTM.ra = ra;
+  ENTM.hlava.fill(-1, 0, sl*ra);
+  for(let i = 0; i < n; i++){
+    const e = E[i];
+    if(!e || e.mrtvy){ ENTM.dalsi[i] = -1; continue; }
+    const cx = Math.min(sl-1, Math.max(0, (e.x/c)|0));
+    const cy = Math.min(ra-1, Math.max(0, (e.y/c)|0));
+    const b = cy*sl + cx;
+    ENTM.dalsi[i] = ENTM.hlava[b]; ENTM.hlava[b] = i;
+  }
+  ENTM.cas = G.cas; ENTM.pocet = n;
+}
+
+/* Stejná odpověď jako původní nejbliz, jen se neprochází celý svět.
+   Když se ptáme na jiné pole než G.ents nebo bez dosahu, jede se postaru. */
+const nejblizPredMrizkou = nejbliz;
+nejbliz = function(pole, x, y, filtr, maxD){
+  if(pole !== G.ents || !maxD || maxD > 900) return nejblizPredMrizkou(pole, x, y, filtr, maxD);
+  if(ENTM.cas !== G.cas || ENTM.pocet !== G.ents.length) entMrizku();
+  const c = ENTM.bunka, sl = ENTM.sl, ra = ENTM.ra, E = G.ents;
+  const c0 = Math.max(0, ((x-maxD)/c)|0), c1 = Math.min(sl-1, ((x+maxD)/c)|0);
+  const r0 = Math.max(0, ((y-maxD)/c)|0), r1 = Math.min(ra-1, ((y+maxD)/c)|0);
+  let nej = null, nd = maxD;
+  for(let cy = r0; cy <= r1; cy++)
+    for(let cx = c0; cx <= c1; cx++)
+      for(let i = ENTM.hlava[cy*sl+cx]; i !== -1; i = ENTM.dalsi[i]){
+        const e = E[i];
+        if(!e || e.mrtvy) continue;
+        if(filtr && !filtr(e)) continue;
+        const d = dist2(x, y, e.x, e.y);
+        if(d < nd){ nd = d; nej = e; }
+      }
+  return nej;
+};
+
+/* ---------- B) rozestup: nejdražší věc v celé hře ----------
+   Zachováváme přesně původní pravidla (svislý směr × 1,6, dosah
+   (a.r+b.r)×1,22, kdo těží nebo staví, ten se nehne) – mění se jen to,
+   KOHO se ptáme. Čtvereček je tak velký, aby žádná dvojice v dosahu
+   nemohla skončit dál než u souseda. */
+const ROZM = {hlava:null, dalsi:null};
+
+function rozestupJednotky(){
+  const J = G.jednotky, n = J.length;
+  if(n < 2) return;
+  let rmax = 0;
+  for(let i = 0; i < n; i++){ const r = J[i].r || 0; if(r > rmax) rmax = r; }
+  const c = Math.max(48, Math.ceil(rmax * 2 * 1.22) + 2);
+  const sl = Math.max(1, Math.ceil(SVET_W/c)), ra = Math.max(1, Math.ceil(SVET_H/c));
+  if(!ROZM.hlava || ROZM.hlava.length < sl*ra) ROZM.hlava = new Int32Array(sl*ra);
+  if(!ROZM.dalsi || ROZM.dalsi.length < n)     ROZM.dalsi = new Int32Array(n + 256);
+  const hlava = ROZM.hlava, dalsi = ROZM.dalsi;
+  hlava.fill(-1, 0, sl*ra);
+  for(let i = 0; i < n; i++){
+    const a = J[i];
+    if(a.mrtvy){ dalsi[i] = -1; continue; }
+    const cx = Math.min(sl-1, Math.max(0, (a.x/c)|0));
+    const cy = Math.min(ra-1, Math.max(0, (a.y/c)|0));
+    const b = cy*sl + cx;
+    dalsi[i] = hlava[b]; hlava[b] = i;
+  }
+
+  for(let i = 0; i < n; i++){
+    const a = J[i];
+    if(a.mrtvy) continue;
+    const cx = Math.min(sl-1, Math.max(0, (a.x/c)|0));
+    const cy = Math.min(ra-1, Math.max(0, (a.y/c)|0));
+    for(let ry = Math.max(0, cy-1); ry <= Math.min(ra-1, cy+1); ry++)
+      for(let rx = Math.max(0, cx-1); rx <= Math.min(sl-1, cx+1); rx++)
+        for(let ki = hlava[ry*sl+rx]; ki !== -1; ki = dalsi[ki]){
+          if(ki <= i) continue;                 // každou dvojici jednou
+          const b = J[ki];
+          if(b.mrtvy) continue;
+          const dx = b.x - a.x, dy = (b.y - a.y) * 1.6;
+          const d = Math.hypot(dx, dy), min = (a.r + b.r) * 1.22;
+          if(d > 0 && d < min){
+            const p = (min - d) / d;
+            if(a.kotva && b.kotva) continue;
+            else if(a.kotva){ b.x += dx*p; b.y += dy*p*0.6; }
+            else if(b.kotva){ a.x -= dx*p; a.y -= dy*p*0.6; }
+            else { a.x -= dx*p/2; a.y -= dy*p*0.3; b.x += dx*p/2; b.y += dy*p*0.3; }
+          }
+        }
+  }
+}
+
+/* Odstrkávání od budov. Dřív se každá jednotka ptala všech budov; s novým
+   opevněním jich přibylo (hradba má klidně 40 kusů), takže i tohle dostane
+   mřížku. Čtvereček 128 px pokryje i radnici (odstrk necelých 60 px). */
+const BUDM = {bunka:128, sl:0, ra:0, hlava:null, dalsi:null, cas:-1, pocet:0};
+
+function budMrizku(){
+  const B = G.budovy, n = B.length, c = BUDM.bunka;
+  const sl = Math.max(1, Math.ceil(SVET_W/c)), ra = Math.max(1, Math.ceil(SVET_H/c));
+  if(!BUDM.hlava || BUDM.hlava.length < sl*ra) BUDM.hlava = new Int32Array(sl*ra);
+  if(!BUDM.dalsi || BUDM.dalsi.length < n)     BUDM.dalsi = new Int32Array(n + 256);
+  BUDM.sl = sl; BUDM.ra = ra;
+  BUDM.hlava.fill(-1, 0, sl*ra);
+  for(let i = 0; i < n; i++){
+    const b = B[i];
+    if(!b || b.mrtvy){ BUDM.dalsi[i] = -1; continue; }
+    const cx = Math.min(sl-1, Math.max(0, (b.x/c)|0));
+    const cy = Math.min(ra-1, Math.max(0, (b.y/c)|0));
+    const j = cy*sl + cx;
+    BUDM.dalsi[i] = BUDM.hlava[j]; BUDM.hlava[j] = i;
+  }
+  BUDM.cas = G.cas; BUDM.pocet = n;
+}
+
+function rozestupOdBudov(){
+  const J = G.jednotky, B = G.budovy;
+  if(!B.length) return;
+  if(BUDM.cas !== G.cas || BUDM.pocet !== B.length) budMrizku();
+  const c = BUDM.bunka, sl = BUDM.sl, ra = BUDM.ra;
+  for(let i = 0; i < J.length; i++){
+    const a = J[i];
+    if(a.mrtvy || a.kotva) continue;
+    const cx = Math.min(sl-1, Math.max(0, (a.x/c)|0));
+    const cy = Math.min(ra-1, Math.max(0, (a.y/c)|0));
+    for(let ry = Math.max(0, cy-1); ry <= Math.min(ra-1, cy+1); ry++)
+      for(let rx = Math.max(0, cx-1); rx <= Math.min(sl-1, cx+1); rx++)
+        for(let bi = BUDM.hlava[ry*sl+rx]; bi !== -1; bi = BUDM.dalsi[bi]){
+          const b = B[bi];
+          if(!b || b.mrtvy) continue;
+          // otevřenou bránou se projde – ale jen tomu, komu patří, a spojencům
+          if(b.otevrena && !jeNepritel(a.side, b.side)) continue;
+          const dx = a.x - b.x, dy = (a.y - b.y) * 1.5;
+          const d = Math.hypot(dx, dy), min = a.r + b.r * 0.8;
+          if(d > 0 && d < min){ const p = (min - d)/d; a.x += dx*p; a.y += dy*p*0.6; }
+        }
+    a.x = klam(a.x, 20, SVET_W-20); a.y = klam(a.y, 20, SVET_H-20);
+  }
+}
+
+/* Vystrčení z vody a ze skály – stejné jako dřív (část 44), jen sem
+   přepsané, protože celý rozestup nahrazujeme naráz. */
+function rozestupZTerenu(){
+  if(typeof TEREN === "undefined" || !TEREN.pripraven) return;
+  for(const u of G.jednotky){
+    if(u.mrtvy || TEREN.smiTam(u, u.x, u.y)) continue;
+    let uteklo = false;
+    for(let r = TEREN.krok; r <= TEREN.krok*6 && !uteklo; r += TEREN.krok)
+      for(let a = 0; a < Math.PI*2; a += Math.PI/6){
+        const nx = klam(u.x + Math.cos(a)*r, 20, SVET_W-20);
+        const ny = klam(u.y + Math.sin(a)*r, 20, SVET_H-20);
+        if(TEREN.smiTam(u, nx, ny)){ u.x = nx; u.y = ny; uteklo = true; break; }
+      }
+  }
+}
+
+rozestup = function(){
+  rozestupJednotky();
+  rozestupOdBudov();
+  rozestupZTerenu();
+};
+
+/* ---------- C) minimapa: závoj jedním obrázkem ----------
+   Černá mlha se malovala po jednom čtverečku – při 360×240 minimapě to bylo
+   přes tisíc fillRect na každé překreslení, tedy 15 až 37 ms. Mlha si přitom
+   svůj závoj do obrázku už kreslí (část 38), tak to uděláme stejně: jednou
+   naplníme malý obrázek velikosti mlhy a ten se roztáhne přes minimapu. */
+const MMLHA = {platno:null, ctx:null, img:null, sl:0, ra:0};
+
+function mmZavoj(){
+  if(!MLHA.znam) return null;
+  if(MMLHA.sl !== MLHA.sl || MMLHA.ra !== MLHA.ra){
+    MMLHA.platno = document.createElement("canvas");
+    MMLHA.platno.width = MLHA.sl; MMLHA.platno.height = MLHA.ra;
+    MMLHA.ctx = MMLHA.platno.getContext("2d");
+    MMLHA.img = MMLHA.ctx.createImageData(MLHA.sl, MLHA.ra);
+    MMLHA.sl = MLHA.sl; MMLHA.ra = MLHA.ra;
+  }
+  const d = MMLHA.img.data, z = MLHA.znam;
+  for(let i = 0, j = 0; i < z.length; i++, j += 4){
+    d[j] = 0; d[j+1] = 0; d[j+2] = 0;
+    d[j+3] = z[i] ? 0 : 209;          // 209/255 ≈ původních rgba(0,0,0,.82)
+  }
+  MMLHA.ctx.putImageData(MMLHA.img, 0, 0);
+  return MMLHA.platno;
+}
+
+const kresliMinimapuPredZrychlenim = kresliMinimapu;
+kresliMinimapu = function(){
+  if(!MLHA.zap || !MLHA.znam) return kresliMinimapuPredZrychlenim();
+  /* Přesně tentýž obsah jako dřív – jediný rozdíl je závoj: místo tisícovky
+     obdélníčků jeden roztažený obrázek. */
+  const w = MMC.width, h = MMC.height, sx = w / SVET_W, sy = h / SVET_H;
+  MMX.fillStyle = MAPY[G.mapa].zeme; MMX.fillRect(0, 0, w, h);
+  if(typeof TEREN !== "undefined" && TEREN.pripraven && TEREN.miniObrazek)
+    MMX.drawImage(TEREN.miniObrazek(w, h), 0, 0);
+  for(const z of G.zdroje){
+    if(!MLHA.znamBod(z.x, z.y)) continue;
+    MMX.fillStyle = z.typ === "drevo" ? "#2f7a35" : z.typ === "zlato" ? "#ffd447" : "#c3d6e8";
+    MMX.fillRect(z.x * sx - 1.5, z.y * sy - 1.5, 3, 3);
+  }
+  for(const b of G.budovy){
+    if(!MLHA.viditelna(b)) continue;
+    MMX.fillStyle = barvaHrace(b.side).h;
+    const s = (b.kind === "radnice" || b.kind === "hrad") ? 8 : 5;
+    MMX.fillRect(b.x * sx - s / 2, b.y * sy - s / 2, s, s);
+  }
+  for(const j of G.jednotky){
+    if(!MLHA.viditelna(j)) continue;
+    MMX.fillStyle = barvaHrace(j.side).h;
+    MMX.fillRect(j.x * sx - 2, j.y * sy - 2, 4, 4);
+  }
+  const zav = mmZavoj();
+  if(zav){
+    const hl = MMX.imageSmoothingEnabled;
+    MMX.imageSmoothingEnabled = false;
+    MMX.drawImage(zav, 0, 0, w, h);
+    MMX.imageSmoothingEnabled = hl;
+  }
+  MMX.strokeStyle = "#fff"; MMX.lineWidth = 2;
+  MMX.strokeRect(G.cam.x * sx, G.cam.y * sy, vidW() * sx, vidH() * sy);
+};
+
+/* ---------- D) na pozadí se přestalo hledat cesty ----------
+   Rozpočet „nejvýš 3 hledání cesty za snímek" se nuluje v tik(), a ten na
+   skryté záložce neběží. Hostitel, který si přepnul do jiného okna, tedy po
+   třech cestách přestal panáčkům hledat cestu úplně – kamarádovi se pak
+   jednotky zasekávaly o pobřeží. TIKAC.krok musí nulovat taky. */
+if(typeof TIKAC !== "undefined" && TIKAC.krok){
+  const krokPredCestami = TIKAC.krok.bind(TIKAC);
+  TIKAC.krok = function(){
+    if(typeof rozpoctuCest !== "undefined") rozpoctuCest = 0;
+    return krokPredCestami();
+  };
+}
+
+
+/* ============================================================
+   49) OPRAVY MULTIPLAYERU (z noční prověrky 30.–31. 7. 2026)
+
+   Odehrálo se 39 opravdových partií ve skutečných oknech prohlížeče:
+   22 pro dva hráče (mapy suché i vodní, počítač × počítač, počítač × mobil,
+   mobil × mobil, proti sobě i spolu) a 17 pro tři a čtyři hráče (týmy
+   1-2-3, 1-1-2, 1-1-1-1, 1-1-2-2, 1-2-3-4).
+
+   DOBRÁ ZPRÁVA: svět se ani jednou trvale nerozešel. Původní hlášení
+   „rozdílů" byla chyba měření – porovnávaly se dva různé okamžiky. Když se
+   otisky srovnaly k témuž okamžiku (klíč z hostitelova paketu), vyšlo
+   248 porovnání a nula rozdílů.
+
+   Tohle se ale našlo a opravuje se to tady.
+   ============================================================ */
+
+/* ---------- A) hlavní smyčka dostávala ZÁPORNÉ dt ----------
+   `const dt = Math.min(0.05, (t - posledni)/1000 || 0)` nemá dolní mez.
+   Web Worker (část 39) mezitím píše `posledni = performance.now()`, kdežto
+   requestAnimationFrame předá značku ZAČÁTKU snímku, která už může být
+   starší. Rozdíl pak vyjde záporný a svět se na okamžik posune POZPÁTKU –
+   naměřeno až −2,971 s a 157 takových snímků za jednu partii. Netýká se to
+   jen hry po síti: ve hře pro jednoho to bylo 61 snímků ze 189.
+
+   Druhý, horší následek: `SYNC.posli(dt)` si dt sčítá, takže po skoku
+   −2,97 s hostitel NESMÍ poslat snímek, dokud si ten čas zase nenačte –
+   a kamarádovi na ty vteřiny zamrzne celý svět.
+
+   Oprava je jednoduchá: čas nesmí jít dozadu. */
+if(typeof tik === "function"){
+  const tikPredZapornymCasem = tik;
+  tik = function(t){
+    if(typeof posledni === "number" && t < posledni) posledni = t;   // dt = 0, ne minus
+    return tikPredZapornymCasem(t);
+  };
+}
+
+/* ---------- B) kamarádův rozkaz posuzovala MOJE mlha ----------
+   entPod() vrací null, když na tom místě nic NEVIDÍM. Jenže rozkazy
+   kamarádů provádí hostitel, a to svýma očima: klikne-li kamarád na
+   nepřítele, kterého hostitel nemá odkrytého, nevrátí entPod nic a z útoku
+   se stane obyčejný přesun. Kamarád tedy klikne na nepřítele a jeho vojáci
+   k němu jen dojdou a stojí. Po dobu provádění cizího rozkazu proto mlhu
+   vypneme – rozhodovat musí to, co vidí ten, kdo klikal. */
+if(typeof SYNC !== "undefined" && SYNC.provedCizi){
+  const provedCiziPredMlhou = SYNC.provedCizi.bind(SYNC);
+  SYNC.provedCizi = function(m){
+    const zap = (typeof MLHA !== "undefined") ? MLHA.zap : false;
+    if(typeof MLHA !== "undefined") MLHA.zap = false;
+    try{ return provedCiziPredMlhou(m); }
+    finally{ if(typeof MLHA !== "undefined") MLHA.zap = zap; }
+  };
+}
+
+/* ---------- C) kamarádovi se ukazovaly špatné proužky života ----------
+   Hostitel staví přes pridejBudovu/pridejJednotku, které přičtou bonusy
+   civilizace (M(side,"budovyHp"), statJ(...)). Kamarádova strana ale
+   vyráběla objekty ze základní tabulky, takže Vikingům s pevnějšími
+   budovami ukazovala proužek podle obyčejné hodnoty – a budova vypadala
+   poškozená, i když byla celá. */
+if(typeof SYNC !== "undefined" && SYNC.vyrob){
+  const vyrobPredBonusy = SYNC.vyrob.bind(SYNC);
+  SYNC.vyrob = function(id, dr, kind, side, maxHp, x, y){
+    let hp = maxHp;
+    try{
+      if(dr === 1 && typeof BUD !== "undefined" && BUD[kind] && typeof M === "function")
+        hp = Math.round(BUD[kind].hp * M(side, "budovyHp"));
+      else if(dr !== 1 && typeof statJ === "function" && typeof JED !== "undefined" && JED[kind])
+        hp = statJ(kind, side, "hp");
+    }catch(e){}
+    if(!(hp > 0)) hp = maxHp;
+    return vyrobPredBonusy(id, dr, kind, side, hp, x, y);
+  };
+}
+
+/* ---------- D) připojení to zkusilo jen jednou ----------
+   Když kamarád klikne na Připojit o chviličku dřív, než hostitel stihne
+   otevřít lobby, majáku se kód ještě nezná a hra hlásí „Hru s kódem XYZ
+   jsem nenašel". Dítě to čte jako „mám špatná písmenka" a opisuje kód
+   pořád dokola. Zkusíme to proto sami třikrát po dvou vteřinách – tolik
+   hostiteli obvykle stačí. */
+if(typeof P2P !== "undefined" && P2P.pripojKodem){
+  const pripojNaJeden = P2P.pripojKodem.bind(P2P);
+  const jeToJenBrzy = e => /nenašel|nenasel/i.test((e && e.message) || "");
+  P2P.pripojKodem = async function(kod){
+    let posledniChyba = null;
+    for(let pokus = 1; pokus <= 3; pokus++){
+      try{ return await pripojNaJeden(kod); }
+      catch(e){
+        posledniChyba = e;
+        if(!jeToJenBrzy(e) || pokus === 3) throw e;
+        if(typeof zprava === "function")
+          zprava("Ještě to tam není, zkouším znovu… (" + pokus + "/3)", "info");
+        await new Promise(h => setTimeout(h, 2000));
+      }
+    }
+    throw posledniChyba;
+  };
+}
+
+/* ---------- CO ZŮSTALO NEOPRAVENÉ (schválně) ----------
+   Tyhle věci prověrka taky našla, ale sahají do formátu posílaných dat nebo
+   do přihlašování v lobby. Opravovat je narychlo v noci by znamenalo risk,
+   že přestane fungovat i to, co dnes funguje. Popsané jsou v PREDANI-2.md:
+
+   1) Převozní loď: kamarád nevidí, koho veze, a nemá tlačítko Vylodit.
+      (Ve snímku letí jen příznak u pasažéra, o lodi samotné nic. Chce to
+      přidat počet pasažérů do volných bitů příznaků a upravit obě strany.)
+   2) Po obnovení stránky (F5) zůstane v lobby DUCH a hra začne s civilizací,
+      kterou nikdo nehraje. Kdo vypadne z rozjeté hry, se už nevrátí.
+      (mojeId se losuje při každém načtení. Chce to uložit do sessionStorage
+      – ne do localStorage, jinak by se dvě okna na jednom počítači tvářila
+      jako jeden hráč, a přesně tak se to tady testuje.)
+   3) Nové opevnění není ve snímku – kamarád nevidí, jak mu přibývá.
+   4) Hlášky z kamarádových rozkazů („Chybí ti dřevo!") se ukazují
+      hostiteli místo kamarádovi.
+   5) Rozestavěná budova vypadá u kamaráda jako hotová, dokud nedorazí
+      další snímek. */
+
+/* Nová verze. Hráči si ji při spojení porovnávají, takže se nestane, že by
+   spolu hrál někdo s v19 a někdo s v20 a divil se, proč to zlobí. */
+VERZE = "v20";
 
 </script>
 </body>
