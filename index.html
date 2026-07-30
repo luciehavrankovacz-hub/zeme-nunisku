@@ -1553,7 +1553,8 @@ const BUD = {
   /* Přístav se dá postavit JEN u moře (hlídá to mistoVolne). Cvičí galeony
      a ty se objeví na vodě hned vedle něj. */
   pristav:{jm:"Přístav", hp:700, r:44, vel:112, cena:{drevo:160,zelezo:50}, cas:24, uVody:1,
-    popis:"Jde postavit jen u MOŘE. Cvičí GALEONY – lodě s dělem.", cvici:["galeona"]},
+    popis:"Jde postavit jen u MOŘE. Cvičí GALEONY a PŘEVOZNÍ LODĚ.",
+    cvici:["galeona","prevoz"]},
   brana:{jm:"Brána", hp:1200, r:26, vel:70, cena:{drevo:24,zelezo:6}, cas:8, zed:1, brana:1,
     popis:"Sama se otevře tobě i spojencům. Nepřítele nepustí.", cvici:[]}
 };
@@ -1572,17 +1573,24 @@ const JED = {
   hrdina:{jm:"Hrdina", ik:"👑", hp:480, r:20, vel:64, rychlost:84, utok:42, dostrel:34, rychUtoku:0.9,
     cena:{zelezo:130,zlato:210}, cas:24, popis:"Legenda tvé civilizace. Nezastavitelný!", limit:1},
 
+  /* PŘEVOZNÍ LOĎ – veze panáčky přes moře. Neumí střílet vůbec, zato je
+     rychlejší než galeona. Naloď: vyber panáčky a klikni na loď. Vylož:
+     vyber loď a klikni na břeh. Víc než PREVOZ_MAX se jich tam nevejde. */
+  prevoz:{jm:"Převozní loď", ik:"⛴️", hp:600, r:28, vel:110, rychlost:96, utok:0, dostrel:0,
+    rychUtoku:99, cena:{drevo:110,zelezo:40}, cas:18, lod:1, prevoz:1,
+    popis:"Veze až 20 panáčků přes moře. Neumí střílet, ale je rychlejší než galeona."},
+
+  /* GALEONA – loď s děly. Jezdí JEN po vodě. Pálí každé 2 s, na jiné lodě
+     je silná, na panáčky na břehu skoro k ničemu. */
+  galeona:{jm:"Galeona", ik:"⛵", hp:520, r:26, vel:104, rychlost:66, utok:54, dostrel:270,
+    rychUtoku:2.0, strela:1, cena:{drevo:130,zelezo:60,zlato:40}, cas:22, lod:1,
+    protiLodim:2.2, protiJednotkam:0.28, protiBudovam:1.2,
+    popis:"Válečná loď se třemi děly. Pálí každé 2 s. Na lodě je silná, na panáčky na břehu slabá."},
+
   /* KRÁL – o něj se hraje. Když padne, prohráls, i kdyby ti stálo celé město.
      Silný jako dva sloni (2×640) a umí se prát, takže se dá i použít v bitvě –
      ale je to sázka, protože jiného už nedostaneš. Nedá se cvičit, každý ho
      má jednoho od začátku hry. */
-  /* GALEONA – lod s dělem. Jezdí JEN po vodě. Bombarduje každé 3 s, na jiné
-     lodě je silná, na panáčky na břehu skoro k ničemu. */
-  galeona:{jm:"Galeona", ik:"⛵", hp:520, r:26, vel:104, rychlost:66, utok:54, dostrel:270,
-    rychUtoku:3.0, strela:1, cena:{drevo:130,zelezo:60,zlato:40}, cas:22, lod:1,
-    protiLodim:2.2, protiJednotkam:0.28, protiBudovam:1.2,
-    popis:"Lod s dělem, jezdí jen po moři. Střílí každé 3 s. Na lodě je silná, na panáčky na břehu slabá."},
-
   kral:{jm:"Král", ik:"👑", hp:1280, r:22, vel:74, rychlost:76, utok:82, dostrel:38, rychUtoku:1.0,
     cena:{}, cas:0, limit:1, kral:1,
     popis:"O něj se hraje! Když padne, prohrál jsi. Je silný jako dva sloni a umí bojovat – ale opatruj si ho."},
@@ -1650,11 +1658,11 @@ const MAPY = [
   /* ---- mapy s MOŘEM a SKÁLAMI ----
      voda: okraj / jezero / rec / ostrovy / tymove   ·   hory: kolik masivů
      Na ostrovních mapách se pěšák přes vodu NEDOSTANE – musíš mít přístav. */
-  {jm:"Ňuňí ostrovy",    popis:"Každý na svém ostrově – bez lodí se nikam nedostaneš",
-    zeme:"#5f9e4f", lesy:1.1, zlato:1, zelezo:1, sirka:3800, vyska:2700, voda:"ostrovy"},
+  {jm:"Ňuňí ostrovy",    popis:"Ostrovy spojené úzkou šíjí – dá se i pěšky",
+    zeme:"#5f9e4f", lesy:1.1, zlato:1, zelezo:1, sirka:3800, vyska:2700, voda:"ostrovy", sije:true},
   {jm:"Ostrovy ve dvou", popis:"Jeden ostrov na tým – drž se spojence",
     zeme:"#5f9e4f", lesy:1.2, zlato:1.1, zelezo:1, sirka:4000, vyska:2800, voda:"tymove"},
-  {jm:"Velká řeka",      popis:"Řeka dělí mapu napůl – přeplav se, nebo obeplav",
+  {jm:"Velká řeka",      popis:"Řeka s brodem uprostřed – nebo ji obepluj",
     zeme:"#5f9e4f", lesy:1.1, zlato:1, zelezo:1.1, sirka:3800, vyska:2700, voda:"rec"},
   {jm:"Modré jezero",    popis:"Jezero uprostřed, boj se vede kolem",
     zeme:"#63a552", lesy:1.1, zlato:1.2, zelezo:1, sirka:3600, vyska:2600, voda:"jezero"},
@@ -1680,8 +1688,8 @@ const MAPY = [
     zeme:"#5a9a6a", lesy:1.8, zlato:0.9, zelezo:0.8, sirka:3600, vyska:2600, voda:"rec"},
   {jm:"Kamenná pláň",    popis:"Otevřená pláň se pár skalisky",
     zeme:"#8fa855", lesy:0.8, zlato:1, zelezo:1.4, sirka:4400, vyska:3100, hory:5},
-  {jm:"Myší ostrůvky",   popis:"Malá mapa, malé ostrovy, rychlá bitva",
-    zeme:"#6aa85c", lesy:1, zlato:1.2, zelezo:1.2, sirka:2800, vyska:2000, voda:"ostrovy"},
+  {jm:"Myší ostrůvky",   popis:"Malá mapa, ostrůvky se šíjí – rychlá bitva",
+    zeme:"#6aa85c", lesy:1, zlato:1.2, zelezo:1.2, sirka:2800, vyska:2000, voda:"ostrovy", sije:true},
   {jm:"Zlatý ostrov",    popis:"Uprostřed ostrov plný zlata – doplav tam první",
     zeme:"#a08a55", lesy:0.7, zlato:2, zelezo:0.9, sirka:4000, vyska:2800, voda:"okraj", stred:"zlato"},
   {jm:"Železné útesy",   popis:"Železa dost, ale skály ti stojí v cestě",
@@ -2374,6 +2382,21 @@ function updJednotku(e, dt){
 
   if(e.panika>0) e.panika -= dt;
   // vesničan, který dotěžil strom, si sám najde další (jako v opravdové strategii)
+  /* Rozestavěná budova má PŘEDNOST před těžbou. Volný vesničan si jí sám
+     všimne a jde ji dodělat – jinak zůstávaly na mapě věčné rozestavěné
+     základy, kolem kterých panáčci klidně chodili těžit. */
+  if(e.kind==="vesnican" && e.stav==="stoj" && !(e.panika>0)){
+    // hledáme 1× za vteřinu, ne každý tik – jinak to při 40 základech zdržuje
+    e.hledaStavbu = (e.hledaStavbu||0) - dt;
+    if(e.hledaStavbu <= 0){
+      e.hledaStavbu = 1;
+      const rozdelana = nejbliz(G.budovy, e.x, e.y,
+        b => b.side===e.side && !b.mrtvy && !b.hotova, 900);
+      if(rozdelana){
+        e.stav="stav"; e.cilE=rozdelana; e.hlidka=null; e.slotBId=null;
+      }
+    }
+  }
   if(e.kind==="vesnican" && e.stav==="stoj" && e.tezar && !(e.panika>0)){
     if(e.naklad && e.naklad.ks>0){ e.stav="vrat"; e.vratCas=0; e.skladE=null; }
     else novyZdroj(e);
@@ -4251,7 +4274,7 @@ async function rozbal(kod){
 const KINDY = ["vesnican","vojak","lukostrelec","jezdec","slon","hrdina",
                "radnice","domek","kasarna","staj","vez","hrad",
                "beranidlo","trebuchet","dilna","hradba","brana","kral",
-               "pristav","galeona"];
+               "pristav","galeona","prevoz"];
 function kindIdx(k){ return KINDY.indexOf(k); }
 
 const P2P = {
@@ -4435,8 +4458,10 @@ SYNC.zabalSnimek = function(){
   };
   /* příznaky: 1 = kouká doleva, 2 = zrovna těží/staví, 4 = bojuje
      (aby si kamarád mohl dokreslit mávání sekerou a jiskry) */
+  /* bity jednotky: 1 = kouká doleva, 2 = těží/staví, 4 = bojuje,
+     8 = sedí na palubě převozní lodi (kamarád ji pak nekreslí) */
   for(const u of G.jednotky) if(!u.mrtvy) pridej(u, 0, u.hp,
-    (u.smer<0?1:0) | (u.kotva?2:0) | (u.stav==="utok"?4:0));
+    (u.smer<0?1:0) | (u.kotva?2:0) | (u.stav==="utok"?4:0) | (u.naPalube?8:0));
   /* bity budovy: 0 = hotová, 1..7 = postup stavby (0-100), 8 = otevřená brána */
   for(const b of G.budovy)   if(!b.mrtvy) pridej(b, 1, b.hp,
     (b.hotova?1:0) | (klam(Math.round(b.postup*100),0,100)<<1) | (b.otevrena?256:0));
@@ -4534,7 +4559,11 @@ SYNC.prijmiBin = function(u8){
     e.tx = x; e.ty = y;
     if(e.x===undefined){ e.x=x; e.y=y; }
     e.hp = hp;
-    if(druh===0) e.smer = (prapor&1)? -1 : 1;
+    if(druh===0){
+      e.smer = (prapor&1)? -1 : 1;
+      // kdo sedí na palubě, se u kamaráda nekreslí (polohuj() to zařídí)
+      e.naPalube = !!(prapor&8);
+    }
     if(druh===1){
       const bylo = e.hotova;
       e.hotova = !!(prapor&1); e.postup = ((prapor>>1)&127)/100;
@@ -5209,7 +5238,9 @@ P2P.vypni = function(){ vypniBezMajaku(); MAJAK.zavri(); };
    v lobby (velikost mapy, limit jednotek). Se starou verzí to nesedí. */
 /* v16: moře a skály (TEREN), přístav, galeony, 20 nových map. Nové druhy
    v KINDY = jiný tvar snímku světa, takže se starou verzí to nesedí. */
-const VERZE = "v16";
+/* v17: převozní loď (nový druh v KINDY + nový bit ve snímku pro pasažéry)
+   a hledání cesty pro lodě. Se starou verzí to nesedí. */
+const VERZE = "v17";
 
 (function(){
   const p = document.getElementById("menuPata");
@@ -5622,6 +5653,7 @@ SYNC.dokresli = function(dt){
   }
 };
 
+
 /* ============================================================
    41) MLHA VÁLKY – co jsi neprozkoumal, je černé
    ============================================================
@@ -5816,6 +5848,9 @@ kresliMinimapu = function(){
   if(!MLHA.zap || !MLHA.znam) return kresliMinimapuPredMlhou();
   const w = MMC.width, h = MMC.height, sx = w / SVET_W, sy = h / SVET_H;
   MMX.fillStyle = MAPY[G.mapa].zeme; MMX.fillRect(0, 0, w, h);
+  // moře a skály na minimapě (bez nich vypadala ostrovní mapa jako pevnina)
+  if(typeof TEREN !== "undefined" && TEREN.pripraven && TEREN.miniObrazek)
+    MMX.drawImage(TEREN.miniObrazek(w, h), 0, 0);
   for(const z of G.zdroje){
     if(!MLHA.znamBod(z.x, z.y)) continue;
     MMX.fillStyle = z.typ === "drevo" ? "#2f7a35" : z.typ === "zlato" ? "#ffd447" : "#c3d6e8";
@@ -5841,6 +5876,7 @@ kresliMinimapu = function(){
   MMX.strokeStyle = "#fff"; MMX.lineWidth = 2;
   MMX.strokeRect(G.cam.x * sx, G.cam.y * sy, vidW() * sx, vidH() * sy);
 };
+
 
 /* ============================================================
    42) KRÁL, OPEVNĚNÍ ZÁKLADNY A NOVÉ VOLBY V LOBBY
@@ -6137,6 +6173,7 @@ otevriLobby = function(rezim){
   kresliVelikosti(); kresliLimity(); kresliCivTabulku();
 };
 
+
 /* ============================================================
    43) MOŘE, SKÁLY, PŘÍSTAV A LODĚ
    ============================================================
@@ -6273,13 +6310,13 @@ const TEREN = {
       }
       // pár ostrůvků do prázdna, ať je kam plout
       for(let i = 0; i < 5; i++) kruh(nah(W*0.2, W*0.8), nah(H*0.2, H*0.8), Math.min(W,H)*nah(0.04,0.07), 0);
-      /* ÚZKÁ ŠÍJE mezi ostrovy. Bez ní by se hra nedala dohrát: hraje se
-         o krále, lodě neumí vozit pěchotu a AI o přístavu neví – takže se
-         k cizímu králi nikdo nikdy nedostane (naměřeno: král 371 px od vody,
-         galeona dostřelí 292). Šíje je schválně tenká, takže se dá bránit
-         hrstkou vojáků a lodě mají pořád smysl na obchvat.
-         Až budou transportní lodě, tohle se může zrušit. */
-      this.sije(nastav);
+      /* ÚZKÁ ŠÍJE mezi ostrovy – jen tam, kde si to mapa vyloženě řekne
+         (`sije:true`). Původně byla všude, protože bez transportu se k cizímu
+         králi nikdo nedostal. Teď je PŘEVOZNÍ LOĎ (p19), takže opravdové
+         ostrovy dávají smysl a týmové ostrovy zůstávají OD SEBE.
+         POZOR: boti zatím lodě neumí, takže na mapách bez šíje si s nimi
+         moc nezahraješ – tam ať hrajou lidi proti lidem. */
+      if(mapa.sije) this.sije(nastav);
     }
 
     // skály (jdou i na mapy bez vody)
@@ -6328,24 +6365,80 @@ const TEREN = {
   vykresliVrstvu(){
     if(this.cv && this.cv.parentNode) this.cv.parentNode.removeChild(this.cv);
     if(!this.jeVoda && !this.bunky.some(v => v === 2)) return;   // nic ke kreslení
+
+    /* Kreslíme rovnou ve světových pixelech (jedno políčko = 40 px), ne v
+       mřížce roztažené přes celou mapu – ta byla rozmazaná. Takhle má moře
+       ostrý břeh, světlé mělčiny a vlnky, a skály vypadají jako kámen. */
+    const M = 4;                                   // 4 body na políčko = ostrá hrana
     this.cv = document.createElement("canvas");
-    this.cv.width = this.sl; this.cv.height = this.ra;
+    this.cv.width = this.sl * M; this.cv.height = this.ra * M;
     this.cv.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;z-index:0;"
       + "width:" + SVET_W + "px;height:" + SVET_H + "px";
     SVET.insertBefore(this.cv, SVET.firstChild);
-    this.ctx = this.cv.getContext("2d");
-    const img = this.ctx.createImageData(this.sl, this.ra);
-    const d = img.data;
-    for(let i = 0, j = 0; i < this.bunky.length; i++, j += 4){
-      const t = this.bunky[i];
-      if(t === 1){        // moře
-        const okraj = this.jeBrehu(i);
-        d[j] = okraj ? 90 : 42; d[j+1] = okraj ? 165 : 105; d[j+2] = okraj ? 205 : 175; d[j+3] = 255;
-      }else if(t === 2){  // skála
-        d[j] = 122; d[j+1] = 118; d[j+2] = 126; d[j+3] = 255;
-      }else{ d[j+3] = 0; }
-    }
-    this.ctx.putImageData(img, 0, 0);
+    const x = this.cv.getContext("2d");
+    this.ctx = x;
+    const k = this.krok / (this.krok / M);          // velikost bodu = M na políčko
+
+    // hladina
+    for(let ry = 0; ry < this.ra; ry++)
+      for(let rx = 0; rx < this.sl; rx++){
+        const i = ry*this.sl + rx, t = this.bunky[i];
+        if(t === 0) continue;
+        if(t === 1){
+          const melcina = this.jeBrehu(i);
+          x.fillStyle = melcina ? "#5aa8cc" : "#2f6f9e";
+          x.fillRect(rx*M, ry*M, M, M);
+        }else{
+          x.fillStyle = "#7b7580";
+          x.fillRect(rx*M, ry*M, M, M);
+        }
+      }
+    // hlubina uprostřed moře (jemné tmavší skvrny) + vlnky
+    x.globalAlpha = 0.5;
+    for(let ry = 1; ry < this.ra-1; ry++)
+      for(let rx = 1; rx < this.sl-1; rx++){
+        const i = ry*this.sl + rx;
+        if(this.bunky[i] !== 1 || this.jeBrehu(i)) continue;
+        if(((rx*7 + ry*13) % 11) === 0){
+          x.fillStyle = "#25597f";
+          x.fillRect(rx*M, ry*M, M, M);
+        }
+      }
+    x.globalAlpha = 1;
+    // bílá čára příboje na břehu
+    x.strokeStyle = "rgba(255,255,255,.55)"; x.lineWidth = 1.2;
+    for(let ry = 0; ry < this.ra; ry++)
+      for(let rx = 0; rx < this.sl; rx++){
+        const i = ry*this.sl + rx;
+        if(this.bunky[i] !== 1 || !this.jeBrehu(i)) continue;
+        x.strokeRect(rx*M + 0.5, ry*M + 0.5, M-1, M-1);
+      }
+    // skála dostane pár tmavších hran, ať vypadá jako kámen
+    x.fillStyle = "rgba(0,0,0,.22)";
+    for(let ry = 0; ry < this.ra; ry++)
+      for(let rx = 0; rx < this.sl; rx++){
+        const i = ry*this.sl + rx;
+        if(this.bunky[i] !== 2) continue;
+        if(((rx*5 + ry*3) % 7) < 2) x.fillRect(rx*M, ry*M, M, Math.max(1, M/2));
+      }
+  },
+
+  /* Terén pro minimapu – předkreslí se jednou a pak se jen kopíruje. */
+  miniObrazek(w, h){
+    if(this.mini && this.miniW === w) return this.mini;
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const x = c.getContext("2d");
+    const sx = w / this.sl, sy = h / this.ra;
+    for(let ry = 0; ry < this.ra; ry++)
+      for(let rx = 0; rx < this.sl; rx++){
+        const t = this.bunky[ry*this.sl + rx];
+        if(t === 0) continue;
+        x.fillStyle = t === 1 ? "#2f6f9e" : "#7b7580";
+        x.fillRect(rx*sx, ry*sy, Math.ceil(sx), Math.ceil(sy));
+      }
+    this.mini = c; this.miniW = w;
+    return c;
   },
   jeBrehu(i){
     const x = i % this.sl, y = (i / this.sl) | 0;
@@ -6355,6 +6448,71 @@ const TEREN = {
       if(this.bunky[ny*this.sl + nx] === 0) return true;
     }
     return false;
+  },
+
+  /* ---------- HLEDÁNÍ CESTY (jen pro lodě) ----------
+     Zbytek hry chodí pořád rovně a o překážku se zarazí. Lodím to ale nestačí:
+     musí obeplout ostrov nebo šíji, jinak uvíznou na půl cesty a náklad se
+     nikam nedostane. Prohledáme mřížku do šířky (je jich pár tisíc, takže je
+     to levné) a cestu pak zjednodušíme na pár otočných bodů. */
+  cesta(e, x1, y1, x2, y2){
+    if(!this.pripraven) return null;
+    const start = this.index(x1, y1), cil = this.index(x2, y2);
+    if(start < 0 || cil < 0) return null;
+    if(!this.smiTam(e, x2, y2)) return null;
+    if(start === cil) return [{x:x2, y:y2}];
+
+    const n = this.bunky.length;
+    const odkud = new Int32Array(n).fill(-1);
+    const videl = new Uint8Array(n);
+    const fronta = new Int32Array(n);
+    let hlava = 0, patka = 0;
+    fronta[patka++] = start; videl[start] = 1;
+    let nasel = false;
+    while(hlava < patka){
+      const i = fronta[hlava++];
+      if(i === cil){ nasel = true; break; }
+      const cx = i % this.sl, cy = (i / this.sl) | 0;
+      for(let k = 0; k < 4; k++){
+        const nx = cx + (k===0?1:k===1?-1:0), ny = cy + (k===2?1:k===3?-1:0);
+        if(nx < 0 || ny < 0 || nx >= this.sl || ny >= this.ra) continue;
+        const j = ny*this.sl + nx;
+        if(videl[j]) continue;
+        if(!this.smiTam(e, (nx+0.5)*this.krok, (ny+0.5)*this.krok)) continue;
+        videl[j] = 1; odkud[j] = i; fronta[patka++] = j;
+      }
+    }
+    if(!nasel) return null;
+
+    const bunkyCesty = [];
+    for(let i = cil; i !== -1; i = odkud[i]) bunkyCesty.push(i);
+    bunkyCesty.reverse();
+
+    /* Zjednodušení: bod si necháme, jen když se od posledního nedá jít rovně.
+       Z pár desítek políček tak zbydou dva tři otočné body. */
+    const body = [];
+    let posledni = {x:x1, y:y1};
+    for(let k = 1; k < bunkyCesty.length - 1; k++){
+      const dalsi = bunkyCesty[k+1];
+      const nx = (dalsi % this.sl + 0.5)*this.krok, ny = ((dalsi/this.sl|0) + 0.5)*this.krok;
+      if(!this.rovneProjde(e, posledni.x, posledni.y, nx, ny)){
+        const i = bunkyCesty[k];
+        const px = (i % this.sl + 0.5)*this.krok, py = ((i/this.sl|0) + 0.5)*this.krok;
+        body.push({x:px, y:py});
+        posledni = {x:px, y:py};
+      }
+    }
+    body.push({x:x2, y:y2});
+    return body;
+  },
+  /* Dá se mezi dvěma body jít rovně? (vzorkování po půl políčku) */
+  rovneProjde(e, x1, y1, x2, y2){
+    const d = Math.hypot(x2-x1, y2-y1), kroku = Math.max(1, Math.ceil(d/(this.krok/2)));
+    for(let i = 1; i <= kroku; i++){
+      const t = i/kroku;
+      if(!this.smiTam(e, x1 + (x2-x1)*t, y1 + (y2-y1)*t)) return false;
+    }
+    return true;
   },
 
   /* Najdi vodu blízko bodu (pro objevení lodi u přístavu). */
@@ -6390,6 +6548,10 @@ jdiK = function(e, tx, ty, dt, odstup){
     else if(jenY) e.x = px;
     else { e.x = px; e.y = py; zaraz = true; }
   }
+  /* POZOR: kdo DOŠEL, není zaseknutý – jen stojí a dělá svou práci.
+     Bez téhle podmínky si to spletlo stavícího vesničana (ten se taky nehýbe)
+     a po 2,5 s ho odvolalo od rozestavěné budovy. */
+  if(hotovo){ e.zasek = 0; return true; }
   // pohnul se vůbec?
   const posun = Math.abs(e.x - px) + Math.abs(e.y - py);
   if(zaraz || posun < 0.3){
@@ -6398,7 +6560,10 @@ jdiK = function(e, tx, ty, dt, odstup){
       e.zasek = 0;
       /* Vzdáme to. Vesničana pustíme z těžby, ať si najde dosažitelný zdroj,
          ostatní jen zastavíme, aby netlačili do skály donekonečna. */
-      if(e.kind === "vesnican" && (e.stav === "tez" || e.stav === "stav")){
+      /* Od ROZESTAVĚNÉ BUDOVY vesničana nikdy neodvoláváme – radši ať tam
+         stojí a čeká, než aby stavba zůstala navěky nedodělaná. */
+      if(e.kind === "vesnican" && e.stav === "stav"){ e.zasek = 0; }
+      else if(e.kind === "vesnican" && e.stav === "tez"){
         e.cilE = null; e.tezar = false; e.stav = "stoj";
       }else if(e.stav === "jdi" || e.stav === "utok"){
         e.cilE = null; e.stav = "stoj";
@@ -6468,8 +6633,12 @@ mistoVolne = function(kind, x, y){
 const pridejJednotkuPredMorem = pridejJednotku;
 pridejJednotku = function(kind, side, x, y){
   if(TEREN.pripraven && JED[kind] && JED[kind].lod && !TEREN.voda(x, y)){
-    const v = TEREN.vodaBlizko(x, y, 320);
+    /* Hledáme daleko (700 px): kolem základny je ochranný kruh souše o poloměru
+       0,135 × velikost mapy, takže na velké mapě je moře klidně 500 px daleko.
+       Loď, která by vznikla na souši, by tam uvízla napořád. */
+    const v = TEREN.vodaBlizko(x, y, 700);
     if(v){ x = v.x; y = v.y; }
+    else if(jeMuj(side)) zprava("⚓ Loď nemá kam vyplout – přístav musí být u moře.","zle");
   }
   return pridejJednotkuPredMorem(kind, side, x, y);
 };
@@ -6512,34 +6681,51 @@ if(typeof DOHLED !== "undefined"){ DOHLED.pristav = 260; DOHLED.galeona = 300; }
 /* ---------- kresba ---------- */
 function galeonaSVG(civK, barva){
   const c = CIVS[civK], s = STYLY[civK], bar = barva || c.akcent;
-  const drevo = s.ram, drevoSv = svetlej(s.ram, 0.3), drevoTm = tmavej(s.ram, 0.3);
-  const posadka = plysak(civK, "vesnican", {bezStinu:1, bezPraporku:1, bezNohou:1, barva:bar});
+  const drevo = s.ram, drevoSv = svetlej(s.ram, 0.32), drevoTm = tmavej(s.ram, 0.34);
+  const posadka = plysak(civK, "vojak", {bezStinu:1, bezPraporku:1, bezNohou:1, barva:bar});
+  const gid = "gal" + (++__gid);
+  const delo = (x, y) => `
+    <rect x="${x}" y="${y}" width="17" height="6" rx="3" fill="#4a5058"/>
+    <rect x="${x}" y="${y}" width="17" height="2.2" rx="1.1" fill="#8e9aa6"/>
+    <circle cx="${x+18}" cy="${y+3}" r="3.2" fill="#23292f"/>`;
   return `
-  <ellipse cx="50" cy="90" rx="40" ry="6" fill="rgba(20,60,90,.3)"/>
-  <!-- trup -->
-  <path d="M10 74 q40 12 80 0 l-6 -16 q-34 8 -68 0 Z" fill="${drevo}"/>
-  <path d="M16 60 q34 8 68 0 l-3 -8 q-31 7 -62 0 Z" fill="${drevoSv}"/>
-  <path d="M10 74 q40 12 80 0" fill="none" stroke="${drevoTm}" stroke-width="2.4"/>
-  <g stroke="${drevoTm}" stroke-width="1.2" opacity=".7">
-    <path d="M26 56 v16"/><path d="M50 59 v17"/><path d="M74 56 v16"/></g>
-  <!-- dělo na boku -->
-  <g>
-    <rect x="60" y="46" width="26" height="7" rx="3.5" fill="#5a5f66"/>
-    <rect x="60" y="46" width="26" height="2.6" rx="1.3" fill="#8e9aa6"/>
-    <circle cx="60" cy="49.5" r="5.5" fill="#3f4a55"/>
-    <circle cx="88" cy="49.5" r="3.6" fill="#2b333c"/>
-  </g>
-  <!-- posádka u děla -->
-  <g transform="translate(30,26) scale(0.42)">${posadka}</g>
-  <!-- stěžeň a plachta v barvě hráče -->
-  <path d="M44 52 V10" stroke="${drevo}" stroke-width="3.4" stroke-linecap="round"/>
-  <path d="M44 14 q22 8 0 18 Z" fill="${bar}"/>
-  <path d="M44 34 q18 7 0 14 Z" fill="${bar}" opacity=".82"/>
-  <path d="M44 14 q22 8 0 18" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="1.3"/>
-  <circle cx="44" cy="9" r="2.6" fill="#f0c33c"/>
-  <!-- vlnky u trupu -->
-  <g stroke="#cfe9f5" stroke-width="2" opacity=".75" fill="none">
-    <path d="M6 78 q5 -4 10 0 q5 4 10 0"/><path d="M74 80 q5 -4 10 0 q5 4 10 0"/></g>`;
+  <defs>
+    <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${drevoSv}"/><stop offset="1" stop-color="${drevoTm}"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="50" cy="91" rx="43" ry="6" fill="rgba(20,60,90,.32)"/>
+  <!-- trup: vyšší záď, zvednutá příď -->
+  <path d="M6 72 q10 16 44 16 q34 0 44 -16 l-5 -20 q-39 10 -78 0 Z" fill="url(#${gid})"/>
+  <path d="M11 55 q39 10 78 0 l-2 -7 q-37 9 -74 0 Z" fill="${drevoSv}"/>
+  <path d="M6 72 q10 16 44 16 q34 0 44 -16" fill="none" stroke="${drevoTm}" stroke-width="2.6"/>
+  <!-- zlatý pás a okénka -->
+  <path d="M9 64 q41 11 82 0" fill="none" stroke="#e0b552" stroke-width="2.4" opacity=".9"/>
+  <g fill="#2b333c" opacity=".8">
+    <rect x="20" y="66" width="6" height="5" rx="1.5"/><rect x="34" y="68" width="6" height="5" rx="1.5"/>
+    <rect x="60" y="68" width="6" height="5" rx="1.5"/><rect x="74" y="66" width="6" height="5" rx="1.5"/></g>
+  <!-- TŘI děla na boku -->
+  ${delo(16, 57)} ${delo(41, 59)} ${delo(66, 57)}
+  <!-- zvednutá záď s lucernou -->
+  <path d="M2 70 q4 -18 12 -20 l3 10 q-7 4 -9 12 Z" fill="${drevoTm}"/>
+  <circle cx="8" cy="48" r="3.2" fill="#ffd76e" opacity=".95"/>
+  <!-- posádka u prostředního děla (malá, ať nezakrývá loď) -->
+  <g transform="translate(36,34) scale(0.26)">${posadka}</g>
+  <!-- dva stěžně, hlavní s velkou plachtou -->
+  <path d="M38 56 V6" stroke="${drevoTm}" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M68 58 V22" stroke="${drevoTm}" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M38 9 q26 12 0 22 Z" fill="${bar}"/>
+  <path d="M38 33 q20 9 0 16 Z" fill="${bar}" opacity=".8"/>
+  <path d="M68 24 q16 8 0 14 Z" fill="${bar}" opacity=".9"/>
+  <g fill="none" stroke="rgba(0,0,0,.22)" stroke-width="1.2">
+    <path d="M38 9 q26 12 0 22"/><path d="M68 24 q16 8 0 14"/></g>
+  <path d="M38 6 l12 3 -12 3 Z" fill="#f0c33c"/>
+  <!-- lanoví -->
+  <g stroke="${drevoTm}" stroke-width="1" opacity=".55">
+    <path d="M38 12 L14 54"/><path d="M38 12 L62 52"/><path d="M68 26 L88 56"/></g>
+  <!-- příďová vlna -->
+  <g stroke="#dff1fb" stroke-width="2.2" opacity=".8" fill="none">
+    <path d="M86 84 q6 -5 12 0"/><path d="M2 82 q6 -5 12 0"/></g>`;
 }
 const jednotkaSVGpredMorem = jednotkaSVG;
 jednotkaSVG = function(civK, kind, barva){
@@ -6599,6 +6785,335 @@ if(kresliMapyPredMorem){
     });
   };
 }
+
+
+/* ============================================================
+   44) PŘEVOZNÍ LOĎ – doprava panáčků přes moře
+   ============================================================
+   Jak se ovládá:
+     NALODIT  – vyber panáčky a klikni na svou převozní loď. Dojdou ke břehu
+                u lodi a nastoupí.
+     VYLODIT  – vyber loď a klikni na zem. Doplave k nejbližší vodě u toho
+                místa a všechny tam vysype.
+
+   Jak to drží pohromadě po síti:
+     Panáček na palubě NEZMIZÍ ze světa – jen dostane `naPalube` a jeho
+     souřadnice se drží na lodi. Do snímku světa letí s bitem 8 (viz p8),
+     takže kamarád ví, že ho nemá kreslit. Kdyby se místo toho mazal, musel
+     by se po vylodění vyrobit znovu a rozešla by se ID.
+
+   Proč tahle loď ruší berličku se šíjemi (viz p18): až se ověří, že převoz
+   funguje i botům, můžou se úzké šíje na ostrovních mapách zrušit a ostrovy
+   budou konečně opravdové ostrovy. */
+
+const PREVOZ_MAX = 20;                 // kolik panáčků se vejde na palubu
+
+function jePrevoz(e){
+  return e && e.druh === "jednotka" && JED[e.kind] && JED[e.kind].prevoz;
+}
+function volnoNaPalube(lod){
+  return PREVOZ_MAX - ((lod.pasazeri && lod.pasazeri.length) || 0);
+}
+
+/* Najde vodu co nejblíž danému bodu (kam loď doplave, aby mohla vyložit). */
+function vodaUBodu(x, y, max){
+  max = max || 400;
+  if(!TEREN.pripraven) return {x:x, y:y};
+  if(TEREN.voda(x, y)) return {x:x, y:y};
+  for(let r = TEREN.krok; r <= max; r += TEREN.krok)
+    for(let a = 0; a < Math.PI*2; a += Math.PI/12){
+      const vx = x + Math.cos(a)*r, vy = y + Math.sin(a)*r;
+      if(TEREN.voda(vx, vy)) return {x:vx, y:vy};
+    }
+  return null;
+}
+/* A naopak: souš co nejblíž lodi (kam vystoupí panáčci). */
+function sousUBodu(x, y, max){
+  max = max || 400;
+  if(!TEREN.pripraven) return {x:x, y:y};
+  if(TEREN.sucho(x, y)) return {x:x, y:y};
+  for(let r = TEREN.krok; r <= max; r += TEREN.krok)
+    for(let a = 0; a < Math.PI*2; a += Math.PI/12){
+      const sx = x + Math.cos(a)*r, sy = y + Math.sin(a)*r;
+      if(TEREN.sucho(sx, sy)) return {x:sx, y:sy};
+    }
+  return null;
+}
+
+/* ---------- nalodění a vylodění ---------- */
+function nalod(u, lod){
+  if(!jePrevoz(lod) || u.mrtvy || lod.mrtvy) return false;
+  if(volnoNaPalube(lod) <= 0) return false;
+  lod.pasazeri = lod.pasazeri || [];
+  lod.pasazeri.push(u);
+  u.naPalube = lod;
+  u.stav = "stoj"; u.cilE = null; u.cil = null; u.tezar = false;
+  u.x = lod.x; u.y = lod.y;
+  if(u.el) u.el.style.display = "none";
+  G.sel = G.sel.filter(s => s !== u);
+  return true;
+}
+function vylod(lod, kamX, kamY){
+  if(!lod.pasazeri || !lod.pasazeri.length) return 0;
+  const breh = sousUBodu(kamX, kamY, 400) || sousUBodu(lod.x, lod.y, 400);
+  if(!breh) return 0;
+  let ven = 0;
+  const kolik = lod.pasazeri.length, sl = Math.ceil(Math.sqrt(kolik));
+  lod.pasazeri.forEach((u, i) => {
+    if(u.mrtvy) return;
+    const ox = (i%sl - (sl-1)/2) * 40, oy = (Math.floor(i/sl) - (sl-1)/2) * 34;
+    let x = klam(breh.x + ox, 20, SVET_W-20), y = klam(breh.y + oy, 20, SVET_H-20);
+    if(!TEREN.smiTam(u, x, y)){                 // kdyby to místo bylo ve vodě
+      const s = sousUBodu(x, y, 200);
+      if(s){ x = s.x; y = s.y; }
+    }
+    u.x = x; u.y = y;
+    u.naPalube = null; u.stav = "stoj"; u.cilE = null;
+    if(u.el) u.el.style.display = "";
+    ven++;
+  });
+  lod.pasazeri = [];
+  if(jeMuj(lod.side)){ zvuk("klik"); jiskra(breh.x, breh.y, "⚓", "#8ef0a0"); }
+  return ven;
+}
+
+/* ---------- plavba po trase ----------
+   Lodě jako jediné umí obeplouvat překážky (TEREN.cesta v p18). Bez toho by
+   narazily do ostrova nebo do šíje a náklad by nikdy nedoplul. Trasa se počítá
+   jednou na rozkaz, ne každý tik. */
+function plujK(lod, tx, ty, dt){
+  const klic = Math.round(tx) + "," + Math.round(ty);
+  if(lod.trasaCil !== klic){
+    lod.trasaCil = klic;
+    lod.trasa = TEREN.cesta(lod, lod.x, lod.y, tx, ty) || [{x:tx, y:ty}];
+  }
+  // odbavené otočné body zahazujeme
+  while(lod.trasa.length > 1 && dist2(lod.x, lod.y, lod.trasa[0].x, lod.trasa[0].y) < 46)
+    lod.trasa.shift();
+  const bod = lod.trasa[0] || {x:tx, y:ty};
+  const posledni = lod.trasa.length <= 1;
+  const hotovo = jdiK(lod, bod.x, bod.y, dt, posledni ? 26 : 8);
+  return posledni && hotovo;
+}
+
+/* Pasažéři se vozí s lodí a nesmí se sami hýbat ani bojovat. */
+const updJednotkuPredPrevozem = updJednotku;
+updJednotku = function(e, dt){
+  if(e.naPalube){
+    const lod = e.naPalube;
+    if(!lod || lod.mrtvy){        // loď potopili – panáčci jdou ke dnu s ní
+      e.naPalube = null; e.hp = 0; e.mrtvy = true;
+      if(e.el) e.el.style.display = "";
+      zabij(e);
+      return;
+    }
+    e.x = lod.x; e.y = lod.y;     // ať sedí na lodi i ve snímku světa
+    return;                       // žádné chození, žádný boj
+  }
+  /* Převozní loď neumí střílet – kdyby jí někdo nastavil útok, jen popluje. */
+  if(jePrevoz(e) && e.stav === "utok"){ e.stav = "stoj"; e.cilE = null; }
+
+  // nalodění: došel jsem k lodi?
+  if(e.stav === "nalod"){
+    const lod = e.cilE;
+    if(!lod || lod.mrtvy || !jePrevoz(lod) || volnoNaPalube(lod) <= 0){
+      e.stav = "stoj"; e.cilE = null;
+      return updJednotkuPredPrevozem(e, dt);
+    }
+    // jdeme k vodě u lodi (na břeh naproti ní)
+    if(dist2(e.x, e.y, lod.x, lod.y) < e.r + lod.r + 34){ nalod(e, lod); return; }
+    jdiK(e, lod.x, lod.y, dt, e.r + lod.r + 24);
+    polohuj(e);
+    return;
+  }
+  // vylodění: doplav k místu a vysaď
+  if(jePrevoz(e) && e.stav === "vyloz"){
+    if(!e.cil){ e.stav = "stoj"; }
+    else if(plujK(e, e.cil.x, e.cil.y, dt) || dist2(e.x, e.y, e.cil.x, e.cil.y) < 80){
+      const n = vylod(e, e.cil.kamX, e.cil.kamY);
+      e.stav = "stoj"; e.cil = null; e.trasa = null; e.trasaCil = null;
+      if(n && jeMuj(e.side)) zprava("⛴️ Vylodilo se " + n + " panáčků.","dobre");
+    }else{
+      polohuj(e);
+      return;
+    }
+  }
+  /* Obyčejná plavba (i galeony) taky po trase, ať neuvíznou o ostrov. */
+  if(JED[e.kind] && JED[e.kind].lod && e.stav === "jdi" && e.cil){
+    if(plujK(e, e.cil.x, e.cil.y, dt)){ e.stav = "stoj"; e.trasa = null; e.trasaCil = null; }
+    polohuj(e);
+    return;
+  }
+  return updJednotkuPredPrevozem(e, dt);
+};
+
+/* Panáček na palubě se nekreslí. */
+const polohujPredPrevozem = polohuj;
+polohuj = function(e){
+  if(e.naPalube){
+    if(!e.mimo){ e.mimo = true; if(e.el) e.el.style.display = "none"; }
+    return;
+  }
+  return polohujPredPrevozem(e);
+};
+
+/* ---------- rozkazy ----------
+   POZOR NA MULTIPLAYER: tenhle přepis je nejvrchnější, takže by se u kamaráda
+   provedl LOKÁLNĚ a svět by se rozešel s hostitelem. Proto se klient nikdy
+   nenaloďuje sám – jen pošle obyčejný rozkaz hostiteli (p7b) a ten ho níž
+   provede touhle funkcí (viz přepis SYNC.provedCizi na konci souboru). */
+const rozkazPredPrevozem = rozkaz;
+rozkaz = function(x, y){
+  if(typeof SYNC !== "undefined" && SYNC.jsemKlient && SYNC.jsemKlient())
+    return rozkazPredPrevozem(x, y);          // rozhoduje hostitel
+  const moji = G.sel.filter(e => jeMuj(e.side) && e.druh === "jednotka" && !e.mrtvy);
+  if(moji.length){
+    const cil = entPod(x, y);
+    /* 1) Klikl jsem na SVOU převozní loď a mám vybrané panáčky → naloď je. */
+    if(jePrevoz(cil) && jeMuj(cil.side)){
+      const kdo = moji.filter(u => u !== cil && !JED[u.kind].lod);
+      if(kdo.length){
+        const volno = volnoNaPalube(cil);
+        kdo.slice(0, volno).forEach(u => {
+          u.stav = "nalod"; u.cilE = cil; u.cil = null;
+          u.hlidka = null; u.tezar = false; u.klid = false;
+        });
+        if(jeMuj(cil.side)){
+          jiskra(cil.x, cil.y - cil.vel*0.6, "⛴️", "#8ef0a0"); zvuk("klik");
+          if(kdo.length > volno)
+            zprava("⛴️ Na loď se vejde " + PREVOZ_MAX + " panáčků – zbytek počká.","zle");
+        }
+        return;
+      }
+    }
+    /* 2) Mám vybranou převozní loď a klikl jsem na ZEM → dovez a vylož. */
+    const lode = moji.filter(u => jePrevoz(u));
+    if(lode.length && TEREN.pripraven && TEREN.sucho(x, y)){
+      const kam = vodaUBodu(x, y, 500);
+      lode.forEach(l => {
+        if(!l.pasazeri || !l.pasazeri.length){
+          // prázdná loď se prostě přiblíží ke břehu
+          if(kam){ l.stav = "jdi"; l.cil = {x:kam.x, y:kam.y}; l.cilE = null; }
+          return;
+        }
+        if(!kam){ if(jeMuj(l.side)) zprava("Tam se loď nedostane – není tam moře.","zle"); return; }
+        l.stav = "vyloz"; l.cilE = null;
+        l.cil = {x:kam.x, y:kam.y, kamX:x, kamY:y, plav:true};
+      });
+      if(lode.some(l => l.pasazeri && l.pasazeri.length)){
+        jiskra(x, y, "⚓", "#8ef0a0"); zvuk("klik");
+        return;
+      }
+      if(kam) { zvuk("klik"); return; }
+    }
+  }
+  return rozkazPredPrevozem(x, y);
+};
+
+/* ---------- panel: kolik veze a tlačítko vylodit ---------- */
+const obnovPanelPredPrevozem = obnovPanel;
+obnovPanel = function(){
+  obnovPanelPredPrevozem();
+  const A = document.getElementById("akce");
+  if(!A || G.konec) return;
+  const lod = G.sel.find(u => jePrevoz(u) && jeMuj(u.side) && !u.mrtvy);
+  if(!lod) return;
+  const veze = (lod.pasazeri && lod.pasazeri.length) || 0;
+  A.appendChild(tlacitko("⛴️", "Veze " + veze + "/" + PREVOZ_MAX, "", true, ()=>{},
+    "<b>Převozní loď</b><br>Vyber panáčky a klikni na loď – nastoupí.<br>"
+    + "Pak vyber loď a klikni na břeh – vyloží je tam.<br>Neumí střílet, ale je rychlá."));
+  if(veze) A.appendChild(tlacitko("⚓", "Vylodit tady", "", true, ()=>{
+    const s = sousUBodu(lod.x, lod.y, 400);
+    if(!s){ zprava("Poblíž není žádný břeh.","zle"); return; }
+    /* Pošleme to jako obyčejný rozkaz na ten břeh – u kamaráda to tím pádem
+       projde přes hostitele stejně jako klikání myší a nic se nerozejde. */
+    rozkaz(s.x, s.y);
+    obnovPanel();
+  }, "Vysadí všechny panáčky na nejbližší břeh."));
+};
+
+/* ---------- kresba ---------- */
+function prevozSVG(civK, barva){
+  const c = CIVS[civK], s = STYLY[civK], bar = barva || c.akcent;
+  const drevo = s.ram, drevoSv = svetlej(s.ram, 0.34), drevoTm = tmavej(s.ram, 0.34);
+  const kormidelnik = plysak(civK, "vesnican", {bezStinu:1, bezPraporku:1, bezNohou:1, barva:bar});
+  const gid = "prv" + (++__gid);
+  return `
+  <defs>
+    <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${drevoSv}"/><stop offset="1" stop-color="${drevoTm}"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="50" cy="91" rx="46" ry="6" fill="rgba(20,60,90,.32)"/>
+  <!-- široký, nízký, baňatý trup nákladní lodi -->
+  <path d="M3 68 q8 20 47 20 q39 0 47 -20 l-4 -16 q-43 11 -86 0 Z" fill="url(#${gid})"/>
+  <path d="M8 55 q42 11 84 0 l-2 -6 q-40 10 -80 0 Z" fill="${drevoSv}"/>
+  <path d="M3 68 q8 20 47 20 q39 0 47 -20" fill="none" stroke="${drevoTm}" stroke-width="2.8"/>
+  <!-- sklopená lávka na příď: podle ní je hned poznat, že to vozí panáčky -->
+  <path d="M92 74 l14 8 -2 4 -14 -7 Z" fill="${drevoSv}" stroke="${drevoTm}" stroke-width="1.3"/>
+  <g stroke="${drevoTm}" stroke-width="1" opacity=".7">
+    <path d="M94 76 l12 6"/><path d="M92.5 79 l12 6"/></g>
+  <!-- náklad na palubě: bedny, sudy, pytle -->
+  <g>
+    <rect x="20" y="38" width="17" height="15" rx="2" fill="${drevoTm}"/>
+    <path d="M20 45.5 h17 M28.5 38 v15" stroke="${drevoSv}" stroke-width="1.5"/>
+    <rect x="39" y="43" width="13" height="10" rx="2" fill="${drevo}"/>
+    <path d="M39 48 h13" stroke="${drevoSv}" stroke-width="1.2"/>
+    <ellipse cx="62" cy="46" rx="7.5" ry="8.5" fill="${drevoSv}"/>
+    <path d="M54.5 46 h15" stroke="${drevoTm}" stroke-width="1.8"/>
+    <path d="M56 40.5 q6 -3 12 0" stroke="${drevoTm}" stroke-width="1.4" fill="none"/>
+    <ellipse cx="76" cy="49" rx="6" ry="5" fill="#d9c18a"/>
+    <path d="M72 47 q4 -3 8 0" stroke="#b09a63" stroke-width="1.2" fill="none"/>
+  </g>
+  <!-- kormidelník u vesla (malý, ať nezakrývá náklad) -->
+  <g transform="translate(6,32) scale(0.26)">${kormidelnik}</g>
+  <path d="M12 56 l-8 10" stroke="${drevoTm}" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- jeden mohutný stěžeň s širokou plachtou v barvě hráče -->
+  <path d="M50 40 V4" stroke="${drevoTm}" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M32 12 h36" stroke="${drevoTm}" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M32 12 q18 16 36 0 q-4 18 -18 22 q-14 -4 -18 -22 Z" fill="${bar}"/>
+  <path d="M32 12 q18 16 36 0" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="1.3"/>
+  <path d="M50 14 v20" stroke="rgba(255,255,255,.3)" stroke-width="1.6"/>
+  <path d="M50 4 l11 3 -11 3 Z" fill="#f0c33c"/>
+  <!-- vlnky -->
+  <g stroke="#dff1fb" stroke-width="2.2" opacity=".8" fill="none">
+    <path d="M0 82 q6 -5 12 0"/><path d="M84 84 q6 -5 12 0"/></g>`;
+}
+const jednotkaSVGpredPrevozem = jednotkaSVG;
+jednotkaSVG = function(civK, kind, barva){
+  if(kind === "prevoz") return prevozSVG(civK, barva);
+  return jednotkaSVGpredPrevozem(civK, kind, barva);
+};
+if(typeof DOHLED !== "undefined") DOHLED.prevoz = 260;
+
+/* Převozní loď se nesmí sama pouštět do boje ani být cílem útoku nablízko
+   z břehu – o to druhé se stará smiUtocit v p18 (platí pro všechny lodě). */
+const smiUtocitPredPrevozem = smiUtocit;
+smiUtocit = function(e, cil){
+  if(jePrevoz(e)) return false;          // sama nikdy neútočí
+  return smiUtocitPredPrevozem(e, cil);
+};
+
+/* ---------- rozkazy od kamaráda provádí hostitel touhle funkcí ----------
+   p7b si při startu uložilo `rozkazLokalne = rozkaz`, což je ještě verze BEZ
+   převozu. Kdybychom to nechali být, kamarád by se nikdy nenalodil – hostitel
+   by jeho rozkaz provedl starou cestou. Proto vlastní obsluha. */
+const provedCiziPredPrevozem = SYNC.provedCizi.bind(SYNC);
+SYNC.provedCizi = function(m){
+  if(m.cmd === "rozkaz"){
+    const side = m.side;
+    if(G.hraci[side] == null || G.hraci[side].porazen) return;
+    const moje = (m.ids || []).map(id => G.ents.find(o => o.id === id))
+                              .filter(o => o && !o.mrtvy && o.side === side);
+    if(!moje.length) return;
+    const puvodSel = G.sel, puvodJa = G.ja;
+    G.sel = moje; G.ja = side;
+    try{ rozkaz(m.x, m.y); }
+    finally { G.sel = puvodSel; G.ja = puvodJa; }
+    return;
+  }
+  return provedCiziPredPrevozem(m);
+};
 
 </script>
 </body>
