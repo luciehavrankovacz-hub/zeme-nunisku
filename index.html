@@ -5230,17 +5230,7 @@ P2P.vypni = function(){ vypniBezMajaku(); MAJAK.zavri(); };
    38) VERZE A KONTROLA SPOJENÍ
    Aby šlo poznat, kdo má jakou verzi, a co se se spojením děje.
    ============================================================ */
-/* v13: mapa se losuje jinak (rnd() místo Math.random()), takže se starou verzí
-   by měl každý stromy jinde.
-   v14: hradby, brána a dílna se stroji – nové druhy v KINDY, takže se starou
-   verzí by kamarádovi naskakovaly úplně jiné budovy. Oba musíte mít v14. */
-/* v15: král (nový druh v KINDY = jiný tvar snímku světa) a nové volby
-   v lobby (velikost mapy, limit jednotek). Se starou verzí to nesedí. */
-/* v16: moře a skály (TEREN), přístav, galeony, 20 nových map. Nové druhy
-   v KINDY = jiný tvar snímku světa, takže se starou verzí to nesedí. */
-/* v17: převozní loď (nový druh v KINDY + nový bit ve snímku pro pasažéry)
-   a hledání cesty pro lodě. Se starou verzí to nesedí. */
-const VERZE = "v17";
+let VERZE = "v12";
 
 (function(){
   const p = document.getElementById("menuPata");
@@ -5280,22 +5270,8 @@ P2P.posliVsem = function(m, kromě, spolehlive){
 
 /* --- kdy naposled něco přišlo --- */
 SYNC.posledniPrijem = 0;
-SYNC.chybaPrijmu = null;
 const prijmiBinPuvodni = SYNC.prijmiBin.bind(SYNC);
-/* POZOR na pořadí: značka času se smí nastavit AŽ po úspěšném rozbalení.
-   Dřív se nastavovala předem a rozbalování nemělo žádné ošetření chyby –
-   takže když snímek přišel poškozený, výjimka spadla do prázdna, svět
-   zamrzl a proužek u toho vesele svítil „Spojeno". */
-SYNC.prijmiBin = function(u8){
-  try{
-    const r = prijmiBinPuvodni(u8);
-    SYNC.posledniPrijem = Date.now();
-    SYNC.chybaPrijmu = null;
-    return r;
-  }catch(e){
-    SYNC.chybaPrijmu = e.message || "neznámá chyba";
-  }
-};
+SYNC.prijmiBin = function(u8){ SYNC.posledniPrijem = Date.now(); return prijmiBinPuvodni(u8); };
 
 /* --- proužek se stavem spojení ve hře --- */
 (function(){
@@ -5318,9 +5294,6 @@ function obnovStavSite(){
     const od = SYNC.posledniPrijem? ((Date.now()-SYNC.posledniPrijem)/1000) : 999;
     if(!kanalOk)
       d.innerHTML = `<b style="color:#ff8a7a">⚠️ Ztratil jsi spojení s hostitelem</b> · ${VERZE}`;
-    else if(SYNC.chybaPrijmu)
-      d.innerHTML = `<b style="color:#ff8a7a">⚠️ Data od hostitele nedávají smysl</b>`
-        + `<br><span style="font-size:10.5px">Nejspíš máte každý jinou verzi – dejte oba Ctrl+F5.</span> · ${VERZE}`;
     else if(od > 3)
       d.innerHTML = `<b style="color:#ffc46a">⏳ Čekám na data od hostitele (${Math.round(od)} s)</b> · ${VERZE}`;
     else
@@ -5375,15 +5348,8 @@ const TIKAC = {
   krok(){
     if(!G.bezi || G.pauza || G.konec) return;
     const ted = performance.now();
-    /* POZOR: tady se pozná, jestli kreslicí smyčka STOJÍ (okno je na pozadí),
-       nebo jen NESTÍHÁ. Dřív se koukalo na `posledni`, jenže to si sdílíme
-       s kreslicí smyčkou – takže když jeden snímek trval přes 90 ms (což při
-       300 panáčcích nastane), Worker začal počítat hru PODRUHÉ. Tím zátěž
-       narostla, další snímek byl ještě pomalejší a celé se to roztáčelo.
-       Proto vlastní značka posledniRAF, kterou píše jen kreslicí smyčka. */
-    if(ted - posledniRAF < 250) return;      // obrázek se pořád kreslí, nech to být
     const od = ted - posledni;
-    if(od < 90) return;
+    if(od < 90) return;                      // obrázek se kreslí normálně, nech to být
     posledni = ted;
     // kdo jen kouká, ať mu aspoň nezamrznou panáčci na místě
     if(SYNC.jsemKlient()){ SYNC.dokresli(Math.min(0.1, od/1000)); return; }
@@ -5399,7 +5365,6 @@ const TIKAC = {
       for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
       for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
       rozestup();
-      updBrany(dt);
       updStrely(dt);
       updAI(dt);
       if(SYNC.jsemHost()) SYNC.posli(dt);
@@ -5474,16 +5439,6 @@ obnovStavSite = function(){
    42) PLYNULEJŠÍ POHYB U KAMARÁDŮ
    ============================================================ */
 /* posíláme častěji (10× za vteřinu místo 6×) */
-/* Poslední snímek na konci hry musí odejít i mimo obvyklý takt. Jinak se
-   kamarádi nedozvědí, kdo vyhrál, a zůstanou koukat na zamrzlý svět —
-   smyčka hostitele se totiž zastaví hned, jak se nastaví G.konec. */
-SYNC.posliHned = function(){
-  if(!(this.jsemHost && this.jsemHost())) return;
-  this.klic = 1;     // vynutí plný snímek (keyframe, jde spolehlivým kanálem)
-  this.cas  = 99;    // obejde škrcení na 10×/s
-  try{ this.posli(0); }catch(e){ this.chyba = e.message; }
-};
-
 const posliSnimekPred = SYNC.posli.bind(SYNC);
 SYNC.posli = function(dt){
   this.cas += dt;
@@ -5553,8 +5508,7 @@ SYNC.provedCizi = function(m){
     return;
   }
   if(m.cmd==="stuj"){
-    // klid=true: stroj si po zastavení sám nehledá nový cíl, dokud mu něco nerozkážeš
-    for(const u of moje){ u.stav="stoj"; u.cilE=null; u.hlidka=null; u.tezar=false; u.klid=true; }
+    for(const u of moje){ u.stav="stoj"; u.cilE=null; u.hlidka=null; u.tezar=false; }
     return;
   }
   provedCiziPred(m);
@@ -7114,6 +7068,506 @@ SYNC.provedCizi = function(m){
   }
   return provedCiziPredPrevozem(m);
 };
+
+
+/* ============================================================
+   45) v18 — PRŮZKUMNÍK, OBCHÁZENÍ MOŘE, HEZČÍ MOŘE,
+            VODA V NÁHLEDECH MAP
+   ============================================================ */
+VERZE = "v18";
+(function(){
+  const p = document.getElementById("menuPata");
+  if(p) p.innerHTML = "Země Ňuňísků · <b>verze " + VERZE + "</b> · Sepsáno v Zemi Ňuňísků";
+})();
+
+/* ============================================================
+   45a) PRŮZKUMNÍK NA KONI
+   Dostaneš ho zadarmo na začátku. Nebojuje – jen jezdí a odkrývá mlhu.
+   ============================================================ */
+KINDY.push("pruzkumnik");          // POZOR: nový druh = jiný tvar snímku po síti
+
+JED.pruzkumnik = {
+  jm:"Průzkumník", ik:"🔭", hp:150, r:18, vel:76,
+  rychlost:150, utok:0, dostrel:0, rychUtoku:9,
+  cena:{}, cas:0, limit:1, nebojuje:1,
+  popis:"Jezdec na rychlém koni. NEBOJUJE – jen objíždí mapu a odkrývá tmu. "
+      + "Vyber ho a dej „Zkoumat“, dál se stará sám."
+};
+if(typeof DOHLED !== "undefined") DOHLED.pruzkumnik = 420;   // vidí hodně daleko
+
+/* kreslí se jako jezdec na koni */
+const jednotkaSVGPredPruzkumem = jednotkaSVG;
+jednotkaSVG = function(civK, kind, barva){
+  if(kind === "pruzkumnik") return konSVG(civK, barva);
+  return jednotkaSVGPredPruzkumem(civK, kind, barva);
+};
+
+/* nedá se vycvičit – je jenom ten jeden na začátku */
+const cvicPredPruzkumem = cvic;
+cvic = function(b, kind){
+  if(kind === "pruzkumnik"){ zvuk("chyba"); zprava("Průzkumník je jenom jeden.","zle"); return; }
+  return cvicPredPruzkumem(b, kind);
+};
+
+/* každý hráč dostane na začátku jednoho */
+const postavSvetPredPruzkumem = postavSvet;
+postavSvet = function(){
+  postavSvetPredPruzkumem.apply(this, arguments);
+  G.hraci.forEach((h, i) => {
+    const z = ZAKL[i]; if(!z) return;
+    const dovnitrY = z.y < SVET_H/2 ? 1 : -1;
+    let x = z.x + nah(-110, 110), y = z.y + dovnitrY*nah(150, 210);
+    if(typeof TEREN !== "undefined" && TEREN.pripraven && !TEREN.sucho(x, y)){ x = z.x; y = z.y + dovnitrY*90; }
+    const p = pridejJednotku("pruzkumnik", i, x, y);
+    if(h.bot) p.zkouma = true;        // počítač si zkoumá rovnou sám
+  });
+};
+
+/* ---- nebojuje: nikdy nikoho nenapadne ---- */
+const zautocPredPruzkumem = zautoc;
+zautoc = function(e, cil, dt){
+  if(e && e.druh === "jednotka" && JED[e.kind] && JED[e.kind].nebojuje) return false;
+  return zautocPredPruzkumem(e, cil, dt);
+};
+
+/* ---- kam se má jet podívat: nejbližší neprozkoumané místo, kam se dá dojít ---- */
+function nejblizsiNeznamo(e){
+  if(typeof MLHA === "undefined" || !MLHA.znam || !MLHA.zap) return null;
+  const sl = MLHA.sl, ra = MLHA.ra, krok = MLHA.krok;
+  const start = (Math.floor(e.y/krok))*sl + Math.floor(e.x/krok);
+  if(start < 0 || start >= sl*ra) return null;
+  const byl = new Uint8Array(sl*ra);
+  const fronta = new Int32Array(sl*ra);
+  let hlava = 0, konec = 0;
+  fronta[konec++] = start; byl[start] = 1;
+  while(hlava < konec){
+    const i = fronta[hlava++];
+    const cx = i % sl, cy = (i / sl) | 0;
+    const sx = cx*krok + krok/2, sy = cy*krok + krok/2;
+    if(!MLHA.znam[i] && (typeof TEREN === "undefined" || !TEREN.pripraven || TEREN.sucho(sx, sy)))
+      return {x:sx, y:sy};
+    for(const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx = cx+dx, ny = cy+dy;
+      if(nx < 0 || ny < 0 || nx >= sl || ny >= ra) continue;
+      const j = ny*sl + nx;
+      if(byl[j]) continue;
+      const wx = nx*krok + krok/2, wy = ny*krok + krok/2;
+      if(typeof TEREN !== "undefined" && TEREN.pripraven && !TEREN.sucho(wx, wy)) continue;
+      byl[j] = 1; fronta[konec++] = j;
+    }
+  }
+  return null;
+}
+
+/* ---- chování průzkumníka ---- */
+const updJednotkuPredPruzkumem = updJednotku;
+updJednotku = function(e, dt){
+  if(e.kind === "pruzkumnik"){
+    /* nikdy nebojuje – kdyby ho něco navedlo na útok (třeba odveta), zruš to */
+    if(e.stav === "utok"){ e.stav = "stoj"; e.cilE = null; }
+    if(e.zkouma){
+      e.zkoumCas = (e.zkoumCas || 0) - dt;
+      const dosel = e.stav !== "jdi" || !e.cil;
+      if(dosel || e.zkoumCas <= 0){
+        const c = nejblizsiNeznamo(e);
+        if(c){ e.stav = "jdi"; e.cil = c; e.cilE = null; e.zkoumCas = 12; }
+        else if(dosel){
+          e.zkouma = false;
+          if(jeMuj(e.side)) zprava("🔭 Průzkumník obhlédl, co se dalo.","dobre");
+        }
+      }
+    }
+  }
+  return updJednotkuPredPruzkumem(e, dt);
+};
+
+/* ---- rozkaz na nepřítele = pro průzkumníka jen „běž tam“ ---- */
+const rozkazPredPruzkumem = rozkaz;
+rozkaz = function(x, y){
+  const zvedavci = G.sel.filter(u => jeMuj(u.side) && u.kind === "pruzkumnik" && !u.mrtvy);
+  zvedavci.forEach(u => { u.zkouma = false; });      // ruční rozkaz zkoumání ruší
+  return rozkazPredPruzkumem(x, y);
+};
+
+/* ---- tlačítko ZKOUMAT ---- */
+function prepniZkoumani(){
+  const moji = G.sel.filter(u => jeMuj(u.side) && u.kind === "pruzkumnik" && !u.mrtvy);
+  if(!moji.length) return;
+  const zapnout = !moji[0].zkouma;
+  if(SYNC.jsemKlient()){
+    NET.posli({typ:"cmd", cmd:"zkoumat", side:G.ja, ids:moji.map(u=>u.id), zap:zapnout});
+  }else{
+    moji.forEach(u => { u.zkouma = zapnout; if(!zapnout){ u.stav = "stoj"; u.cil = null; } });
+  }
+  zvuk("klik");
+  zprava(zapnout ? "🔭 Průzkumník se rozjel objevovat mapu!" : "🔭 Průzkumník se zastavil.",
+         zapnout ? "dobre" : null);
+  obnovPanel();
+}
+const provedCiziPredPruzkumem = SYNC.provedCizi.bind(SYNC);
+SYNC.provedCizi = function(m){
+  if(m.cmd === "zkoumat"){
+    (m.ids || []).map(id => G.ents.find(o => o.id === id))
+      .filter(o => o && !o.mrtvy && o.side === m.side && o.kind === "pruzkumnik")
+      .forEach(u => { u.zkouma = !!m.zap; if(!m.zap){ u.stav = "stoj"; u.cil = null; } });
+    return;
+  }
+  return provedCiziPredPruzkumem(m);
+};
+const obnovPanelPredPruzkumem = obnovPanel;
+obnovPanel = function(){
+  obnovPanelPredPruzkumem();
+  const A = document.getElementById("akce");
+  if(!A || G.konec) return;
+  const moji = G.sel.filter(u => jeMuj(u.side) && u.kind === "pruzkumnik" && !u.mrtvy);
+  if(!moji.length) return;
+  const bezi = moji[0].zkouma;
+  A.appendChild(tlacitko(bezi ? "🛑" : "🔭", bezi ? "Dost zkoumání" : "Zkoumat", "", true, prepniZkoumani,
+    "<b>Zkoumat</b><br>Průzkumník se sám rozjede po mapě a bude odkrývat tmu. "
+    + "Nemusíš s ním nikam klikat.<br>Nikdy nebojuje – když ho někdo napadne, jen to schytá."));
+};
+
+/* ============================================================
+   45b) OBCHÁZENÍ MOŘE A SKAL
+   Dřív se panáček zapřel do břehu, chvíli se svezl a pak to vzdal.
+   Teď si spočítá cestu okolo (A* přes mřížku terénu).
+   ============================================================ */
+if(typeof TEREN !== "undefined"){
+
+  TEREN.projde = function(e, i){
+    const cx = i % this.sl, cy = (i / this.sl) | 0;
+    return this.smiTam(e, cx*this.krok + this.krok/2, cy*this.krok + this.krok/2);
+  };
+
+  /* A* přes políčka terénu. Vrací pole bodů (světové souřadnice) nebo null. */
+  TEREN.cesta = function(e, x1, y1, x2, y2){
+    if(!this.pripraven) return null;
+    const sl = this.sl, ra = this.ra, n = sl*ra;
+    const zac = this.index(x1, y1);
+    let cil = this.index(x2, y2);
+    if(zac < 0 || cil < 0) return null;
+    if(!this.projde(e, cil)){                       // cíl je ve vodě → vezmi nejbližší souš
+      let nej = -1, nd = 1e9;
+      const cx = cil % sl, cy = (cil / sl) | 0;
+      for(let r = 1; r <= 6 && nej < 0; r++)
+        for(let dy = -r; dy <= r; dy++)
+          for(let dx = -r; dx <= r; dx++){
+            const nx = cx+dx, ny = cy+dy;
+            if(nx < 0 || ny < 0 || nx >= sl || ny >= ra) continue;
+            const j = ny*sl + nx;
+            if(!this.projde(e, j)) continue;
+            const d = dx*dx + dy*dy;
+            if(d < nd){ nd = d; nej = j; }
+          }
+      if(nej < 0) return null;
+      cil = nej;
+    }
+    const D = new Float32Array(n).fill(Infinity);
+    const H = new Float32Array(n);
+    const odkud = new Int32Array(n).fill(-1);
+    const vBaldu = new Uint8Array(n);
+    const cilX = cil % sl, cilY = (cil / sl) | 0;
+    const odhad = i => { const x = i % sl, y = (i/sl)|0; return Math.abs(x-cilX) + Math.abs(y-cilY); };
+    /* malá halda */
+    const halda = [];
+    const dovnitr = (i, f) => { halda.push([f, i]); let k = halda.length-1;
+      while(k > 0){ const r = (k-1)>>1; if(halda[r][0] <= halda[k][0]) break;
+        const t = halda[r]; halda[r] = halda[k]; halda[k] = t; k = r; } };
+    const ven = () => { const v = halda[0], p = halda.pop();
+      if(halda.length){ halda[0] = p; let k = 0;
+        for(;;){ const l = 2*k+1, r = l+1; let m = k;
+          if(l < halda.length && halda[l][0] < halda[m][0]) m = l;
+          if(r < halda.length && halda[r][0] < halda[m][0]) m = r;
+          if(m === k) break; const t = halda[m]; halda[m] = halda[k]; halda[k] = t; k = m; } }
+      return v[1]; };
+
+    D[zac] = 0; H[zac] = odhad(zac); dovnitr(zac, H[zac]);
+    let kroku = 0;
+    while(halda.length){
+      const i = ven();
+      if(vBaldu[i]) continue;
+      vBaldu[i] = 1;
+      if(i === cil) break;
+      if(++kroku > 9000) break;                      // pojistka proti zamrznutí
+      const cx = i % sl, cy = (i / sl) | 0;
+      for(let dy = -1; dy <= 1; dy++)
+        for(let dx = -1; dx <= 1; dx++){
+          if(!dx && !dy) continue;
+          const nx = cx+dx, ny = cy+dy;
+          if(nx < 0 || ny < 0 || nx >= sl || ny >= ra) continue;
+          const j = ny*sl + nx;
+          if(vBaldu[j] || !this.projde(e, j)) continue;
+          if(dx && dy){                              // našikmo jen když to jde i rovně
+            if(!this.projde(e, cy*sl + nx) || !this.projde(e, ny*sl + cx)) continue;
+          }
+          const nd = D[i] + (dx && dy ? 1.414 : 1);
+          if(nd < D[j]){ D[j] = nd; odkud[j] = i; dovnitr(j, nd + odhad(j)); }
+        }
+    }
+    if(odkud[cil] < 0 && cil !== zac) return null;
+    const body = [];
+    for(let i = cil; i >= 0 && i !== zac; i = odkud[i]){
+      const x = (i % sl)*this.krok + this.krok/2, y = ((i/sl)|0)*this.krok + this.krok/2;
+      body.push({x, y});
+      if(body.length > 400) break;
+    }
+    body.reverse();
+    /* vyhlazení: vynech body, přes které vede přímka */
+    const hladke = [];
+    let z = {x:x1, y:y1};
+    for(let i = 0; i < body.length; i++){
+      const dalsi = body[i+1];
+      if(!dalsi || !cestaPoZemi(z.x, z.y, dalsi.x, dalsi.y, e)){
+        hladke.push(body[i]); z = body[i];
+      }
+    }
+    return hladke.length ? hladke : null;
+  };
+}
+
+let rozpoctuCest = 0;                     // ať se za jeden snímek nepočítá moc cest
+const jdiKPredObchazenim = jdiK;
+jdiK = function(e, tx, ty, dt, odstup){
+  if(typeof TEREN === "undefined" || !TEREN.pripraven || !e || e.druh !== "jednotka")
+    return jdiKPredObchazenim(e, tx, ty, dt, odstup);
+  if(JED[e.kind] && JED[e.kind].lod)      // lodě mají svoje hledání cesty v p18
+    return jdiKPredObchazenim(e, tx, ty, dt, odstup);
+
+  /* vidím na cíl přímo? Pak žádnou cestu nepotřebuju. */
+  if(cestaPoZemi(e.x, e.y, tx, ty, e)){
+    e.cesta = null;
+    return jdiKPredObchazenim(e, tx, ty, dt, odstup);
+  }
+
+  /* cesta je zastaralá, když se cíl pohnul jinam */
+  if(e.cesta && (Math.abs(e.cestaCilX - tx) > 130 || Math.abs(e.cestaCilY - ty) > 130)) e.cesta = null;
+
+  if(!e.cesta){
+    e.cestaCas = (e.cestaCas || 0) - dt;
+    if(e.cestaCas <= 0 && rozpoctuCest < 3){
+      rozpoctuCest++;
+      e.cestaCas = 1.2;                    // častěji než jednou za 1,2 s ne
+      e.cesta = TEREN.cesta(e, e.x, e.y, tx, ty);
+      e.cestaCilX = tx; e.cestaCilY = ty; e.cestaKrok = 0;
+      if(!e.cesta) e.cestaCas = 3;         // nikam se dojít nedá, nezkoušej to pořád
+    }
+  }
+
+  if(e.cesta && e.cesta.length){
+    let b = e.cesta[e.cestaKrok || 0];
+    /* přeskoč body, které už máme za sebou nebo na které vidíme */
+    while(b && (dist2(e.x, e.y, b.x, b.y) < 26 ||
+               (e.cesta[(e.cestaKrok||0)+1] &&
+                cestaPoZemi(e.x, e.y, e.cesta[(e.cestaKrok||0)+1].x, e.cesta[(e.cestaKrok||0)+1].y, e)))){
+      e.cestaKrok = (e.cestaKrok || 0) + 1;
+      b = e.cesta[e.cestaKrok];
+    }
+    if(!b){ e.cesta = null; return jdiKPredObchazenim(e, tx, ty, dt, odstup); }
+    jdiKPredObchazenim(e, b.x, b.y, dt, 4);
+    e.zasek = 0;                            // jde po cestě, není zaseknutý
+    return false;                           // ještě není u skutečného cíle
+  }
+  return jdiKPredObchazenim(e, tx, ty, dt, odstup);
+};
+
+/* rozpočet na počítání cest se každý snímek obnoví */
+const tikPredObchazenim = tik;
+tik = function(t){ rozpoctuCest = 0; return tikPredObchazenim(t); };
+
+/* ============================================================
+   45c) HEZČÍ MOŘE
+   Hloubka podle vzdálenosti od břehu, vlnky, pěna, skály.
+   ============================================================ */
+if(typeof TEREN !== "undefined"){
+  TEREN.vykresliVrstvu = function(){
+    if(this.cv && this.cv.parentNode) this.cv.parentNode.removeChild(this.cv);
+    if(!this.jeVoda && !this.bunky.some(v => v === 2)) return;
+
+    const M = 8;                                    // bodů na políčko
+    const sl = this.sl, ra = this.ra, n = sl*ra;
+    this.cv = document.createElement("canvas");
+    this.cv.width = sl*M; this.cv.height = ra*M;
+    /* lehké rozostření zaoblí schodovité okraje mřížky – břeh pak vypadá
+       jako opravdové pobřeží, ne jako kostičky */
+    this.cv.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;z-index:0;"
+      + "width:" + SVET_W + "px;height:" + SVET_H + "px;filter:blur(2.5px)";
+    SVET.insertBefore(this.cv, SVET.firstChild);
+    const x = this.cv.getContext("2d");
+    this.ctx = x;
+
+    /* jak daleko je políčko od břehu (vlna se šíří z pobřeží dovnitř) */
+    const hloubka = new Int16Array(n).fill(-1);
+    const fronta = new Int32Array(n);
+    let hl = 0, kon = 0;
+    for(let i = 0; i < n; i++)
+      if(this.bunky[i] === 1 && this.jeBrehu(i)){ hloubka[i] = 0; fronta[kon++] = i; }
+    while(hl < kon){
+      const i = fronta[hl++], cx = i % sl, cy = (i/sl)|0;
+      for(const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const nx = cx+dx, ny = cy+dy;
+        if(nx < 0 || ny < 0 || nx >= sl || ny >= ra) continue;
+        const j = ny*sl + nx;
+        if(this.bunky[j] !== 1 || hloubka[j] >= 0) continue;
+        hloubka[j] = hloubka[i] + 1; fronta[kon++] = j;
+      }
+    }
+
+    /* barevná škála od tyrkysové mělčiny po tmavou hlubinu.
+       Kreslíme kolečka, ne čtverečky – překryjí se a břeh je oblý. */
+    const barvy = ["#7fd0e0","#5cb9d6","#3f9dc6","#2f83b4","#256b9e","#1d5788","#174872","#123c60"];
+    const kolecko = (rx, ry, r) => {
+      x.beginPath();
+      x.arc(rx*M + M/2, ry*M + M/2, r, 0, Math.PI*2);
+      x.fill();
+    };
+    /* 1) bílý lem pěny – nakreslí se pod vodu o kousek větší, takže po obvodu
+          celé vodní plochy vykoukne souvislý pruh (ne jednotlivé bubliny) */
+    x.fillStyle = "rgba(255,255,255,.75)";
+    for(let ry = 0; ry < ra; ry++)
+      for(let rx = 0; rx < sl; rx++)
+        if(this.bunky[ry*sl + rx] === 1) kolecko(rx, ry, M*0.95);
+
+    /* 2) tmavý podklad skal – taky větší, ať kameny drží pohromadě */
+    x.fillStyle = "#5f5866";
+    for(let ry = 0; ry < ra; ry++)
+      for(let rx = 0; rx < sl; rx++)
+        if(this.bunky[ry*sl + rx] === 2) kolecko(rx, ry, M*0.95);
+
+    /* 3) vlastní hladina a kámen */
+    for(let ry = 0; ry < ra; ry++)
+      for(let rx = 0; rx < sl; rx++){
+        const i = ry*sl + rx, t = this.bunky[i];
+        if(t === 0) continue;
+        if(t === 1){
+          const h = Math.max(0, hloubka[i]);
+          let b = barvy[Math.min(barvy.length-1, h)];
+          if(((rx*7 + ry*11) % 13) === 0 && h > 0) b = barvy[Math.min(barvy.length-1, h+1)];
+          x.fillStyle = b;
+          kolecko(rx, ry, M*0.78);
+        }else{
+          x.fillStyle = ((rx*5 + ry*3) % 7) < 3 ? "#98919d" : "#867f8b";
+          kolecko(rx, ry, M*0.80);
+        }
+      }
+
+    /* vlnky – krátké světlé obloučky rozeseté po hladině */
+    x.lineCap = "round";
+    for(let ry = 0; ry < ra; ry++)
+      for(let rx = 0; rx < sl; rx++){
+        const i = ry*sl + rx;
+        if(this.bunky[i] !== 1) continue;
+        const h = hloubka[i];
+        if(h < 1) continue;
+        const k = (rx*13 + ry*29) % 17;
+        if(k > 2) continue;
+        const px = rx*M + (k*2) % M, py = ry*M + M/2;
+        x.strokeStyle = h > 3 ? "rgba(255,255,255,.16)" : "rgba(255,255,255,.28)";
+        x.lineWidth = 1.4;
+        x.beginPath();
+        x.moveTo(px - M*0.55, py);
+        x.quadraticCurveTo(px, py - M*0.30, px + M*0.55, py);
+        x.stroke();
+      }
+
+    /* pár světlých odlesků na kameni, ať není placatý */
+    for(let ry = 0; ry < ra; ry++)
+      for(let rx = 0; rx < sl; rx++){
+        const i = ry*sl + rx;
+        if(this.bunky[i] !== 2 || ((rx*5 + ry*3) % 7) > 1) continue;
+        x.fillStyle = "rgba(255,255,255,.20)";
+        x.beginPath(); x.arc(rx*M + M*0.40, ry*M + M*0.36, M*0.26, 0, Math.PI*2); x.fill();
+      }
+  };
+}
+
+/* ============================================================
+   45d) NÁHLEDY MAP – ať je na nich vidět voda
+   ============================================================ */
+kresliMapy = function(){
+  const m = document.getElementById("mapyMriz");
+  if(!m) return;
+  m.innerHTML = "";
+  MAPY.forEach((mp, i) => {
+    const d = document.createElement("button");
+    d.className = "mapaKarta" + (G.mapa === i ? " on" : "");
+    const cv = document.createElement("canvas");
+    cv.width = 104; cv.height = 52;
+    nakresliNahled(cv, mp, i);
+    d.appendChild(cv);
+    const znak = mp.voda ? (mp.voda === "ostrovy" ? "🏝️" : mp.voda === "tymove" ? "🏝️🤝"
+                  : mp.voda === "rec" ? "🌊" : mp.voda === "okraj" ? "⛵" : "💧") : "";
+    const hory = mp.hory ? "⛰️" : "";
+    d.insertAdjacentHTML("beforeend",
+      "<div>" + mp.jm + "</div>" + ((znak||hory) ? "<div style='font-size:12px;margin-top:1px'>" + znak + hory + "</div>" : ""));
+    d.title = mp.popis;
+    d.onclick = () => {
+      if(G.rezim === "multi" && !NET.jsemHost){ zprava("Mapu vybírá ten, kdo hru vytvořil."); return; }
+      G.mapa = i; zvuk("klik"); NET.oznam(); kresliMapy(); kresliLobby();
+    };
+    m.appendChild(d);
+  });
+};
+
+/* Nakreslí malinkatý obrázek mapy – souš, moře, skály a suroviny.
+   Je to jen ochutnávka: skutečná mapa se losuje až na začátku hry. */
+function nakresliNahled(cv, mp, idx){
+  const x = cv.getContext("2d"), W = cv.width, H = cv.height;
+  seedni(idx*7919 + 13);
+  x.fillStyle = mp.zeme; x.fillRect(0, 0, W, H);
+
+  const vodaB = x.createLinearGradient(0, 0, 0, H);
+  vodaB.addColorStop(0, "#4aa3c8"); vodaB.addColorStop(1, "#1d5788");
+  const morem = (kresli) => { x.save(); x.fillStyle = vodaB; kresli(); x.restore(); };
+  const elipsa = (cx, cy, rx, ry) => { x.beginPath(); x.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2); x.fill(); };
+
+  if(mp.voda === "okraj"){
+    const p = Math.round(Math.min(W, H) * 0.16);
+    morem(() => { x.fillRect(0,0,W,p); x.fillRect(0,H-p,W,p); x.fillRect(0,0,p,H); x.fillRect(W-p,0,p,H); });
+  }else if(mp.voda === "jezero"){
+    morem(() => { elipsa(W*0.42, H*0.5, W*0.15, H*0.20); elipsa(W*0.68, H*0.36, W*0.10, H*0.14); });
+  }else if(mp.voda === "rec"){
+    morem(() => {
+      x.beginPath();
+      for(let y = 0; y <= H; y++){
+        const s = W/2 + Math.sin(y/H*Math.PI*2.2)*W*0.13;
+        if(y === 0) x.moveTo(s - W*0.07, y); else x.lineTo(s - W*0.07, y);
+      }
+      for(let y = H; y >= 0; y--){
+        const s = W/2 + Math.sin(y/H*Math.PI*2.2)*W*0.13;
+        x.lineTo(s + W*0.07, y);
+      }
+      x.closePath(); x.fill();
+    });
+  }else if(mp.voda === "ostrovy" || mp.voda === "tymove"){
+    morem(() => x.fillRect(0, 0, W, H));
+    x.fillStyle = mp.zeme;
+    if(mp.voda === "tymove"){ elipsa(W*0.26, H*0.5, W*0.19, H*0.30); elipsa(W*0.74, H*0.5, W*0.19, H*0.30); }
+    else { const n = 5; for(let i = 0; i < n; i++) elipsa(nah(W*0.15, W*0.85), nah(H*0.2, H*0.8), W*0.12, H*0.17); }
+  }
+
+  if(mp.hory){
+    x.fillStyle = "#8a838f";
+    for(let i = 0; i < 5; i++) elipsa(nah(W*0.1, W*0.9), nah(H*0.15, H*0.85), nah(4, 9), nah(3, 6));
+  }
+
+  /* suroviny – jen tam, kde není voda */
+  const naVode = (px, py) => {
+    if(!mp.voda) return false;
+    const d = x.getImageData(px, py, 1, 1).data;
+    return d[2] > d[1] + 18;                       // modrá výrazně přebíjí zelenou
+  };
+  const tecka = (barva, kolik) => {
+    x.fillStyle = barva;
+    for(let k = 0; k < kolik; k++){
+      const px = Math.round(nah(2, W-3)), py = Math.round(nah(2, H-3));
+      if(naVode(px, py)) continue;
+      x.fillRect(px, py, 3, 3);
+    }
+  };
+  tecka("#2f7a35", Math.round(34*(mp.lesy||1)));
+  tecka("#ffd447", Math.round(7*(mp.zlato||1)));
+  tecka("#dbe7f2", Math.round(7*(mp.zelezo||1)));
+}
 
 </script>
 </body>
