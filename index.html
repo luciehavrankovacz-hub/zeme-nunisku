@@ -8857,7 +8857,123 @@ if(typeof P2P !== "undefined" && P2P.pripojKodem){
 
 /* Nová verze. Hráči si ji při spojení porovnávají, takže se nestane, že by
    spolu hrál někdo s v19 a někdo s v20 a divil se, proč to zlobí. */
-VERZE = "v20";
+VERZE = "v20";   /* p25 to posune na v21 */
+
+
+/* ============================================================
+   50) ABY SE TO NESEKALO – DRUHÁ ČÁST: KRESLENÍ
+
+   Část 48 zlevnila POČÍTÁNÍ (jeden krok hry z 150 ms na 16 ms). Jenže
+   měření v opravdovém Chromu s grafikou ukázalo, že to hlavní se děje
+   jinde: při 300 panáčcích trvá jeden SNÍMEK 128,5 ms, tedy necelých
+   8 snímků za vteřinu. Počítání je v tom jen malý díl – zbytek spolyká
+   prohlížeč tím, co po něm chceme nakreslit.
+
+   Naměřeno A/B (stejná partie, jednou s vypnutou věcí, jednou bez;
+   headful Chrome s GPU, okno 1600×900, mapa Small, 8 hráčů,
+   testy/test_vykon_ab.js):
+
+     300 panáčků, základ                        128,5 ms/snímek (7,8 fps)
+       … bez částic                              55,9 ms  (−56 %)
+       … bez rozmazání mlhy                     104,5 ms  (−19 %)
+       … bez dohánění ve Web Workeru             90,1 ms  (−30 %)
+
+   Tady jsou tři zásahy, které tyhle tři položky uberou, aniž by se hra
+   chovala jinak. Čtvrtou velkou položkou je hustota srsti na panáčcích
+   (54 koleček z 120 uzlů na panáčka) – tu ZÁMĚRNĚ NECHÁVÁM být, protože
+   u Lucie doma platí, že panáčci musí zůstat jako z těch fotek.
+   ============================================================ */
+
+const OMEZ = {
+  okrajX: 200, okrajY: 260,   // co je dál za okrajem obrazovky, nemá smysl kreslit
+  maxCastic: 80               // strop na počet živých částic naráz
+};
+
+/* Je to místo tak daleko, že by to hráč stejně neviděl?
+   Stejná úvaha, jakou už dělá polohuj() u panáčků. */
+function mimoObraz(x, y){
+  return x < G.cam.x - OMEZ.okrajX || x > G.cam.x + vidW() + OMEZ.okrajX
+      || y < G.cam.y - OMEZ.okrajY || y > G.cam.y + vidH() + OMEZ.okrajY;
+}
+
+/* ---------- A) částice: nejdražší věc na kreslení ----------
+   Každý zásah, každé máchnutí sekyrou a každá rána do budovy vyrobí
+   čtyři `div`y, které se za 0,65 s zase zahodí. Při 300 panáčcích to
+   dělá 227 nových uzlů za VTEŘINU – a většina z nich vzniká někde,
+   kam se hráč zrovna nedívá. Prohlížeč je přesto musí vytvořit,
+   nastylovat, zanimovat a zahodit.
+
+   Nic z toho není vidět, tak to rovnou nevyrábíme. Navíc strop: když
+   se strhne velká bitva, sto částic naráz stejně splyne v jednu kaši. */
+let zivychCastic = 0;
+const casticePredVyrezem = castice;
+castice = function(x, y, barva, n){
+  if(mimoObraz(x, y)) return;
+  if(zivychCastic >= OMEZ.maxCastic) return;
+  const kolik = n || 6;
+  zivychCastic += kolik;
+  setTimeout(() => { zivychCastic -= kolik; }, 700);
+  return casticePredVyrezem(x, y, barva, n);
+};
+
+const jiskraPredVyrezem = jiskra;
+jiskra = function(x, y, text, barva){
+  if(mimoObraz(x, y)) return;
+  return jiskraPredVyrezem(x, y, text, barva);
+};
+
+/* ---------- B) mlha: rozmazání stálo pětinu výkonu ----------
+   Plátno mlhy je maličké (90×65 políček), ale roztažené přes celou mapu
+   (3600×2600) a navíc rozmazané. To `filter:blur(6px)` donutí prohlížeč
+   držet DRUHOU vrstvu téže velikosti – dvě vrstvy po 9,4 milionu bodů,
+   dohromady 71 MB, což byla většina veškeré paměti na kreslení.
+
+   Rozmazání přitom skoro k ničemu není: plátno se roztahuje čtyřicetkrát,
+   a prohlížeč ho při tom sám plynule prolne, takže okraje mlhy zůstanou
+   měkké i bez něj. */
+if(typeof MLHA !== "undefined" && MLHA.start){
+  const startPredRozmazanim = MLHA.start.bind(MLHA);
+  MLHA.start = function(){
+    const v = startPredRozmazanim.apply(this, arguments);
+    if(this.cv && this.cv.style) this.cv.style.filter = "none";
+    return v;
+  };
+}
+
+/* ---------- C) dohánění na pozadí přepisovalo, co nikdo neuvidí ----------
+   Web Worker (část 39) dohání hru, když prohlížeč nestíhá kreslit. Jenže
+   v každém doháněcím kroku se celý svět taky PŘEPOLOHOVAL – zapsal se
+   transform a zIndex u každého panáčka. Naměřeno: při 150 panáčcích
+   21,5 takových kroků za vteřinu, ale na obrazovku se dostalo jen 9,6
+   snímků, takže 69 % těch zápisů prohlížeč rovnou zahodil (při 300
+   panáčcích 81 %). Jedna dávka přitom drží hlavní vlákno 23 až 55 ms.
+
+   Necháme tedy dohánění počítat, ale kreslit ne. Poloha se stejně
+   dopočítá při nejbližším skutečném snímku.
+
+   POZOR: u toho, kdo je jen připojený ke kamarádovi, se tudy naopak
+   panáčci plynule dokreslují (SYNC.dokresli), takže tam se nesmí vypnout
+   nic – jinak by mu jednotky zamrzly na místě. */
+G.jenPocitej = false;
+
+const polohujPredJenPocitej = polohuj;
+polohuj = function(e){
+  if(G.jenPocitej) return;
+  return polohujPredJenPocitej(e);
+};
+
+if(typeof TIKAC !== "undefined" && TIKAC.krok){
+  const krokPredJenPocitej = TIKAC.krok.bind(TIKAC);
+  TIKAC.krok = function(){
+    const jsemKlient = (typeof SYNC !== "undefined" && SYNC.jsemKlient && SYNC.jsemKlient());
+    if(jsemKlient) return krokPredJenPocitej();
+    G.jenPocitej = true;
+    try{ return krokPredJenPocitej(); }
+    finally{ G.jenPocitej = false; }
+  };
+}
+
+VERZE = "v21";
 
 </script>
 </body>
