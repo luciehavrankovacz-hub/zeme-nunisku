@@ -1550,6 +1550,10 @@ const BUD = {
   /* zed:1 = hradba/brána. Vydrží mnohem víc než ostatní budovy a staví se do řady tažením. */
   hradba:{jm:"Hradba", hp:1300, r:26, vel:64, cena:{drevo:12,zelezo:3}, cas:5, zed:1,
     popis:"Pevná zeď. Vydrží mnohem víc než ostatní budovy a nepřátele zdrží.", cvici:[]},
+  /* Přístav se dá postavit JEN u moře (hlídá to mistoVolne). Cvičí galeony
+     a ty se objeví na vodě hned vedle něj. */
+  pristav:{jm:"Přístav", hp:700, r:44, vel:112, cena:{drevo:160,zelezo:50}, cas:24, uVody:1,
+    popis:"Jde postavit jen u MOŘE. Cvičí GALEONY – lodě s dělem.", cvici:["galeona"]},
   brana:{jm:"Brána", hp:1200, r:26, vel:70, cena:{drevo:24,zelezo:6}, cas:8, zed:1, brana:1,
     popis:"Sama se otevře tobě i spojencům. Nepřítele nepustí.", cvici:[]}
 };
@@ -1572,6 +1576,13 @@ const JED = {
      Silný jako dva sloni (2×640) a umí se prát, takže se dá i použít v bitvě –
      ale je to sázka, protože jiného už nedostaneš. Nedá se cvičit, každý ho
      má jednoho od začátku hry. */
+  /* GALEONA – lod s dělem. Jezdí JEN po vodě. Bombarduje každé 3 s, na jiné
+     lodě je silná, na panáčky na břehu skoro k ničemu. */
+  galeona:{jm:"Galeona", ik:"⛵", hp:520, r:26, vel:104, rychlost:66, utok:54, dostrel:270,
+    rychUtoku:3.0, strela:1, cena:{drevo:130,zelezo:60,zlato:40}, cas:22, lod:1,
+    protiLodim:2.2, protiJednotkam:0.28, protiBudovam:1.2,
+    popis:"Lod s dělem, jezdí jen po moři. Střílí každé 3 s. Na lodě je silná, na panáčky na břehu slabá."},
+
   kral:{jm:"Král", ik:"👑", hp:1280, r:22, vel:74, rychlost:76, utok:82, dostrel:38, rychUtoku:1.0,
     cena:{}, cas:0, limit:1, kral:1,
     popis:"O něj se hraje! Když padne, prohrál jsi. Je silný jako dva sloni a umí bojovat – ale opatruj si ho."},
@@ -1634,7 +1645,51 @@ const MAPY = [
   {jm:"Houbové údolí",   popis:"Malá mapa – rychlé bitvy",  zeme:"#6aa85c", lesy:1.2, zlato:1.2, zelezo:1.2, sirka:2800, vyska:2000},
   {jm:"Velká step",      popis:"Obrovská mapa, daleko k sobě", zeme:"#8fa855", lesy:0.9, zlato:1,  zelezo:1,   sirka:4600, vyska:3200},
   {jm:"Bobří mokřady",   popis:"Hodně dřeva u základen",    zeme:"#5a9a6a", lesy:1.6, zlato:1.1, zelezo:0.8, sirka:3600, vyska:2600},
-  {jm:"Země Ňuňísků",    popis:"Domovina – všeho dost",     zeme:"#63a552", lesy:1.3, zlato:1.3, zelezo:1.3, sirka:3800, vyska:2700}
+  {jm:"Země Ňuňísků",    popis:"Domovina – všeho dost",     zeme:"#63a552", lesy:1.3, zlato:1.3, zelezo:1.3, sirka:3800, vyska:2700},
+
+  /* ---- mapy s MOŘEM a SKÁLAMI ----
+     voda: okraj / jezero / rec / ostrovy / tymove   ·   hory: kolik masivů
+     Na ostrovních mapách se pěšák přes vodu NEDOSTANE – musíš mít přístav. */
+  {jm:"Ňuňí ostrovy",    popis:"Každý na svém ostrově – bez lodí se nikam nedostaneš",
+    zeme:"#5f9e4f", lesy:1.1, zlato:1, zelezo:1, sirka:3800, vyska:2700, voda:"ostrovy"},
+  {jm:"Ostrovy ve dvou", popis:"Jeden ostrov na tým – drž se spojence",
+    zeme:"#5f9e4f", lesy:1.2, zlato:1.1, zelezo:1, sirka:4000, vyska:2800, voda:"tymove"},
+  {jm:"Velká řeka",      popis:"Řeka dělí mapu napůl – přeplav se, nebo obeplav",
+    zeme:"#5f9e4f", lesy:1.1, zlato:1, zelezo:1.1, sirka:3800, vyska:2700, voda:"rec"},
+  {jm:"Modré jezero",    popis:"Jezero uprostřed, boj se vede kolem",
+    zeme:"#63a552", lesy:1.1, zlato:1.2, zelezo:1, sirka:3600, vyska:2600, voda:"jezero"},
+  {jm:"Ňuňí pobřeží",    popis:"Moře kolem celé zemi – lodě hlídají břeh",
+    zeme:"#5f9e4f", lesy:1.1, zlato:1, zelezo:1, sirka:4000, vyska:2900, voda:"okraj"},
+  {jm:"Skalní průsmyk",  popis:"Skály, přes které se nedá projít – hledej cestu",
+    zeme:"#7d8a7a", lesy:0.8, zlato:1, zelezo:1.6, sirka:3600, vyska:2600, hory:4},
+  {jm:"Tvrz mezi skalami",popis:"Hory tě chrání, ale i zavírají",
+    zeme:"#8a8f80", lesy:0.9, zlato:0.9, zelezo:1.5, sirka:3400, vyska:2500, hory:6},
+  {jm:"Zrádné mokřady",  popis:"Jezera i skály, úzké cestičky",
+    zeme:"#5a9a6a", lesy:1.5, zlato:0.9, zelezo:0.9, sirka:3800, vyska:2700, voda:"jezero", hory:3},
+  {jm:"Souostroví",      popis:"Malé ostrůvky – válka se vede na vodě",
+    zeme:"#5f9e4f", lesy:0.9, zlato:1.1, zelezo:1, sirka:4200, vyska:3000, voda:"ostrovy"},
+  {jm:"Ledové ostrovy",  popis:"Studené moře, ostrovy daleko od sebe",
+    zeme:"#b9d4dd", lesy:0.7, zlato:1, zelezo:1.3, sirka:4200, vyska:3000, voda:"ostrovy"},
+  {jm:"Řeka v kaňonu",   popis:"Řeka i skály – kdo drží brod, drží mapu",
+    zeme:"#a08a55", lesy:0.7, zlato:1.5, zelezo:1, sirka:3800, vyska:2700, voda:"rec", hory:3},
+  {jm:"Pandí zátoka",    popis:"Klidné moře kolem, uvnitř je všeho dost",
+    zeme:"#63a552", lesy:1.4, zlato:1.3, zelezo:1.2, sirka:3800, vyska:2700, voda:"okraj"},
+  {jm:"Dvě jezera",      popis:"Dvě jezera a mezi nimi úzká šíje",
+    zeme:"#5f9e4f", lesy:1.1, zlato:1.1, zelezo:1.1, sirka:3800, vyska:2700, voda:"jezero"},
+  {jm:"Bobří přehrada",  popis:"Hodně dřeva a voda všude kolem",
+    zeme:"#5a9a6a", lesy:1.8, zlato:0.9, zelezo:0.8, sirka:3600, vyska:2600, voda:"rec"},
+  {jm:"Kamenná pláň",    popis:"Otevřená pláň se pár skalisky",
+    zeme:"#8fa855", lesy:0.8, zlato:1, zelezo:1.4, sirka:4400, vyska:3100, hory:5},
+  {jm:"Myší ostrůvky",   popis:"Malá mapa, malé ostrovy, rychlá bitva",
+    zeme:"#6aa85c", lesy:1, zlato:1.2, zelezo:1.2, sirka:2800, vyska:2000, voda:"ostrovy"},
+  {jm:"Zlatý ostrov",    popis:"Uprostřed ostrov plný zlata – doplav tam první",
+    zeme:"#a08a55", lesy:0.7, zlato:2, zelezo:0.9, sirka:4000, vyska:2800, voda:"okraj", stred:"zlato"},
+  {jm:"Železné útesy",   popis:"Železa dost, ale skály ti stojí v cestě",
+    zeme:"#7d8a7a", lesy:0.6, zlato:0.8, zelezo:2, sirka:3800, vyska:2700, hory:5, voda:"jezero"},
+  {jm:"Spojenci na břehu",popis:"Týmy na společném pobřeží",
+    zeme:"#5f9e4f", lesy:1.2, zlato:1.1, zelezo:1.1, sirka:4200, vyska:3000, voda:"tymove"},
+  {jm:"Poslední pevnina",popis:"Skoro všude voda, země je vzácná",
+    zeme:"#63a552", lesy:1, zlato:1.3, zelezo:1.3, sirka:4400, vyska:3100, voda:"ostrovy", hory:2}
 ];
 
 /* ---- ikony hráče (obrázek u jména) ---- */
@@ -1662,6 +1717,8 @@ function dist(a,b){return Math.hypot(a.x-b.x, a.y-b.y);}
 function dist2(ax,ay,bx,by){return Math.hypot(ax-bx,ay-by);}
 function klam(v,a,b){return v<a?a:(v>b?b:v);}
 function limitJednotek(){ return (LIMITY[G.limit] || LIMITY[1]).n; }
+/* Jak daleko od svého stanoviště smí zajít král, než ho to pošle domů. */
+const KRAL_VODIK = 260;
 
 /* Text od cizího hráče NIKDY nevkládat do innerHTML rovnou! Kamarád si může dát
    jméno "<img src=x onerror=...>" a spustil by nám tím svůj kód v prohlížeči.
@@ -1867,18 +1924,25 @@ const POZICE = [
 ];
 let ZAKL = [];
 
+/* Stromy ani rudy nesmí vyrůst v moři nebo ve skále. TEREN je v p18; dokud
+   se nenačte (nebo na mapě bez vody), tahle kontrola prostě pustí všechno. */
+function suchoNa(x,y){
+  return (typeof TEREN === "undefined" || !TEREN.pripraven) ? true : TEREN.sucho(x,y);
+}
 function shlukStromu(cx,cy,n,rad){
   for(let i=0;i<n;i++){
     // POZOR: musí to být rnd() se semínkem, ne Math.random()! Mapu si počítá
     // každý hráč sám a musí vyjít úplně stejná, jinak má kamarád stromy jinde.
     const a=nah(0,Math.PI*2), d=Math.sqrt(rnd())*rad;
-    pridejZdroj("strom", klam(cx+Math.cos(a)*d,60,SVET_W-60), klam(cy+Math.sin(a)*d,60,SVET_H-60));
+    const x = klam(cx+Math.cos(a)*d,60,SVET_W-60), y = klam(cy+Math.sin(a)*d,60,SVET_H-60);
+    if(suchoNa(x,y)) pridejZdroj("strom", x, y);
   }
 }
 function zilaZdroje(kind,cx,cy,n){
   for(let i=0;i<n;i++){
     const a=i/n*Math.PI*2 + nah(-.3,.3), d=nah(20,58);
-    pridejZdroj(kind, klam(cx+Math.cos(a)*d,60,SVET_W-60), klam(cy+Math.sin(a)*d*0.7,60,SVET_H-60));
+    const x = klam(cx+Math.cos(a)*d,60,SVET_W-60), y = klam(cy+Math.sin(a)*d*0.7,60,SVET_H-60);
+    if(suchoNa(x,y)) pridejZdroj(kind, x, y);
   }
 }
 
@@ -1905,11 +1969,17 @@ function postavSvet(){
 
   ZAKL = G.hraci.map((h,i)=>({x:POZICE[i].x*SVET_W, y:POZICE[i].y*SVET_H}));
 
+  /* MOŘE A SKÁLY. Musí se udělat PRVNÍ, ať stromy ani rudy nevyrostou ve vodě.
+     Počítá se to ze semínka, takže hostiteli i kamarádovi vyjde stejná mapa. */
+  if(typeof TEREN !== "undefined") TEREN.postav(mapa);
+
   // dekorace
   const dekoraci = Math.round(110 * (SVET_W*SVET_H)/(3600*2600));
   for(let i=0;i<dekoraci;i++){
     const t = ["kvet","kamen","ker"][nahI(0,2)];
-    pridejDekoraci(t, nah(40,SVET_W-40), nah(40,SVET_H-40), t==="ker"?nah(50,70):(t==="kamen"?nah(42,62):nah(34,48)));
+    const dx = nah(40,SVET_W-40), dy = nah(40,SVET_H-40);
+    if(suchoNa(dx,dy))
+      pridejDekoraci(t, dx, dy, t==="ker"?nah(50,70):(t==="kamen"?nah(42,62):nah(34,48)));
   }
 
   // lesy a suroviny u každé základny
@@ -1944,8 +2014,11 @@ function postavSvet(){
     for(let k=0;k<vesnicanu;k++)
       pridejJednotku("vesnican", i, z.x+nah(-120,120), z.y+dovnitrY*nah(60,140));
     /* Král stojí hned u radnice. O něj se hraje – když padne, hráč prohrál,
-       i kdyby mu zůstalo celé město. */
-    pridejJednotku("kral", i, z.x - dovnitrX*60, z.y + dovnitrY*70);
+       i kdyby mu zůstalo celé město. `straz` je jeho stanoviště: dál než
+       KRAL_VODIK od něj se nikdy nevzdálí (viz p4a), aby si sám nenabíhal
+       do bitvy a hra o něj neskončila hned. */
+    const kr = pridejJednotku("kral", i, z.x - dovnitrX*60, z.y + dovnitrY*70);
+    kr.straz = {x:kr.x, y:kr.y};
     if(h.bot){
       h.res.drevo = Math.round(h.res.drevo * (0.9+O.tezba*0.3));
       pridejBudovu("kasarna", i, z.x + dovnitrX*190, z.y + dovnitrY*95, true);
@@ -2160,6 +2233,21 @@ function zabij(e, kdo){
     const zbyva = G.budovy.filter(b=>b.side===e.side && b.kind==="radnice" && !b.mrtvy).length;
     if(zbyva===0) zprava("🏛️ Přišel jsi o radnici! Postav novou – hraje se ale o krále.","zle");
   }
+  /* POJISTKA proti nedohratelné partii. Hraje se o krále, ale na ostrovní mapě
+     se k cizímu králi nikdo nemusí dostat (lodě nevozí pěchotu a AI o nich
+     neví) – hra by pak nikdy neskončila. Proto: kdo přišel o VŠECHNY budovy
+     i o všechny vesničany, už si nic nepostaví a je vyřazený taky. */
+  if(H && !H.porazen && (e.druh==="budova" || e.kind==="vesnican")){
+    const budov = G.budovy.filter(b=>b.side===e.side && !b.mrtvy).length;
+    const vesnicanu = G.jednotky.filter(j=>j.side===e.side && j.kind==="vesnican" && !j.mrtvy).length;
+    if(budov===0 && vesnicanu===0){
+      H.porazen = true;
+      zprava((jeMuj(e.side)? "💀 Nezůstala ti budova ani vesničan – prohrál jsi."
+                           : "🏳️ "+bezpecnyText(H.jm)+" přišel o všechno a je ze hry."),
+             jeMuj(e.side)?"zle":"dobre");
+      vyhodnotKonec();
+    }
+  }
 }
 
 /* Kdo ještě hraje? Vyhrává tým, který zůstal sám. */
@@ -2290,6 +2378,15 @@ function updJednotku(e, dt){
     if(e.naklad && e.naklad.ks>0){ e.stav="vrat"; e.vratCas=0; e.skladE=null; }
     else novyZdroj(e);
   }
+  /* KRÁLOVO VODÍTKO. Bez tohohle si král (i botův) nabíhal za nepřáteli
+     a hra o něj skončila hned na začátku. Dál než KRAL_VODIK od svého
+     stanoviště se nevzdálí – když ho to táhne, pustí cíl a jde domů.
+     Hráč ho pořád může poslat kamkoli ručně: rozkaz mu stanoviště přepíše. */
+  if(e.kind==="kral" && e.straz && dist2(e.x,e.y,e.straz.x,e.straz.y) > KRAL_VODIK){
+    e.cilE = null; e.hlidka = null;
+    e.stav = "jdi"; e.cil = {x:e.straz.x, y:e.straz.y};
+  }
+
   // automatické bránění
   if(e.stav==="stoj" && e.kind!=="vesnican"){
     if(JED[e.kind].stroj){
@@ -2662,6 +2759,11 @@ function updAI(dt){
     /* --- chování vojáků tohoto bota --- */
     for(const j of G.jednotky){
       if(j.side!==si || j.mrtvy || j.kind==="vesnican") continue;
+      /* KRÁL nikam neposílá. Bez tohohle ho bot rovnou vypravil na druhý konec
+         mapy (nejbliz na budovy nemá omezený dosah) a hra o něj skončila
+         hned na začátku. Brání se jen když mu někdo přijde pod nos – to má
+         zařízené updJednotku, dohled 120 px. */
+      if(j.kind==="kral") continue;
       if(j.stav==="utok" && j.cilE && !j.cilE.mrtvy) continue;
 
       if(j.straz){
@@ -2747,6 +2849,9 @@ function rozkaz(x,y){
     return;
   }
   for(const u of moji) u.klid = false;   // nový rozkaz ruší „Stůj"
+  /* Krále drží u základny vodítko (viz p4a). Když ho hráč pošle sám, přesuneme
+     mu stanoviště tam – jinak by se hned otočil a šel zpátky. */
+  for(const u of moji) if(u.kind==="kral") u.straz = {x:x, y:y};
   const cil = entPod(x,y);
   const vesnicani = moji.filter(u=>u.kind==="vesnican");
   const vojaci = moji.filter(u=>u.kind!=="vesnican");
@@ -3356,8 +3461,8 @@ function prohra(){
 
   document.getElementById("konecNadpis").innerHTML = '<span style="color:#ff8a7a">💀 PROHRA</span>';
   document.getElementById("konecText").textContent = G.divak
-    ? "Tvoje poslední radnice padla! Kamarádi ale hrají dál a hru jim počítá tvůj počítač – nech prosím okno otevřené, dokud nedohrají."
-    : "Tvoje poslední radnice padla! Příště postav dřív Kasárna a Věže – a nezapomeň na domečky, ať máš dost panáčků.";
+    ? "Padl ti král! Kamarádi ale hrají dál a hru jim počítá tvůj počítač – nech prosím okno otevřené, dokud nedohrají."
+    : "Padl ti král! Příště ho drž za hradbami a postav si k němu Věže – o radnici přijít můžeš, o krále ne.";
   /* Divák (poražený hostitel) nesmí dát HRÁT ZNOVU – reload by odpojil všechny
      kamarády uprostřed hry. Místo toho může zápas dál sledovat. */
   const bZ = document.getElementById("bZnovu"), bS = document.getElementById("bSleduj");
@@ -3536,13 +3641,14 @@ function ukazNapovedu(){
     • <b>Tažením prstem</b> posouváš mapu, <b>dvěma prsty</b> přibližuješ<br>
     • Tlačítko <b>▣</b> vpravo přepne na označování tažením (víc panáčků najednou)<br>
     • Tlačítko <b>⚔️</b> vybere všechny vojáky<br><br>
-    <b>Cíl:</b> zbourat nepřátelské radnice. Vydrž jako poslední tým!` : `
+    <b>Cíl:</b> zabít nepřátelského KRÁLE 👑 – a svého uhlídat! O radnici přijít můžeš.` : `
     • <b>Levé tlačítko</b> – vyber panáčka (nebo táhni myší a vyber víc najednou)<br>
     • <b>Pravé tlačítko</b> – pošli je tam: na strom/zlato/železo = <b>těží</b>, na nepřítele = <b>útočí</b><br>
     • <b>W A S D</b> / šipky / okraj obrazovky – posouvej mapu, <b>kolečkem myši</b> přibližuješ<br>
     • Vyber <b>Radnici</b> a cvič vesničany. Vesničan umí <b>stavět budovy</b><br>
     • <b>V</b> = všichni vojáci, <b>T</b> = všichni těžit, <b>mezerník</b> = pauza, <b>Esc</b> = zruš stavění<br><br>
-    <b>Cíl:</b> zbourat radnice všech nepřátel. Vydrží-li jen tvůj tým, vyhráváš!`;
+    <b>Cíl:</b> zabít KRÁLE 👑 všech nepřátel a svého uhlídat za hradbami.
+    O radnici přijít můžeš – hraje se o krále. Vydrží-li jen tvůj tým, vyhráváš!`;
   otevri("mNapoveda");
 }
 
@@ -4144,7 +4250,8 @@ async function rozbal(kod){
    které letí po síti – přeházením by kamarádovi naskočily jiné budovy. */
 const KINDY = ["vesnican","vojak","lukostrelec","jezdec","slon","hrdina",
                "radnice","domek","kasarna","staj","vez","hrad",
-               "beranidlo","trebuchet","dilna","hradba","brana","kral"];
+               "beranidlo","trebuchet","dilna","hradba","brana","kral",
+               "pristav","galeona"];
 function kindIdx(k){ return KINDY.indexOf(k); }
 
 const P2P = {
@@ -4341,7 +4448,13 @@ SYNC.zabalSnimek = function(){
   /* POZOR: jeden záznam = 13 bajtů (2 id + 1 druh + 1 kind + 1 hráč
      + 2 x + 2 y + 2 hp + 2 příznaky). Dřív tu bylo 12 a zápis přetekl –
      hodilo to chybu, hostitel přestal posílat a všem zamrzl svět. */
-  const hl = 8 + G.hraci.length*14 + (plny? 2+zivi.length*3 : 2);
+  /* Hlavička hráče = 17 bajtů: 3x4 suroviny + 2 pop + 2 popMax + 1 příznaky.
+     POZOR, tady byla ošklivá chyba: pop a popMax se posílaly po JEDNOM bajtu
+     a nejvyšší bit popMaxu znamenal "prohrál". Jakmile šel populační strop
+     nad 127 (a při limitu 150+ jde), kamarádovi to hlásilo porážku a zároveň
+     mu to strop zmenšilo na pm&127. Proto teď dva bajty na každé číslo
+     a příznaky zvlášť. */
+  const hl = 8 + G.hraci.length*17 + (plny? 2+zivi.length*3 : 2);
   const buf = new ArrayBuffer(hl + zaznamy.length*13);
   const dv = new DataView(buf);
   let p = 0;
@@ -4353,8 +4466,9 @@ SYNC.zabalSnimek = function(){
     dv.setUint32(p, Math.round(h.res.drevo)); p+=4;
     dv.setUint32(p, Math.round(h.res.zelezo)); p+=4;
     dv.setUint32(p, Math.round(h.res.zlato)); p+=4;
-    dv.setUint8(p++, Math.min(255,h.pop));
-    dv.setUint8(p++, Math.min(255,h.popMax) | (h.porazen?128:0));
+    dv.setUint16(p, klam(Math.round(h.pop),0,65535)); p+=2;
+    dv.setUint16(p, klam(Math.round(h.popMax),0,65535)); p+=2;
+    dv.setUint8(p++, h.porazen?1:0);
   }
   for(const z of zaznamy){
     dv.setUint16(p, z[0]&0xffff); p+=2;
@@ -4390,13 +4504,14 @@ SYNC.prijmiBin = function(u8){
     const d = dv.getUint32(p); p+=4;
     const z = dv.getUint32(p); p+=4;
     const g = dv.getUint32(p); p+=4;
-    const pop = dv.getUint8(p++);
-    const pm = dv.getUint8(p++);
+    const pop = dv.getUint16(p); p+=2;
+    const pm  = dv.getUint16(p); p+=2;
+    const prapory = dv.getUint8(p++);
     const H = G.hraci[i];
     if(H){
       H.res.drevo=d; H.res.zelezo=z; H.res.zlato=g;
-      H.pop=pop; H.popMax=pm&127;
-      if((pm&128) && !H.porazen){ H.porazen=true; if(i===G.ja) prohra(); }
+      H.pop=pop; H.popMax=pm;
+      if((prapory&1) && !H.porazen){ H.porazen=true; if(i===G.ja) prohra(); }
     }
   }
   const podleId = new Map();
@@ -5092,7 +5207,9 @@ P2P.vypni = function(){ vypniBezMajaku(); MAJAK.zavri(); };
    verzí by kamarádovi naskakovaly úplně jiné budovy. Oba musíte mít v14. */
 /* v15: král (nový druh v KINDY = jiný tvar snímku světa) a nové volby
    v lobby (velikost mapy, limit jednotek). Se starou verzí to nesedí. */
-const VERZE = "v15";
+/* v16: moře a skály (TEREN), přístav, galeony, 20 nových map. Nové druhy
+   v KINDY = jiný tvar snímku světa, takže se starou verzí to nesedí. */
+const VERZE = "v16";
 
 (function(){
   const p = document.getElementById("menuPata");
@@ -5798,28 +5915,17 @@ ubliz = function(cil, dmg, utocnik){
 /* ---------- OPEVNIT ZÁKLADNU ----------
    Jedním tlačítkem obežene všechny tvoje budovy hradbou: na každé straně
    jedna brána a v každém rohu věž. Staví jen to, na co máš suroviny. */
-function opevniZakladnu(){
-  const moje = G.budovy.filter(b => jeMuj(b.side) && !b.mrtvy);
-  if(!moje.length){ zprava("Nemáš žádné budovy, které by šlo opevnit.","zle"); return; }
-
-  // obdélník kolem všech budov + rezerva, ať se dovnitř ještě vejde stavět
-  const rez = 150;
-  let x1 = Math.min(...moje.map(b => b.x - b.r)) - rez;
-  let x2 = Math.max(...moje.map(b => b.x + b.r)) + rez;
-  let y1 = Math.min(...moje.map(b => b.y - b.r)) - rez;
-  let y2 = Math.max(...moje.map(b => b.y + b.r)) + rez;
-  x1 = klam(x1, 60, SVET_W - 60); x2 = klam(x2, 60, SVET_W - 60);
-  y1 = klam(y1, 60, SVET_H - 60); y2 = klam(y2, 60, SVET_H - 60);
-
-  const stredX = (x1 + x2) / 2, stredY = (y1 + y2) / 2;
-  const plan = [];   // {kind, x, y}
-
-  // rohy = věže
+/* Sestaví plán opevnění pro danou rezervu (jak daleko od budov zeď stojí). */
+function planOpevneni(moje, rez){
+  let x1 = klam(Math.min(...moje.map(b => b.x - b.r)) - rez, 60, SVET_W - 60);
+  let x2 = klam(Math.max(...moje.map(b => b.x + b.r)) + rez, 60, SVET_W - 60);
+  let y1 = klam(Math.min(...moje.map(b => b.y - b.r)) - rez, 60, SVET_H - 60);
+  let y2 = klam(Math.max(...moje.map(b => b.y + b.r)) + rez, 60, SVET_H - 60);
+  const plan = [];
   plan.push({kind:"vez", x:x1, y:y1}, {kind:"vez", x:x2, y:y1},
             {kind:"vez", x:x1, y:y2}, {kind:"vez", x:x2, y:y2});
-
-  /* Zdi po stranách. Uprostřed každé strany necháme bránu, aby se dalo
-     dovnitř a ven – vlastním a spojencům se otevře sama. */
+  /* Zdi po stranách. Uprostřed každé strany je brána, aby se dalo dovnitř
+     a ven – vlastním a spojencům se otevře sama. */
   const strana = (ax, ay, bx, by) => {
     const dx = bx - ax, dy = by - ay;
     const krok = krokZdi(dx, dy), d = Math.hypot(dx, dy);
@@ -5827,13 +5933,63 @@ function opevniZakladnu(){
     const stred = Math.floor(n / 2);
     for(let i = 1; i < n; i++){                 // rohy už mají věže
       const t = i / n;
-      plan.push({kind: i === stred ? "brana" : "hradba", x: ax + dx*t, y: ay + dy*t});
+      plan.push({kind: i === stred ? "brana" : "hradba", x: ax + dx*t, y: ay + dy*t,
+                 // směr "podél zdi" – kdyby to bylo obsazené, uhneme po téhle ose
+                 osaX: dx ? 1 : 0, osaY: dy ? 1 : 0});
     }
   };
-  strana(x1, y1, x2, y1);   // nahoře
-  strana(x1, y2, x2, y2);   // dole
-  strana(x1, y1, x1, y2);   // vlevo
-  strana(x2, y1, x2, y2);   // vpravo
+  strana(x1, y1, x2, y1);
+  strana(x1, y2, x2, y2);
+  strana(x1, y1, x1, y2);
+  strana(x2, y1, x2, y2);
+  return {plan, x1, x2, y1, y2};
+}
+
+/* Uklidí stromy a rudu z místa pro kus opevnění. Vrátí, kolik jich padlo,
+   nebo -1 když překáží něco, co pokácet nejde (budova, voda, skála, kraj mapy).
+   Pořád platí, že se opevnění nepostaví PŘES BUDOVU. */
+function vyklidOpevneni(kind, x, y){
+  const r = BUD[kind].r;
+  if(x < r+30 || y < r+30 || x > SVET_W-r-30 || y > SVET_H-r-30) return -1;
+  if(typeof TEREN !== "undefined" && TEREN.pripraven && !TEREN.sucho(x, y)) return -1;
+  const kacet = [];
+  for(const e of G.ents){
+    if(e.mrtvy) continue;
+    if(e.druh === "budova"){
+      const jaZed = !!BUD[kind].zed;
+      if(jaZed && BUD[e.kind].zed){
+        if(Math.abs(x-e.x) < ZED_MIN_X && Math.abs(y-e.y) < ZED_MIN_Y) return -1;
+      }else if((jaZed && e.kind==="vez") || (kind==="vez" && BUD[e.kind].zed)){
+        if(dist2(x,y,e.x,e.y) < 40) return -1;
+      }else if(dist2(x,y,e.x,e.y) < r+e.r+14) return -1;
+    }
+    if(e.druh === "zdroj" && dist2(x,y,e.x,e.y) < r+e.r*0.7) kacet.push(e);
+  }
+  if(!kacet.length) return 0;
+  for(const z of kacet){
+    z.mrtvy = true;
+    if(z.el){ z.el.classList.add("mrtvy"); const el = z.el; setTimeout(()=>el.remove(), 420); }
+    odeber(z);
+  }
+  return kacet.length;
+}
+
+function opevniZakladnu(){
+  const moje = G.budovy.filter(b => jeMuj(b.side) && !b.mrtvy);
+  if(!moje.length){ zprava("Nemáš žádné budovy, které by šlo opevnit.","zle"); return; }
+
+  /* Hra sází les hned kolem základny, takže jedna pevná vzdálenost často
+     spadne přesně do stromů a nepostaví se vůbec nic. Zkusíme proto několik
+     vzdáleností a vybereme tu, kde se vejde nejvíc kusů. */
+  let nej = null;
+  for(const rez of [120, 170, 230, 300, 380]){
+    const v = planOpevneni(moje, rez);
+    const projde = v.plan.filter(p => mistoVolne(p.kind, p.x, p.y)).length;
+    const podil = projde / v.plan.length;
+    if(!nej || podil > nej.podil) nej = {rez, podil, ...v};
+  }
+  const {plan, x1, x2, y1, y2} = nej;
+  const stredX = (x1 + x2) / 2, stredY = (y1 + y2) / 2;
 
   /* Věže do rohů PRVNÍ – kdyby se stavěly až po zdech, roh už by byl zastavěný
      a věž by se tam nevešla. Zbytek pak od domova ven. */
@@ -5843,23 +5999,33 @@ function opevniZakladnu(){
     return dist2(a.x, a.y, stredX, stredY) - dist2(b.x, b.y, stredX, stredY);
   });
 
-  let postaveno = 0, preskoceno = 0, dosly = false;
+  let postaveno = 0, preskoceno = 0, dosly = false, vykliceno = 0;
+  const pred = G.budovy.length;
   const puvodniStavim = G.stavim;
   for(const p of plan){
     if(!lzeZaplatit(cenaBudovy(p.kind, G.ja))){ dosly = true; break; }
     let x = p.x, y = p.y;
     if(!mistoVolne(p.kind, x, y)){
-      /* Roh nebo kus zdi může blokovat strom. U věží (rohy pevnosti) za to stojí
-         zkusit kousek vedle – radši pevnost o chlup nakřivo než díra v rohu. */
+      /* Něco v cestě. Nejdřív se pokusíme uhnout – u zdi podél její osy,
+         u věže do rohu. Radši pevnost o chlup nakřivo než díra v hradbě. */
+      const doStreduX = p.x < stredX ? 1 : -1, doStreduY = p.y < stredY ? 1 : -1;
+      const zkus = [];
+      for(const d of [26, 52, 78]){
+        if(p.osaX) zkus.push([d, 0], [-d, 0]);            // podél vodorovné zdi
+        if(p.osaY) zkus.push([0, d], [0, -d]);            // podél svislé zdi
+        zkus.push([doStreduX*d, 0], [0, doStreduY*d], [doStreduX*d, doStreduY*d]);
+      }
       let nasel = false;
-      if(p.kind === "vez"){
-        const smerX = p.x < stredX ? 1 : -1, smerY = p.y < stredY ? 1 : -1;
-        for(const d of [30, 60, 90]){
-          for(const [ox, oy] of [[smerX*d,0],[0,smerY*d],[smerX*d,smerY*d]]){
-            if(mistoVolne(p.kind, p.x+ox, p.y+oy)){ x = p.x+ox; y = p.y+oy; nasel = true; break; }
-          }
-          if(nasel) break;
-        }
+      for(const [ox, oy] of zkus){
+        if(mistoVolne(p.kind, p.x+ox, p.y+oy)){ x = p.x+ox; y = p.y+oy; nasel = true; break; }
+      }
+      /* Pořád nic – a základna bývá obehnaná lesem, takže by se opevnění
+         nepostavilo vůbec. V tom případě si les PROSEKNEME: pokud v místě
+         překáží jen stromy nebo ruda (ne budova, ne voda, ne skála), pokácíme
+         je a postavíme. Je to hra pro děti a Daník chtěl, ať to prostě jde. */
+      if(!nasel){
+        const prekazky = vyklidOpevneni(p.kind, p.x, p.y);
+        if(prekazky > 0){ vykliceno += prekazky; nasel = true; x = p.x; y = p.y; }
       }
       if(!nasel){ preskoceno++; continue; }
     }
@@ -5870,9 +6036,21 @@ function opevniZakladnu(){
   G.stavim = puvodniStavim;
   zrusStaveni(); if(typeof skryjNahledZdi === "function") skryjNahledZdi();
 
-  if(!postaveno){ zprava("Opevnění se sem nevejde – kolem je moc překážek.","zle"); return; }
+  /* POZOR: postav() přehodí VŠECHNY vybrané vesničany na ten poslední základ,
+     takže bez tohohle se zaplatí 40 základů a dostaví se jediný. Rozdělíme je
+     tedy po nových základech, každému jeden. */
+  const nove = G.budovy.slice(pred);
+  const stavitele = G.sel.filter(e => e.druh==="jednotka" && jeMuj(e.side)
+                                   && e.kind==="vesnican" && !e.mrtvy);
+  if(nove.length && stavitele.length) stavitele.forEach((u, i) => {
+    u.stav="stav"; u.cilE = nove[i % nove.length];
+    u.hlidka=null; u.tezar=false; u.slotBId=null;
+  });
+
+  if(!postaveno){ zprava("Opevnění se sem nevejde – přes budovy a vodu stavět nejde.","zle"); return; }
   zprava("🏰 Stavím opevnění: " + postaveno + " kusů (věže v rozích, brána na každé straně).","dobre");
-  if(preskoceno) zprava("⚠️ " + preskoceno + " kusů se nevešlo – překáží strom nebo budova.","zle");
+  if(vykliceno) zprava("🪓 Cestou padlo " + vykliceno + " stromů, aby se hradba vešla.","dobre");
+  if(preskoceno) zprava("⚠️ " + preskoceno + " kusů se nevešlo – překáží budova nebo voda.","zle");
   if(dosly) zprava("Došly suroviny, postavil jsem, co šlo.","zle");
   obnovPanel();
 }
@@ -5958,6 +6136,469 @@ otevriLobby = function(rezim){
   otevriLobbyPredVolbami.apply(this, arguments);
   kresliVelikosti(); kresliLimity(); kresliCivTabulku();
 };
+
+/* ============================================================
+   43) MOŘE, SKÁLY, PŘÍSTAV A LODĚ
+   ============================================================
+   Do téhle chvíle byla celá mapa jen zelená plocha. Teď má TERÉN:
+
+     0 = země   1 = voda   2 = skála
+
+   Políčko je 40x40 px, stejně jako u mlhy. Terén se počítá ZE SEMÍNKA
+   (rnd(), ne Math.random()!), takže hostiteli i kamarádovi vyjde úplně
+   stejná mapa – jinak by jeden viděl moře tam, kde druhý zemi.
+
+   Kdo kam smí:
+     - panáček na zemi:  po zemi. Do vody ani do skály ne.
+     - loď (JED.lod):    po vodě. Na zem ani do skály ne.
+   Hra NEMÁ hledání cesty (panáček jde pořád rovně), takže se o břeh
+   nebo o skálu jenom zarazí a sveze se po ní – stejně jako o budovu.
+   Na ostrovních mapách to je přesně to, co chceme: pěšák se přes vodu
+   nedostane a musíš na to mít lodě.
+
+   Tvary moře podle mapy (pole `voda` v MAPY):
+     okraj   – moře kolem celé mapy
+     jezero  – jezero (nebo dvě) uprostřed
+     rec     – řeka napříč mapou
+     ostrovy – každý hráč na svém ostrově
+     tymove  – jeden ostrov na tým (team islands)
+   `hory` – kolik skalních masivů, přes které se nedá projít.
+   ============================================================ */
+
+const TEREN = {
+  krok: 40,
+  sl: 0, ra: 0,
+  bunky: null,
+  pripraven: false,
+  cv: null, ctx: null, img: null,
+  jeVoda: false,
+
+  index(x, y){
+    const cx = Math.floor(x / this.krok), cy = Math.floor(y / this.krok);
+    if(cx < 0 || cy < 0 || cx >= this.sl || cy >= this.ra) return -1;
+    return cy * this.sl + cx;
+  },
+  co(x, y){
+    if(!this.pripraven) return 0;
+    const i = this.index(x, y);
+    return i < 0 ? 0 : this.bunky[i];
+  },
+  sucho(x, y){ return this.co(x, y) === 0; },
+  voda(x, y){  return this.co(x, y) === 1; },
+  skala(x, y){ return this.co(x, y) === 2; },
+  /* Smí tam tahle jednotka? Loď po vodě, ostatní po zemi, skála pro nikoho. */
+  smiTam(e, x, y){
+    if(!this.pripraven) return true;
+    const t = this.co(x, y);
+    if(t === 2) return false;
+    return (e && e.druh === "jednotka" && JED[e.kind] && JED[e.kind].lod)
+      ? t === 1 : t === 0;
+  },
+
+  /* ---------- generování ---------- */
+  postav(mapa){
+    this.sl = Math.ceil(SVET_W / this.krok);
+    this.ra = Math.ceil(SVET_H / this.krok);
+    this.bunky = new Uint8Array(this.sl * this.ra);
+    this.pripraven = true;
+    this.jeVoda = false;
+
+    const typ = mapa.voda || null;
+    const W = SVET_W, H = SVET_H;
+    const nastav = (x, y, v) => { const i = this.index(x, y); if(i >= 0) this.bunky[i] = v; };
+    const kruh = (cx, cy, r, v) => {
+      for(let y = cy - r; y <= cy + r; y += this.krok)
+        for(let x = cx - r; x <= cx + r; x += this.krok)
+          if((x-cx)*(x-cx) + (y-cy)*(y-cy) <= r*r) nastav(x, y, v);
+    };
+    const elipsa = (cx, cy, rx, ry, v) => {
+      for(let y = cy - ry; y <= cy + ry; y += this.krok)
+        for(let x = cx - rx; x <= cx + rx; x += this.krok){
+          const dx = (x-cx)/rx, dy = (y-cy)/ry;
+          if(dx*dx + dy*dy <= 1) nastav(x, y, v);
+        }
+    };
+
+    if(typ === "okraj"){
+      this.jeVoda = true;
+      const pas = Math.min(W, H) * nah(0.10, 0.15);
+      for(let y = 0; y < H; y += this.krok)
+        for(let x = 0; x < W; x += this.krok)
+          if(x < pas || y < pas || x > W - pas || y > H - pas) nastav(x, y, 1);
+    }
+    else if(typ === "jezero"){
+      this.jeVoda = true;
+      const kolik = nahI(1, 2);
+      for(let i = 0; i < kolik; i++)
+        elipsa(nah(W*0.32, W*0.68), nah(H*0.3, H*0.7), nah(W*0.10, W*0.17), nah(H*0.09, H*0.16), 1);
+    }
+    else if(typ === "rec"){
+      this.jeVoda = true;
+      this.brod = true;                 // v řece bude brod, ať se dá přejít
+      const svisla = rnd() < 0.5;
+      const sirka = Math.min(W, H) * nah(0.055, 0.085);
+      const stred = svisla ? W/2 : H/2;
+      const vlna = Math.min(W, H) * 0.09;
+      if(svisla){
+        for(let y = 0; y < H; y += this.krok){
+          const s = stred + Math.sin(y / H * Math.PI * 2.2) * vlna;
+          for(let x = s - sirka; x <= s + sirka; x += this.krok) nastav(x, y, 1);
+        }
+      }else{
+        for(let x = 0; x < W; x += this.krok){
+          const s = stred + Math.sin(x / W * Math.PI * 2.2) * vlna;
+          for(let y = s - sirka; y <= s + sirka; y += this.krok) nastav(x, y, 1);
+        }
+      }
+    }
+    else if(typ === "ostrovy" || typ === "tymove"){
+      this.jeVoda = true;
+      this.bunky.fill(1);                                  // celá mapa je moře…
+      const r = Math.min(W, H) * (typ === "tymove" ? 0.24 : 0.17);
+      if(typ === "tymove"){
+        // jeden ostrov na tým – spojenci sdílí pevninu
+        const tymy = {};
+        ZAKL.forEach((z, i) => {
+          const t = (G.hraci[i] && G.hraci[i].tym) || (i+1);
+          (tymy[t] = tymy[t] || []).push(z);
+        });
+        for(const t in tymy){
+          const g = tymy[t];
+          const cx = g.reduce((s,z)=>s+z.x,0)/g.length, cy = g.reduce((s,z)=>s+z.y,0)/g.length;
+          kruh(cx, cy, r, 0);
+          g.forEach(z => kruh(z.x, z.y, r*0.62, 0));       // …a každá základna má svůj kus
+        }
+      }else{
+        ZAKL.forEach(z => kruh(z.x, z.y, r, 0));
+      }
+      // pár ostrůvků do prázdna, ať je kam plout
+      for(let i = 0; i < 5; i++) kruh(nah(W*0.2, W*0.8), nah(H*0.2, H*0.8), Math.min(W,H)*nah(0.04,0.07), 0);
+      /* ÚZKÁ ŠÍJE mezi ostrovy. Bez ní by se hra nedala dohrát: hraje se
+         o krále, lodě neumí vozit pěchotu a AI o přístavu neví – takže se
+         k cizímu králi nikdo nikdy nedostane (naměřeno: král 371 px od vody,
+         galeona dostřelí 292). Šíje je schválně tenká, takže se dá bránit
+         hrstkou vojáků a lodě mají pořád smysl na obchvat.
+         Až budou transportní lodě, tohle se může zrušit. */
+      this.sije(nastav);
+    }
+
+    // skály (jdou i na mapy bez vody)
+    const hor = mapa.hory || 0;
+    for(let i = 0; i < hor; i++){
+      const cx = nah(W*0.18, W*0.82), cy = nah(H*0.18, H*0.82);
+      const rx = Math.min(W,H)*nah(0.05,0.11), ry = Math.min(W,H)*nah(0.04,0.09);
+      elipsa(cx, cy, rx, ry, 2);
+      elipsa(cx + rx*nah(-0.8,0.8), cy + ry*nah(-0.8,0.8), rx*0.7, ry*0.7, 2);
+    }
+
+    /* Řeka potřebuje BROD, jinak se přes ni pěšky nedostaneš a hra o krále
+       nemá jak skončit (viz komentář u šíjí). */
+    if(this.brod){ this.sije(nastav); this.brod = false; }
+
+    /* Kolem každé základny MUSÍ být pevná zem, jinak by hráč začínal ve vodě
+       nebo v kameni. Tohle jde vždycky až nakonec a přebije všechno ostatní. */
+    ZAKL.forEach(z => kruh(z.x, z.y, Math.min(SVET_W, SVET_H) * 0.135, 0));
+
+    this.vykresliVrstvu();
+  },
+
+  /* Propojí základny úzkým pásem země, ať je hra vždycky dohratelná.
+     Vede od každé základny ke středu mapy – tím se všechny spojí dohromady. */
+  sije(nastav){
+    const W = SVET_W, H = SVET_H, sirka = 60;      // 60 px = projde se, ale dá se bránit
+    const cx = W/2, cy = H/2;
+    for(const z of ZAKL){
+      const d = Math.hypot(cx - z.x, cy - z.y);
+      const kroku = Math.max(1, Math.ceil(d / (this.krok/2)));
+      for(let i = 0; i <= kroku; i++){
+        const t = i/kroku, px = z.x + (cx - z.x)*t, py = z.y + (cy - z.y)*t;
+        for(let oy = -sirka; oy <= sirka; oy += this.krok)
+          for(let ox = -sirka; ox <= sirka; ox += this.krok)
+            if(ox*ox + oy*oy <= sirka*sirka){
+              const i2 = this.index(px+ox, py+oy);
+              if(i2 >= 0 && this.bunky[i2] === 1) this.bunky[i2] = 0;  // jen vodu, skálu ne
+            }
+      }
+    }
+  },
+
+  /* ---------- kreslení ----------
+     Maličký obrázek (jedno políčko = jeden bod) roztažený přes celou mapu,
+     stejný trik jako u mlhy – je to skoro zadarmo. */
+  vykresliVrstvu(){
+    if(this.cv && this.cv.parentNode) this.cv.parentNode.removeChild(this.cv);
+    if(!this.jeVoda && !this.bunky.some(v => v === 2)) return;   // nic ke kreslení
+    this.cv = document.createElement("canvas");
+    this.cv.width = this.sl; this.cv.height = this.ra;
+    this.cv.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;z-index:0;"
+      + "width:" + SVET_W + "px;height:" + SVET_H + "px";
+    SVET.insertBefore(this.cv, SVET.firstChild);
+    this.ctx = this.cv.getContext("2d");
+    const img = this.ctx.createImageData(this.sl, this.ra);
+    const d = img.data;
+    for(let i = 0, j = 0; i < this.bunky.length; i++, j += 4){
+      const t = this.bunky[i];
+      if(t === 1){        // moře
+        const okraj = this.jeBrehu(i);
+        d[j] = okraj ? 90 : 42; d[j+1] = okraj ? 165 : 105; d[j+2] = okraj ? 205 : 175; d[j+3] = 255;
+      }else if(t === 2){  // skála
+        d[j] = 122; d[j+1] = 118; d[j+2] = 126; d[j+3] = 255;
+      }else{ d[j+3] = 0; }
+    }
+    this.ctx.putImageData(img, 0, 0);
+  },
+  jeBrehu(i){
+    const x = i % this.sl, y = (i / this.sl) | 0;
+    for(const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx = x+dx, ny = y+dy;
+      if(nx < 0 || ny < 0 || nx >= this.sl || ny >= this.ra) continue;
+      if(this.bunky[ny*this.sl + nx] === 0) return true;
+    }
+    return false;
+  },
+
+  /* Najdi vodu blízko bodu (pro objevení lodi u přístavu). */
+  vodaBlizko(x, y, max){
+    max = max || 240;
+    for(let r = this.krok; r <= max; r += this.krok)
+      for(let a = 0; a < Math.PI*2; a += Math.PI/8){
+        const vx = x + Math.cos(a)*r, vy = y + Math.sin(a)*r;
+        if(this.voda(vx, vy)) return {x:vx, y:vy};
+      }
+    return null;
+  }
+};
+
+/* ---------- panáčci a lodě se zaráží o břeh a o skálu ----------
+   POZOR na návratovou hodnotu. jdiK() vrací "už jsem u cíle" a volající podle
+   toho začne těžit / stavět / odevzdávat – BEZ dalšího testu vzdálenosti.
+   Kdyby se zaražení u břehu tvářilo jako "došel", vesničan by těžil strom na
+   druhém ostrově přes celé moře (naměřeno: 140 dřeva ze vzdálenosti 1939 px).
+   Proto se při zaražení vrací false, a aby panáček nepřešlapoval navěky,
+   po chvilce marného tlačení do břehu to vzdá a nechá se přesměrovat. */
+const ZASEK_DOBA = 2.5;      // jak dlouho se smí marně tlačit, než to vzdá
+const jdiKPredMorem = jdiK;
+jdiK = function(e, tx, ty, dt, odstup){
+  if(!TEREN.pripraven) return jdiKPredMorem(e, tx, ty, dt, odstup);
+  const px = e.x, py = e.y;
+  const hotovo = jdiKPredMorem(e, tx, ty, dt, odstup);
+  let zaraz = false;
+  if(!TEREN.smiTam(e, e.x, e.y)){
+    // svezeme se po břehu – buď jen vodorovně, nebo jen svisle
+    const jenX = TEREN.smiTam(e, e.x, py), jenY = TEREN.smiTam(e, px, e.y);
+    if(jenX) e.y = py;
+    else if(jenY) e.x = px;
+    else { e.x = px; e.y = py; zaraz = true; }
+  }
+  // pohnul se vůbec?
+  const posun = Math.abs(e.x - px) + Math.abs(e.y - py);
+  if(zaraz || posun < 0.3){
+    e.zasek = (e.zasek || 0) + dt;
+    if(e.zasek > ZASEK_DOBA){
+      e.zasek = 0;
+      /* Vzdáme to. Vesničana pustíme z těžby, ať si najde dosažitelný zdroj,
+         ostatní jen zastavíme, aby netlačili do skály donekonečna. */
+      if(e.kind === "vesnican" && (e.stav === "tez" || e.stav === "stav")){
+        e.cilE = null; e.tezar = false; e.stav = "stoj";
+      }else if(e.stav === "jdi" || e.stav === "utok"){
+        e.cilE = null; e.stav = "stoj";
+      }
+    }
+    return false;                       // rozhodně NE "došel"
+  }
+  e.zasek = 0;
+  return hotovo;
+};
+
+/* Nejbližší zdroj se nesmí vybírat přes moře – jinak tam vesničan chodí
+   znovu a znovu. Úsečku ke zdroji jen ovzorkujeme, volá se to zřídka. */
+function cestaPoZemi(x1, y1, x2, y2, e){
+  if(!TEREN.pripraven) return true;
+  const d = Math.hypot(x2-x1, y2-y1);
+  const kroku = Math.max(1, Math.ceil(d / TEREN.krok));
+  for(let i = 1; i <= kroku; i++){
+    const t = i / kroku;
+    if(!TEREN.smiTam(e, x1 + (x2-x1)*t, y1 + (y2-y1)*t)) return false;
+  }
+  return true;
+}
+const novyZdrojPredMorem = novyZdroj;
+novyZdroj = function(e){
+  if(!TEREN.pripraven || !TEREN.jeVoda) return novyZdrojPredMorem(e);
+  /* Zdroje za vodou schováme (mrtvy=true je z pohledu výběru "není"),
+     necháme původní funkci vybrat z těch dosažitelných a pak je vrátíme. */
+  const skryte = [];
+  for(const z of G.zdroje){
+    if(z.mrtvy) continue;
+    if(!cestaPoZemi(e.x, e.y, z.x, z.y, e)){ z.mrtvy = true; skryte.push(z); }
+  }
+  try{ return novyZdrojPredMorem(e); }
+  finally{ for(const z of skryte) z.mrtvy = false; }
+};
+
+/* Odstrkávání: kdyby se někdo přece jen ocitl na špatném terénu (třeba ho
+   tam vytlačil dav), vystrčíme ho zpátky. */
+const rozestupPredMorem = rozestup;
+rozestup = function(){
+  rozestupPredMorem();
+  if(!TEREN.pripraven) return;
+  for(const u of G.jednotky){
+    if(u.mrtvy || TEREN.smiTam(u, u.x, u.y)) continue;
+    let uteklo = false;
+    for(let r = TEREN.krok; r <= TEREN.krok*6 && !uteklo; r += TEREN.krok)
+      for(let a = 0; a < Math.PI*2; a += Math.PI/6){
+        const nx = klam(u.x + Math.cos(a)*r, 20, SVET_W-20);
+        const ny = klam(u.y + Math.sin(a)*r, 20, SVET_H-20);
+        if(TEREN.smiTam(u, nx, ny)){ u.x = nx; u.y = ny; uteklo = true; break; }
+      }
+  }
+};
+
+/* ---------- stavění: nic do vody, přístav JEN k vodě ---------- */
+const mistoVolnePredMorem = mistoVolne;
+mistoVolne = function(kind, x, y){
+  if(TEREN.pripraven){
+    if(!TEREN.sucho(x, y)) return false;                       // budovy jen na zem
+    if(BUD[kind] && BUD[kind].uVody && !TEREN.vodaBlizko(x, y, 150)) return false;
+  }
+  return mistoVolnePredMorem(kind, x, y);
+};
+
+/* ---------- galeona se objeví na vodě vedle přístavu ---------- */
+const pridejJednotkuPredMorem = pridejJednotku;
+pridejJednotku = function(kind, side, x, y){
+  if(TEREN.pripraven && JED[kind] && JED[kind].lod && !TEREN.voda(x, y)){
+    const v = TEREN.vodaBlizko(x, y, 320);
+    if(v){ x = v.x; y = v.y; }
+  }
+  return pridejJednotkuPredMorem(kind, side, x, y);
+};
+
+/* ---------- kdo na koho může ----------
+   Loď nemůže bít panáčka na suchu a pěšák nedosáhne na loď na vodě.
+   Bez tohohle by se vojáci mlátili s loďmi přes břeh. */
+const smiUtocitPredMorem = smiUtocit;
+smiUtocit = function(e, cil){
+  if(!smiUtocitPredMorem(e, cil)) return false;
+  if(!TEREN.pripraven || !e || !cil) return true;
+  const jaLod  = e.druh === "jednotka" && JED[e.kind] && JED[e.kind].lod;
+  const onLod  = cil.druh === "jednotka" && JED[cil.kind] && JED[cil.kind].lod;
+  // na blízko (bez střely) se přes břeh bít nedá
+  const def = e.druh === "budova" ? BUD[e.kind] : JED[e.kind];
+  if(!def.strela && jaLod !== onLod) return false;
+  return true;
+};
+
+/* Poškození galeony. Základní nasobekPoskozeni() umí jen obléhací stroje
+   (stroj:1), lodě nezná – proto se jim násobky musí dopočítat tady, jinak
+   by galeona ubírala panáčkům plnou silou. */
+const nasobekPredMorem = nasobekPoskozeni;
+nasobekPoskozeni = function(e, cil){
+  let m = nasobekPredMorem(e, cil);
+  const def = e.druh === "jednotka" ? JED[e.kind] : BUD[e.kind];
+  if(def && def.lod){
+    const onLod = cil.druh === "jednotka" && JED[cil.kind] && JED[cil.kind].lod;
+    if(onLod)                       m *= (def.protiLodim    || 1);
+    else if(cil.druh === "budova")  m *= (def.protiBudovam  || 1);
+    else                            m *= (def.protiJednotkam || 1);
+  }
+  return m;
+};
+
+/* ---------- ikonka přístavu v panelu ---------- */
+if(typeof IKONA_BUDOVY !== "undefined") IKONA_BUDOVY.pristav = "⚓";
+if(typeof DOHLED !== "undefined"){ DOHLED.pristav = 260; DOHLED.galeona = 300; }
+
+/* ---------- kresba ---------- */
+function galeonaSVG(civK, barva){
+  const c = CIVS[civK], s = STYLY[civK], bar = barva || c.akcent;
+  const drevo = s.ram, drevoSv = svetlej(s.ram, 0.3), drevoTm = tmavej(s.ram, 0.3);
+  const posadka = plysak(civK, "vesnican", {bezStinu:1, bezPraporku:1, bezNohou:1, barva:bar});
+  return `
+  <ellipse cx="50" cy="90" rx="40" ry="6" fill="rgba(20,60,90,.3)"/>
+  <!-- trup -->
+  <path d="M10 74 q40 12 80 0 l-6 -16 q-34 8 -68 0 Z" fill="${drevo}"/>
+  <path d="M16 60 q34 8 68 0 l-3 -8 q-31 7 -62 0 Z" fill="${drevoSv}"/>
+  <path d="M10 74 q40 12 80 0" fill="none" stroke="${drevoTm}" stroke-width="2.4"/>
+  <g stroke="${drevoTm}" stroke-width="1.2" opacity=".7">
+    <path d="M26 56 v16"/><path d="M50 59 v17"/><path d="M74 56 v16"/></g>
+  <!-- dělo na boku -->
+  <g>
+    <rect x="60" y="46" width="26" height="7" rx="3.5" fill="#5a5f66"/>
+    <rect x="60" y="46" width="26" height="2.6" rx="1.3" fill="#8e9aa6"/>
+    <circle cx="60" cy="49.5" r="5.5" fill="#3f4a55"/>
+    <circle cx="88" cy="49.5" r="3.6" fill="#2b333c"/>
+  </g>
+  <!-- posádka u děla -->
+  <g transform="translate(30,26) scale(0.42)">${posadka}</g>
+  <!-- stěžeň a plachta v barvě hráče -->
+  <path d="M44 52 V10" stroke="${drevo}" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M44 14 q22 8 0 18 Z" fill="${bar}"/>
+  <path d="M44 34 q18 7 0 14 Z" fill="${bar}" opacity=".82"/>
+  <path d="M44 14 q22 8 0 18" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="1.3"/>
+  <circle cx="44" cy="9" r="2.6" fill="#f0c33c"/>
+  <!-- vlnky u trupu -->
+  <g stroke="#cfe9f5" stroke-width="2" opacity=".75" fill="none">
+    <path d="M6 78 q5 -4 10 0 q5 4 10 0"/><path d="M74 80 q5 -4 10 0 q5 4 10 0"/></g>`;
+}
+const jednotkaSVGpredMorem = jednotkaSVG;
+jednotkaSVG = function(civK, kind, barva){
+  if(kind === "galeona") return galeonaSVG(civK, barva);
+  return jednotkaSVGpredMorem(civK, kind, barva);
+};
+
+const budovaSVGpredMorem = budovaSVG;
+budovaSVG = function(kind, civK, barva, otevrena){
+  if(kind !== "pristav") return budovaSVGpredMorem(kind, civK, barva, otevrena);
+  const c = CIVS[civK], s = STYLY[civK], a = barva || c.akcent;
+  return svgObal(`
+    <ellipse cx="50" cy="94" rx="44" ry="7" fill="rgba(0,0,0,.24)"/>
+    <!-- voda pod molem -->
+    <path d="M4 86 q12 -5 24 0 q12 5 24 0 q12 -5 24 0 q12 5 20 0 v12 H4 Z" fill="#3f7fa8" opacity=".85"/>
+    <g stroke="#cfe9f5" stroke-width="1.8" opacity=".7" fill="none">
+      <path d="M10 90 q6 -4 12 0 q6 4 12 0"/><path d="M60 92 q6 -4 12 0 q6 4 12 0"/></g>
+    <!-- molo -->
+    <rect x="20" y="78" width="60" height="7" rx="3" fill="${s.ram}"/>
+    <g stroke="${tmavej(s.ram,0.35)}" stroke-width="2">
+      <path d="M28 85 v9"/><path d="M50 85 v9"/><path d="M72 85 v9"/></g>
+    <!-- skladiště -->
+    ${zedSVG(s, 24, 44, 52, 34)}
+    ${strechaSVG(s, 16, 84, 46, 26, a)}
+    ${oknoSVG(s, 36, 54, 11, 11)}
+    ${dvereSVG(s, 62, 78, 15, 22)}
+    <!-- kotva -->
+    <g transform="translate(50,64) scale(0.9)">
+      <path d="M0 -8 V8" stroke="#8e9aa6" stroke-width="2.6"/>
+      <circle cx="0" cy="-10" r="3" fill="none" stroke="#8e9aa6" stroke-width="2.2"/>
+      <path d="M-7 4 q7 8 14 0" fill="none" stroke="#8e9aa6" stroke-width="2.6"/>
+      <path d="M-5 -3 H5" stroke="#8e9aa6" stroke-width="2.2"/>
+    </g>
+    ${vlajkaSVG(a, 50, 12, 22)}
+    ${travaSVG(18, 82, 80)}`);
+};
+
+/* ---------- v lobby ať je poznat, které mapy mají moře ---------- */
+const kresliMapyPredMorem = typeof kresliMapy === "function" ? kresliMapy : null;
+if(kresliMapyPredMorem){
+  kresliMapy = function(){
+    kresliMapyPredMorem.apply(this, arguments);
+    const box = document.getElementById("mapyMriz");
+    if(!box) return;
+    Array.from(box.children).forEach((d, i) => {
+      const m = MAPY[i];
+      if(!m) return;
+      const znak = m.voda ? (m.voda === "ostrovy" ? "🏝️" : m.voda === "tymove" ? "🏝️🤝"
+                    : m.voda === "rec" ? "🌊" : m.voda === "okraj" ? "⛵" : "💧") : "";
+      const hory = m.hory ? "⛰️" : "";
+      if(znak || hory){
+        const s = document.createElement("div");
+        s.style.cssText = "font-size:12px;margin-top:1px";
+        s.textContent = znak + hory;
+        d.appendChild(s);
+      }
+    });
+  };
+}
 
 </script>
 </body>
