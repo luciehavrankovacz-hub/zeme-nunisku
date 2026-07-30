@@ -901,74 +901,83 @@ function beranidloSVG(civK, barva){
   const c = CIVS[civK], s = STYLY[civK], bar = barva || c.akcent;
   const drevo = s.ram, drevoSv = svetlej(s.ram, 0.28), drevoTm = tmavej(s.ram, 0.3);
   const obsluha = plysak(civK, "vesnican", {bezStinu:1, bezPraporku:1, barva:bar});
+  const zelezo = "#6b727b", zelezoSv = "#a7aeb6";
   return `
   <ellipse cx="50" cy="94" rx="40" ry="7" fill="rgba(0,0,0,.26)"/>
   <!-- obsluha vzadu, tlačí -->
   <g transform="translate(6,30) scale(0.5)">${obsluha}</g>
-  <!-- podvozek -->
+  <!-- podvozek s okovanými rohy -->
   <rect x="18" y="74" width="66" height="8" rx="4" fill="${drevo}"/>
   <rect x="18" y="74" width="66" height="3" rx="1.5" fill="${drevoSv}"/>
+  <rect x="18" y="73" width="6" height="10" rx="2" fill="${zelezo}"/><rect x="78" y="73" width="6" height="10" rx="2" fill="${zelezo}"/>
   ${kolo(30, 84, 9, drevoTm, drevoSv)}
   ${kolo(70, 84, 9, drevoTm, drevoSv)}
   <!-- sloupky a stříška -->
-  <path d="M28 74 L34 50 M78 74 L70 50" stroke="${drevo}" stroke-width="5" stroke-linecap="round"/>
-  <path d="M30 52 H76 L82 44 H26 Z" fill="${s.strecha}"/>
+  <path d="M28 74 L34 50 M78 74 L70 50" stroke="${drevo}" stroke-width="5.5" stroke-linecap="round"/>
+  <path d="M28 74 L34 50" stroke="${drevoSv}" stroke-width="1.6" opacity=".5"/>
+  <path d="M30 52 H76 L82 43 H26 Z" fill="${s.strecha}"/>
+  <path d="M30 52 H76 L54 52 L50 43 H26 Z" fill="rgba(255,255,255,.12)"/>
   <path d="M30 52 H76" stroke="${s.strecha2}" stroke-width="2.5"/>
-  <path d="M26 44 H82" stroke="${drevoSv}" stroke-width="3" stroke-linecap="round"/>
-  <!-- provazy a zavěšený kmen -->
-  <g stroke="#d9c18a" stroke-width="2" opacity=".95">
-    <path d="M40 52 V63"/><path d="M66 52 V63"/></g>
-  <rect x="30" y="60" width="52" height="13" rx="6.5" fill="${drevo}"/>
-  <rect x="30" y="61" width="52" height="4" rx="2" fill="${drevoSv}" opacity=".7"/>
-  <g stroke="${drevoTm}" stroke-width="1.4" opacity=".7">
-    <path d="M44 61 V72"/><path d="M56 61 V72"/><path d="M68 61 V72"/></g>
-  <!-- plyšová beraní hlava vpředu (ať to není děsivé) -->
-  <g>
-    <ellipse cx="86" cy="66.5" rx="9.5" ry="8" fill="${c.telo}"/>
-    <ellipse cx="89" cy="68" rx="5" ry="4" fill="${svetlej(c.telo,0.22)}"/>
-    <ellipse cx="92.5" cy="68.5" rx="2.2" ry="1.7" fill="${c.nos}"/>
-    <circle cx="86" cy="63.5" r="2.2" fill="#17121a"/><circle cx="85.4" cy="63" r=".9" fill="#fff"/>
-    <path d="M79 61 q-6 -3 -7 3 q-1 6 5 6 q-2 -5 2 -9 Z" fill="${tmavej(c.telo,0.25)}"/>
-    <path d="M92 60 q6 -3 7 3 q1 6 -5 6 q2 -5 -2 -9 Z" fill="${tmavej(c.telo,0.25)}"/>
-  </g>
+  <path d="M26 43 H82" stroke="${drevoSv}" stroke-width="3" stroke-linecap="round"/>
+  <!-- řetězy a zavěšený trám -->
+  <g stroke="${zelezoSv}" stroke-width="2.4" opacity=".95">
+    <path d="M40 52 V62"/><path d="M66 52 V62"/></g>
+  <rect x="28" y="59" width="56" height="14" rx="7" fill="${drevo}"/>
+  <rect x="28" y="60" width="56" height="4.5" rx="2" fill="${drevoSv}" opacity=".7"/>
+  <path d="M28 66 H84" stroke="${drevoTm}" stroke-width="1" opacity=".5"/>
+  <!-- železné pásy na trámu -->
+  <g fill="${zelezo}"><rect x="42" y="58.5" width="4" height="15" rx="1.5"/><rect x="58" y="58.5" width="4" height="15" rx="1.5"/></g>
+  <g fill="${zelezoSv}" opacity=".6"><rect x="42" y="59" width="1.4" height="14"/><rect x="58" y="59" width="1.4" height="14"/></g>
+  <!-- železná hlavice berana -->
+  <path d="M82 60 q10 0 12 6 q-2 6 -12 6 Z" fill="${zelezo}"/>
+  <path d="M82 60 q10 0 12 6 l-12 0 Z" fill="${zelezoSv}" opacity=".55"/>
+  <circle cx="88" cy="63" r="1.4" fill="${zelezoSv}"/><circle cx="88" cy="69" r="1.4" fill="${zelezoSv}"/>
   <!-- praporek v barvě hráče -->
-  <path d="M54 44 V30" stroke="${drevo}" stroke-width="2.4" stroke-linecap="round"/>
-  <path d="M55 31 q9 3 0 7 Z" fill="${bar}"/>`;
+  <path d="M54 43 V29" stroke="${drevo}" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="54" cy="29" r="1.8" fill="${svetlej(bar,0.4)}"/>
+  <path d="M55 30 q10 3 0 8 Z" fill="${bar}"/>`;
 }
 /* ---------- TREBUCHET ---------- */
 function trebuchetSVG(civK, barva){
   const c = CIVS[civK], s = STYLY[civK], bar = barva || c.akcent;
   const drevo = s.ram, drevoSv = svetlej(s.ram, 0.28), drevoTm = tmavej(s.ram, 0.3);
   const obsluha = plysak(civK, "vesnican", {bezStinu:1, bezPraporku:1, barva:bar});
+  const zelezo = "#6b727b", zelezoSv = "#a7aeb6";
   return `
   <ellipse cx="50" cy="95" rx="38" ry="7" fill="rgba(0,0,0,.26)"/>
   <g transform="translate(2,36) scale(0.46)">${obsluha}</g>
-  <!-- podvozek -->
+  <!-- podvozek s okovanými rohy -->
   <rect x="22" y="78" width="58" height="7" rx="3.5" fill="${drevo}"/>
   <rect x="22" y="78" width="58" height="2.6" rx="1.3" fill="${drevoSv}"/>
+  <rect x="22" y="77" width="5" height="9" rx="1.5" fill="${zelezo}"/><rect x="75" y="77" width="5" height="9" rx="1.5" fill="${zelezo}"/>
   ${kolo(33, 87, 7.5, drevoTm, drevoSv)}
   ${kolo(69, 87, 7.5, drevoTm, drevoSv)}
-  <!-- trojúhelníková kostra -->
-  <path d="M34 78 L51 28 L68 78" fill="none" stroke="${drevo}" stroke-width="5.5" stroke-linejoin="round"/>
-  <path d="M40 60 H62" stroke="${drevo}" stroke-width="4"/>
-  <path d="M34 78 L51 28" stroke="${drevoSv}" stroke-width="2" opacity=".55"/>
+  <!-- trojúhelníková kostra s výztuhami -->
+  <path d="M34 78 L51 26 L68 78" fill="none" stroke="${drevo}" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M40 58 H62" stroke="${drevo}" stroke-width="4.5"/>
+  <path d="M34 78 L51 26" stroke="${drevoSv}" stroke-width="2" opacity=".55"/>
+  <path d="M37 72 L48 40 M65 72 L54 40" stroke="${drevoTm}" stroke-width="2" opacity=".5"/>
+  <!-- železný čep vahadla -->
+  <circle cx="51" cy="28" r="4.4" fill="${zelezo}"/><circle cx="51" cy="28" r="2" fill="${zelezoSv}"/>
   <!-- vahadlo přes vrchol -->
-  <g transform="rotate(-24 51 30)">
-    <rect x="14" y="27.5" width="74" height="5" rx="2.5" fill="${drevoSv}"/>
-    <rect x="14" y="27.5" width="74" height="2" rx="1" fill="${svetlej(s.ram,0.5)}" opacity=".8"/>
-    <!-- protizávaží -->
-    <path d="M20 32 V38" stroke="#d9c18a" stroke-width="2"/>
-    <rect x="10" y="37" width="21" height="15" rx="4" fill="${drevoTm}"/>
-    <rect x="10" y="37" width="21" height="4.5" rx="2" fill="${drevo}"/>
+  <g transform="rotate(-26 51 28)">
+    <rect x="12" y="25.5" width="78" height="5.5" rx="2.7" fill="${drevoSv}"/>
+    <rect x="12" y="25.5" width="78" height="2" rx="1" fill="${svetlej(s.ram,0.5)}" opacity=".8"/>
+    <!-- protizávaží: okovaná bedna s řetězem -->
+    <path d="M19 31 V37 M25 31 V37" stroke="${zelezoSv}" stroke-width="2.2"/>
+    <rect x="9" y="36" width="24" height="17" rx="4" fill="${drevoTm}"/>
+    <rect x="9" y="36" width="24" height="5" rx="2" fill="${drevo}"/>
+    <g stroke="${zelezo}" stroke-width="2.6"><path d="M13 36 V53"/><path d="M29 36 V53"/></g>
     <!-- prak s kamenem -->
-    <path d="M86 32 q6 8 -2 13" stroke="#d9c18a" stroke-width="1.8" fill="none"/>
-    <circle cx="83" cy="47" r="5" fill="#8e9aa6"/>
-    <circle cx="81.5" cy="45.5" r="1.8" fill="#c3d1de" opacity=".8"/>
+    <path d="M88 31 q7 9 -3 15" stroke="${zelezoSv}" stroke-width="1.8" fill="none"/>
+    <circle cx="84" cy="48" r="6" fill="#8a929c"/>
+    <circle cx="82" cy="46" r="2.2" fill="#c3d1de" opacity=".85"/>
+    <path d="M80 50 q4 3 8 1" stroke="rgba(0,0,0,.25)" stroke-width="1.4" fill="none"/>
   </g>
-  <circle cx="51" cy="30" r="3.4" fill="${drevoTm}"/>
   <!-- praporek v barvě hráče -->
-  <path d="M68 78 V64" stroke="${drevo}" stroke-width="2.2" stroke-linecap="round"/>
-  <path d="M69 65 q9 3 0 7 Z" fill="${bar}"/>`;
+  <path d="M68 78 V63" stroke="${drevo}" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="68" cy="63" r="1.6" fill="${svetlej(bar,0.4)}"/>
+  <path d="M69 64 q9 3 0 7 Z" fill="${bar}"/>`;
 }
 
 /* jedna funkce pro všechny jednotky (barva = barva hráče) */
@@ -1468,47 +1477,74 @@ function budovaSVG(kind, civK, barva, otevrena){
 /* ---------------- ZDROJE A DEKORACE ---------------- */
 function zdrojSVG(kind, va){
   va = va||0;
-  const stin = `<ellipse cx="50" cy="93" rx="24" ry="7" fill="rgba(0,0,0,.24)"/>`;
-  const kmen = (w,h,b)=>`<path d="M${50-w/2} 93 q${w/2} -6 ${w} 0 l-2 -${h} q-${w/2} -5 -${w-4} 0 Z" fill="${b||"#7a5230"}"/>
-     <path d="M${50-w/2+1} 92 q3 -${h*0.5} 2 -${h}" stroke="#5e3f24" stroke-width="2" fill="none" opacity=".6"/>`;
+  const gid = "z" + (++__gid);
+  const stin = `<ellipse cx="50" cy="93" rx="24" ry="7" fill="rgba(0,0,0,.22)"/>`;
+  /* kmen s texturou kůry a stínem po straně */
+  const kmen = (w,h,b)=>{
+    const tm = tmavej(b||"#7a5230", 0.28);
+    return `<path d="M${50-w/2} 93 q${w/2} -6 ${w} 0 l-2 -${h} q-${w/2} -5 -${w-4} 0 Z" fill="${b||"#7a5230"}"/>
+      <path d="M${50-w/2} 93 q${w/2} -6 ${w} 0 l-2 -${h} q-${w/2} -5 -${w-4} 0 Z"
+            fill="${tm}" clip-path="inset(0 0 0 55%)" opacity=".55"/>
+      <path d="M${50-w/2+2} 92 q2 -${h*0.5} 2 -${h}" stroke="${tm}" stroke-width="1.6" fill="none" opacity=".6"/>
+      <path d="M${50+w/2-3} 91 q-1 -${h*0.5} -1 -${h*0.8}" stroke="${tm}" stroke-width="1.2" fill="none" opacity=".5"/>`;
+  };
+  /* list – kruh se svrchním osvětlením */
   if(kind==="strom"){
+    const koruna = (cx,cy,r,tmav,svet)=>`<defs><radialGradient id="${gid}${cx}${cy}" cx="38%" cy="30%" r="75%">
+        <stop offset="0" stop-color="${svet}"/><stop offset="1" stop-color="${tmav}"/></radialGradient></defs>
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid}${cx}${cy})"/>`;
     if(va===1) return svgObal(`${stin}${kmen(11,30,"#6d4a2c")}
-      <path d="M50 6 L74 40 H26 Z" fill="#2f7a3a"/>
-      <path d="M50 22 L78 58 H22 Z" fill="#3a8c44"/>
-      <path d="M50 40 L82 74 H18 Z" fill="#46a04f"/>
-      <path d="M50 22 L64 40 H50 Z" fill="rgba(255,255,255,.14)"/>`);
+      <path d="M50 4 L76 42 H24 Z" fill="#2f7a3a"/><path d="M50 4 L64 42 H50 Z" fill="#3f9a4c"/>
+      <path d="M50 20 L80 60 H20 Z" fill="#357f3d"/><path d="M50 20 L66 60 H50 Z" fill="#49a854"/>
+      <path d="M50 38 L84 78 H16 Z" fill="#2e7536"/><path d="M50 38 L68 78 H50 Z" fill="#46a250"/>
+      <path d="M50 8 L60 26 H50 Z" fill="rgba(255,255,255,.16)"/>
+      <path d="M32 76 q4 -6 8 -8 M40 78 q0 -5 2 -8" stroke="#2a6b31" stroke-width="1.5" fill="none" opacity=".5"/>`);
     if(va===2) return svgObal(`${stin}${kmen(13,26)}
-      <ellipse cx="50" cy="52" rx="34" ry="24" fill="#3d8b43"/>
-      <ellipse cx="30" cy="46" rx="18" ry="15" fill="#4aa350"/>
-      <ellipse cx="68" cy="48" rx="20" ry="16" fill="#3a8340"/>
-      <ellipse cx="50" cy="36" rx="20" ry="14" fill="#54b25a"/>
-      <ellipse cx="38" cy="38" rx="7" ry="5" fill="rgba(255,255,255,.20)"/>
-      <circle cx="66" cy="60" r="3" fill="#ff6a7a"/><circle cx="34" cy="62" r="2.6" fill="#ff6a7a"/>`);
+      ${koruna(50,50,25,"#2f7a37","#63c06a")}
+      ${koruna(30,46,16,"#347f3c","#5cb562")}
+      ${koruna(68,48,18,"#2c7334","#57b05e")}
+      ${koruna(50,34,17,"#3a8c44","#6fca76")}
+      <circle cx="40" cy="38" r="6" fill="rgba(255,255,255,.22)"/>
+      <circle cx="66" cy="58" r="3" fill="#ff7a86"/><circle cx="34" cy="60" r="2.6" fill="#ff7a86"/>
+      <circle cx="56" cy="44" r="2.4" fill="#ff7a86"/>`);
     return svgObal(`${stin}${kmen(12,34)}
-      <circle cx="50" cy="44" r="26" fill="#3f8f45"/><circle cx="30" cy="56" r="18" fill="#4aa350"/>
-      <circle cx="70" cy="56" r="18" fill="#37803d"/><circle cx="50" cy="30" r="16" fill="#56b45c"/>
-      <circle cx="40" cy="36" r="7" fill="rgba(255,255,255,.20)"/>
-      <circle cx="62" cy="34" r="3" fill="#8fe08a" opacity=".7"/>`);
+      ${koruna(50,44,26,"#2f7a37","#63c06a")}
+      ${koruna(30,54,17,"#347f3c","#5cb562")}
+      ${koruna(70,54,17,"#2b7233","#54ad5b")}
+      ${koruna(50,28,16,"#3a8c44","#6fca76")}
+      <circle cx="41" cy="34" r="7" fill="rgba(255,255,255,.22)"/>
+      <circle cx="62" cy="32" r="3" fill="#9fe89a" opacity=".7"/>`);
   }
   if(kind==="zlato") return svgObal(`
+    <defs><radialGradient id="${gid}s" cx="42%" cy="28%" r="80%">
+      <stop offset="0" stop-color="#b0a898"/><stop offset="1" stop-color="#7c7568"/></radialGradient>
+    <linearGradient id="${gid}z" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#fff0a8"/><stop offset="0.5" stop-color="#ffd23c"/><stop offset="1" stop-color="#d99512"/></linearGradient></defs>
     <ellipse cx="50" cy="91" rx="32" ry="8" fill="rgba(0,0,0,.22)"/>
-    <path d="M14 90 q-2 -26 18 -32 q26 -8 38 8 q14 14 14 24 Z" fill="#8a8276"/>
-    <path d="M14 90 q-2 -26 18 -32 q10 -3 17 1 q-17 12 -12 31 Z" fill="#a49c8e"/>
-    <path d="M30 88 l7 -20 l8 20 l-7 5 Z" fill="#ffd447" stroke="#c9910f" stroke-width="1.5"/>
-    <path d="M52 88 l9 -26 l10 26 l-9 6 Z" fill="#ffe680" stroke="#c9910f" stroke-width="1.5"/>
-    <path d="M61 62 l10 26 l-9 6 Z" fill="#e8a81c"/>
-    <path d="M42 84 l5 -12 l5 12 l-5 3 Z" fill="#ffd447" stroke="#c9910f" stroke-width="1.2"/>
-    <circle cx="36" cy="76" r="2.4" fill="#fffbe0"/><circle cx="58" cy="72" r="2.8" fill="#fffbe0"/>
-    <path d="M22 60 l2 -6 l2 6 l6 2 l-6 2 l-2 6 l-2 -6 l-6 -2 Z" fill="#fff3b0" opacity=".9"/>`);
+    <path d="M13 90 q-3 -27 19 -33 q27 -8 39 9 q15 15 15 24 Z" fill="url(#${gid}s)"/>
+    <path d="M13 90 q-3 -27 19 -33 q10 -3 18 1 q-19 13 -14 32 Z" fill="rgba(255,255,255,.14)"/>
+    <path d="M18 88 q-1 -20 14 -25 q22 -6 33 6 q11 11 12 19 Z" fill="none" stroke="rgba(0,0,0,.12)" stroke-width="1.4"/>
+    <ellipse cx="34" cy="70" rx="8" ry="6.5" fill="url(#${gid}z)" stroke="#b07d0e" stroke-width="1.4"/>
+    <ellipse cx="58" cy="66" rx="10" ry="8" fill="url(#${gid}z)" stroke="#b07d0e" stroke-width="1.4"/>
+    <ellipse cx="46" cy="80" rx="6" ry="5" fill="url(#${gid}z)" stroke="#b07d0e" stroke-width="1.2"/>
+    <ellipse cx="66" cy="80" rx="5" ry="4" fill="url(#${gid}z)" stroke="#b07d0e" stroke-width="1.1"/>
+    <ellipse cx="31" cy="68" rx="2.6" ry="2" fill="#fffbe0"/><ellipse cx="55" cy="63" rx="3" ry="2.3" fill="#fffbe0"/>
+    <path d="M24 58 l1.5 -5 l1.5 5 l5 1.5 l-5 1.5 l-1.5 5 l-1.5 -5 l-5 -1.5 Z" fill="#fff3b0"/>
+    <path d="M70 58 l1 -3.5 l1 3.5 l3.5 1 l-3.5 1 l-1 3.5 l-1 -3.5 l-3.5 -1 Z" fill="#fff3b0" opacity=".85"/>`);
   if(kind==="zelezo") return svgObal(`
+    <defs><radialGradient id="${gid}s" cx="42%" cy="28%" r="80%">
+      <stop offset="0" stop-color="#847e77"/><stop offset="1" stop-color="#565049"/></radialGradient>
+    <linearGradient id="${gid}z" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#e6f0fb"/><stop offset="0.5" stop-color="#a9c0d6"/><stop offset="1" stop-color="#6e8497"/></linearGradient></defs>
     <ellipse cx="50" cy="91" rx="32" ry="8" fill="rgba(0,0,0,.22)"/>
-    <path d="M12 90 q-2 -28 20 -34 q26 -8 40 8 q14 14 14 26 Z" fill="#6f6a63"/>
-    <path d="M12 90 q-2 -28 20 -34 q10 -3 17 1 q-18 13 -13 33 Z" fill="#8b857c"/>
-    <path d="M28 88 l7 -20 l8 20 l-7 5 Z" fill="#9fb4c9" stroke="#5d6b78" stroke-width="1.5"/>
-    <path d="M50 88 l9 -26 l10 26 l-9 6 Z" fill="#c9dcee" stroke="#5d6b78" stroke-width="1.5"/>
-    <path d="M59 62 l10 26 l-9 6 Z" fill="#7d93a8"/>
-    <path d="M40 84 l5 -12 l5 12 l-5 3 Z" fill="#aec4d6" stroke="#5d6b78" stroke-width="1.2"/>
-    <circle cx="34" cy="76" r="2.4" fill="#eef6ff"/><circle cx="56" cy="72" r="2.8" fill="#eef6ff"/>`);
+    <path d="M12 90 q-3 -29 21 -35 q27 -8 41 9 q15 15 14 26 Z" fill="url(#${gid}s)"/>
+    <path d="M12 90 q-3 -29 21 -35 q10 -3 18 1 q-20 13 -14 34 Z" fill="rgba(255,255,255,.13)"/>
+    <path d="M17 88 q-1 -22 15 -27 q22 -6 33 6 q11 11 11 20 Z" fill="none" stroke="rgba(0,0,0,.14)" stroke-width="1.4"/>
+    <path d="M28 72 l8 -14 l6 15 l-9 6 Z" fill="url(#${gid}z)" stroke="#4f5f6d" stroke-width="1.4"/>
+    <path d="M52 68 l9 -16 l8 16 l-8 8 Z" fill="url(#${gid}z)" stroke="#4f5f6d" stroke-width="1.4"/>
+    <path d="M40 82 l5 -9 l5 10 l-6 4 Z" fill="url(#${gid}z)" stroke="#4f5f6d" stroke-width="1.2"/>
+    <circle cx="33" cy="66" r="2.3" fill="#eef6ff"/><circle cx="57" cy="60" r="2.7" fill="#eef6ff"/>
+    <path d="M22 60 q4 3 3 8 M72 62 q-3 3 -2 7" stroke="rgba(255,255,255,.3)" stroke-width="1.4" fill="none"/>`);
   if(kind==="ker") return svgObal(`
     <circle cx="38" cy="72" r="16" fill="#3d8a43"/><circle cx="60" cy="70" r="18" fill="#47a04d"/>
     <circle cx="50" cy="58" r="14" fill="#54b25a"/>
@@ -1655,8 +1691,8 @@ const MAPY = [
   {jm:"Bobří mokřady",   popis:"Hodně dřeva u základen",    zeme:"#5a9a6a", lesy:1.6, zlato:1.1, zelezo:0.8, sirka:3600, vyska:2600},
   {jm:"Země Ňuňísků",    popis:"Domovina – všeho dost",     zeme:"#63a552", lesy:1.3, zlato:1.3, zelezo:1.3, sirka:3800, vyska:2700},
 
-  /* ---- mapy s MOŘEM a SKÁLAMI ----
-     voda: okraj / jezero / rec / ostrovy / tymove   ·   hory: kolik masivů
+  /* ---- mapy s MOŘEM ----
+     voda: okraj / jezero / rec / ostrovy / tymove
      Na ostrovních mapách se pěšák přes vodu NEDOSTANE – musíš mít přístav. */
   {jm:"Ňuňí ostrovy",    popis:"Ostrovy spojené úzkou šíjí – dá se i pěšky",
     zeme:"#5f9e4f", lesy:1.1, zlato:1, zelezo:1, sirka:3800, vyska:2700, voda:"ostrovy", sije:true},
@@ -1666,38 +1702,38 @@ const MAPY = [
     zeme:"#5f9e4f", lesy:1.1, zlato:1, zelezo:1.1, sirka:3800, vyska:2700, voda:"rec"},
   {jm:"Modré jezero",    popis:"Jezero uprostřed, boj se vede kolem",
     zeme:"#63a552", lesy:1.1, zlato:1.2, zelezo:1, sirka:3600, vyska:2600, voda:"jezero"},
-  {jm:"Ňuňí pobřeží",    popis:"Moře kolem celé zemi – lodě hlídají břeh",
+  {jm:"Ňuňí pobřeží",    popis:"Moře kolem celé země – lodě hlídají břeh",
     zeme:"#5f9e4f", lesy:1.1, zlato:1, zelezo:1, sirka:4000, vyska:2900, voda:"okraj"},
-  {jm:"Skalní průsmyk",  popis:"Skály, přes které se nedá projít – hledej cestu",
-    zeme:"#7d8a7a", lesy:0.8, zlato:1, zelezo:1.6, sirka:3600, vyska:2600, hory:4},
-  {jm:"Tvrz mezi skalami",popis:"Hory tě chrání, ale i zavírají",
-    zeme:"#8a8f80", lesy:0.9, zlato:0.9, zelezo:1.5, sirka:3400, vyska:2500, hory:6},
-  {jm:"Zrádné mokřady",  popis:"Jezera i skály, úzké cestičky",
-    zeme:"#5a9a6a", lesy:1.5, zlato:0.9, zelezo:0.9, sirka:3800, vyska:2700, voda:"jezero", hory:3},
+  {jm:"Smaragdový háj",  popis:"Bujná zeleň a dřevo, kam se podíváš",
+    zeme:"#4f9a44", lesy:1.9, zlato:0.9, zelezo:0.9, sirka:3600, vyska:2600},
+  {jm:"Zlatá stráň",     popis:"Zlata víc než dost – ale braň si ho",
+    zeme:"#8fa855", lesy:0.9, zlato:1.8, zelezo:0.8, sirka:3600, vyska:2600},
+  {jm:"Zrádné mokřady",  popis:"Spousta jezírek a úzké cestičky mezi nimi",
+    zeme:"#5a9a6a", lesy:1.5, zlato:0.9, zelezo:0.9, sirka:3800, vyska:2700, voda:"jezero"},
   {jm:"Souostroví",      popis:"Malé ostrůvky – válka se vede na vodě",
     zeme:"#5f9e4f", lesy:0.9, zlato:1.1, zelezo:1, sirka:4200, vyska:3000, voda:"ostrovy"},
   {jm:"Ledové ostrovy",  popis:"Studené moře, ostrovy daleko od sebe",
     zeme:"#b9d4dd", lesy:0.7, zlato:1, zelezo:1.3, sirka:4200, vyska:3000, voda:"ostrovy"},
-  {jm:"Řeka v kaňonu",   popis:"Řeka i skály – kdo drží brod, drží mapu",
-    zeme:"#a08a55", lesy:0.7, zlato:1.5, zelezo:1, sirka:3800, vyska:2700, voda:"rec", hory:3},
+  {jm:"Rudá rokle",      popis:"Železa jak naseto, dřeva pomálu",
+    zeme:"#9a7d5a", lesy:0.55, zlato:0.9, zelezo:2, sirka:3600, vyska:2600, stred:"zelezo"},
   {jm:"Pandí zátoka",    popis:"Klidné moře kolem, uvnitř je všeho dost",
     zeme:"#63a552", lesy:1.4, zlato:1.3, zelezo:1.2, sirka:3800, vyska:2700, voda:"okraj"},
   {jm:"Dvě jezera",      popis:"Dvě jezera a mezi nimi úzká šíje",
     zeme:"#5f9e4f", lesy:1.1, zlato:1.1, zelezo:1.1, sirka:3800, vyska:2700, voda:"jezero"},
   {jm:"Bobří přehrada",  popis:"Hodně dřeva a voda všude kolem",
     zeme:"#5a9a6a", lesy:1.8, zlato:0.9, zelezo:0.8, sirka:3600, vyska:2600, voda:"rec"},
-  {jm:"Kamenná pláň",    popis:"Otevřená pláň se pár skalisky",
-    zeme:"#8fa855", lesy:0.8, zlato:1, zelezo:1.4, sirka:4400, vyska:3100, hory:5},
+  {jm:"Širá savana",     popis:"Otevřená pláň, daleko od sebe – prostor k manévrům",
+    zeme:"#a5b05a", lesy:0.8, zlato:1, zelezo:1.1, sirka:4400, vyska:3100},
   {jm:"Myší ostrůvky",   popis:"Malá mapa, ostrůvky se šíjí – rychlá bitva",
     zeme:"#6aa85c", lesy:1, zlato:1.2, zelezo:1.2, sirka:2800, vyska:2000, voda:"ostrovy", sije:true},
   {jm:"Zlatý ostrov",    popis:"Uprostřed ostrov plný zlata – doplav tam první",
     zeme:"#a08a55", lesy:0.7, zlato:2, zelezo:0.9, sirka:4000, vyska:2800, voda:"okraj", stred:"zlato"},
-  {jm:"Železné útesy",   popis:"Železa dost, ale skály ti stojí v cestě",
-    zeme:"#7d8a7a", lesy:0.6, zlato:0.8, zelezo:2, sirka:3800, vyska:2700, hory:5, voda:"jezero"},
+  {jm:"Kvetoucí niva",   popis:"Louka plná květů, všeho tak akorát",
+    zeme:"#6ba852", lesy:1.2, zlato:1.2, zelezo:1.1, sirka:3800, vyska:2700},
   {jm:"Spojenci na břehu",popis:"Týmy na společném pobřeží",
     zeme:"#5f9e4f", lesy:1.2, zlato:1.1, zelezo:1.1, sirka:4200, vyska:3000, voda:"tymove"},
   {jm:"Poslední pevnina",popis:"Skoro všude voda, země je vzácná",
-    zeme:"#63a552", lesy:1, zlato:1.3, zelezo:1.3, sirka:4400, vyska:3100, voda:"ostrovy", hory:2}
+    zeme:"#63a552", lesy:1, zlato:1.3, zelezo:1.3, sirka:4400, vyska:3100, voda:"ostrovy"}
 ];
 
 /* ---- ikony hráče (obrázek u jména) ---- */
@@ -1707,7 +1743,7 @@ const IKONY = CIVKEYS.slice();
    4) STAV HRY
    ============================================================ */
 const G = {
-  hraci:[], ja:0, mapa:0, obt:2, velikost:1, limit:1, rezim:"single", kod:"---",
+  hraci:[], ja:0, mapa:0, obt:2, velikost:0, limit:1, rezim:"single", kod:"---",
   bezi:false, pauza:false, konec:false,
   ents:[], jednotky:[], budovy:[], zdroje:[], strely:[],
   sel:[], nextId:1, cas:0, cam:{x:0,y:0}, zoom:1, stavim:null, ghost:null
@@ -1957,10 +1993,10 @@ function zilaZdroje(kind,cx,cy,n){
 /* Velikost mapy – násobí rozměry vybrané mapy. Surovin i lesů se počítá
    podle plochy, takže na obří mapě jich je úměrně víc. */
 const VELIKOSTI = [
-  {jm:"Small",     cz:"malá – rychlá bitva", n:0.72},
-  {jm:"Normal",    cz:"normální",            n:1},
-  {jm:"Huge",      cz:"obří – je kam růst",  n:1.5},
-  {jm:"Ludicrous", cz:"šílená – hodně místa",n:2.2}
+  {jm:"Small",     cz:"malá – rychlá bitva",  n:1},
+  {jm:"Normal",    cz:"normální",             n:1.5},
+  {jm:"Huge",      cz:"obří – je kam růst",   n:2.2},
+  {jm:"Ludicrous", cz:"ohromná – fakt velká", n:3.3}
 ];
 /* Nejvíc panáčků na hráče (populační strop). */
 const LIMITY = [
@@ -2410,8 +2446,9 @@ function updJednotku(e, dt){
     e.stav = "jdi"; e.cil = {x:e.straz.x, y:e.straz.y};
   }
 
-  // automatické bránění
-  if(e.stav==="stoj" && e.kind!=="vesnican"){
+  // automatické bránění (průzkumník a jiní „nebojující" NIKDY – ti si jen hledí svého;
+  // bez téhle výjimky se dva průzkumníci u sebe navzájem označili za cíl a „prali se")
+  if(e.stav==="stoj" && e.kind!=="vesnican" && !(JED[e.kind] && JED[e.kind].nebojuje)){
     if(JED[e.kind].stroj){
       /* Stroj si sám najde další BUDOVU – aby po zboření cíle pokračoval
          a nezůstal stát (vypadalo to, že vystřelí jednou a dost).
@@ -7568,6 +7605,233 @@ function nakresliNahled(cv, mp, idx){
   tecka("#ffd447", Math.round(7*(mp.zlato||1)));
   tecka("#dbe7f2", Math.round(7*(mp.zelezo||1)));
 }
+
+
+/* ============================================================
+   46) v19 — CHYTŘEJŠÍ BOTI, TABULKA „CO CIVILIZACE MAJÍ",
+            ZMÍRNĚNÍ SEKÁNÍ
+   ============================================================ */
+VERZE = "v19";
+(function(){
+  const p = document.getElementById("menuPata");
+  if(p) p.innerHTML = "Země Ňuňísků · <b>verze " + VERZE + "</b> · Sepsáno v Zemi Ňuňísků";
+})();
+
+/* ------------------------------------------------------------
+   46a) BOT, KTERÝ HRAJE JAKO ČLOVĚK
+   Dřív bot každých pár vteřin vykouzlil z ničeho celou vlnu a poslal ji na
+   tebe, i když tě ještě „neviděl". Teď:
+     • útočí AŽ na toho, koho OBJEVIL (přišel k němu, nebo mu on přišel k
+       základně) – na neobjeveného hráče nezaútočí
+     • vojáky si postupně cvičí a drží u základny; teprve když jich má dost,
+       vypraví je společně na výpravu – jako opravdový hráč, ne dávka z nebe
+     • útok se počítá jen ~5× za vteřinu (ne každý snímek) – to znatelně
+       ubere sekání, protože právě tohle procházení všech jednotek bylo drahé
+   ------------------------------------------------------------ */
+
+/* nejbližší základna nepřítele. jenObjevene=true → jen ti, které už bot zná.
+   Když jenObjevene=false, vrátí i neznámou – armáda tam vyrazí ji NAJÍT
+   (cestou ji objeví a teprve pak na ni zaútočí; není to dávka z nebe). */
+function nejblizZakl(si, H, jenObjevene){
+  let nej = null, nd = 1e9;
+  G.hraci.forEach((h, i)=>{
+    if(!jeNepritel(si, i) || h.porazen) return;
+    if(jenObjevene && !(H.nalezeno && H.nalezeno[i])) return;
+    const b = nejbliz(G.budovy, ZAKL[si].x, ZAKL[si].y, o=>o.side===i && !o.mrtvy);
+    if(b){ const d = dist2(ZAKL[si].x, ZAKL[si].y, b.x, b.y); if(d < nd){ nd = d; nej = b; } }
+  });
+  return nej;
+}
+function nejblizObjevenaZakl(si, H){ return nejblizZakl(si, H, true); }
+
+let aiCas = 0;
+updAI = function(dt){
+  aiCas += dt;
+  if(aiCas < 0.2) return;          // rozhoduje se 5× za vteřinu (dřív 60×) → míň sekání
+  const krok = aiCas; aiCas = 0;
+  const O = OBTIZNOSTI[G.obt];
+
+  G.hraci.forEach((H, si)=>{
+    if(!H.bot || H.porazen) return;
+    const zakl = ZAKL[si];
+    if(!H.nalezeno) H.nalezeno = {};
+
+    /* --- ekonomika: nezaměstnaní vesničané těží --- */
+    for(const j of G.jednotky){
+      if(j.side!==si || j.mrtvy) continue;
+      if(j.kind==="vesnican" && j.stav==="stoj") novyZdroj(j);
+    }
+
+    /* --- OBJEVOVÁNÍ: koho už bot zná --- */
+    G.hraci.forEach((h, i)=>{
+      if(!jeNepritel(si, i) || h.porazen || H.nalezeno[i]) return;
+      // 1) některá moje jednotka došla blízko k jeho základně
+      const moje = nejbliz(G.jednotky, ZAKL[i].x, ZAKL[i].y, o=>o.side===si && !o.mrtvy, 520);
+      if(moje){ H.nalezeno[i] = true; return; }
+      // 2) nebo mi jeho jednotka přišla k základně (útok/průzkum) → taky ho poznám
+      const jeho = nejbliz(G.jednotky, zakl.x, zakl.y, o=>o.side===i && !o.mrtvy && o.kind!=="pruzkumnik", 640);
+      if(jeho) H.nalezeno[i] = true;
+    });
+
+    /* --- STAVĚNÍ a doplňování hlídačů (řidší než dřív) --- */
+    H.aiStavba = (H.aiStavba||0) - krok;
+    if(H.aiStavba<=0){
+      H.aiStavba = O.staviCas * nah(0.9,1.3);
+      const moje = G.budovy.filter(b=>b.side===si && !b.mrtvy);
+      const vezi = moje.filter(b=>b.kind==="vez").length;
+      if(moje.length < 12){
+        let kind = "domek";
+        if(vezi < O.veze && Math.random()<0.4) kind = "vez";
+        else if(!moje.some(b=>b.kind==="kasarna")) kind = "kasarna";
+        else if(G.obt>=3 && !moje.some(b=>b.kind==="staj") && maBudovu(si,"staj") && Math.random()<0.4) kind = "staj";
+        else if(G.obt>=4 && !moje.some(b=>b.kind==="hrad") && Math.random()<0.3) kind = "hrad";
+        const a = nah(0,Math.PI*2), d = nah(180,320);
+        pridejBudovu(kind, si, klam(zakl.x+Math.cos(a)*d,90,SVET_W-90), klam(zakl.y+Math.sin(a)*d,90,SVET_H-90), true);
+      }
+      const hlidacu = G.jednotky.filter(j=>j.side===si && j.straz && !j.mrtvy).length;
+      if(hlidacu < Math.max(2, Math.round(O.sila*2.6))){
+        const s = pridejJednotku("vojak", si, zakl.x+nah(-150,150), zakl.y+nah(90,200));
+        s.straz = {x:s.x, y:s.y};
+      }
+      const vesnicanu = G.jednotky.filter(j=>j.side===si && j.kind==="vesnican" && !j.mrtvy).length;
+      if(vesnicanu < 4+Math.round(O.tezba*3)){
+        const u = pridejJednotku("vesnican", si, zakl.x+nah(-120,120), zakl.y+nah(60,150));
+        novyZdroj(u);
+      }
+    }
+
+    /* --- CVIČENÍ VOJSKA po jednom (trickle), ať se sbírá jako u hráče --- */
+    const armada = G.jednotky.filter(j=>j.side===si && j.armadni && !j.mrtvy);
+    const strop  = Math.round(6 + O.sila*8);            // kolik jich bot drží pohromadě
+    H.trenink = (H.trenink||0) - krok;
+    if(H.trenink<=0 && armada.length < strop){
+      H.trenink = (2.4 / Math.max(0.4, O.sila)) * nah(0.8,1.2);   // těžší bot cvičí rychleji
+      const umi = k => maJednotku(si,k);
+      let druh = "vojak";
+      const r = Math.random();
+      if(r<0.28 && umi("lukostrelec")) druh = "lukostrelec";
+      else if(r<0.42 && umi("jezdec")) druh = "jezdec";
+      else if(r<0.5 && G.obt>=3 && umi("slon")) druh = "slon";
+      const u = pridejJednotku(druh, si, zakl.x+nah(-120,120), zakl.y+nah(70,170));
+      u.armadni = true;
+      u.rally = {x: zakl.x + (zakl.x<SVET_W/2?1:-1)*nah(120,190), y: zakl.y + (zakl.y<SVET_H/2?1:-1)*nah(120,190)};
+      u.stav = "jdi"; u.cil = {...u.rally};
+    }
+
+    /* --- VÝPRAVA: mám dost vojska → vyrazím. Znám-li nepřítele, jdu na něj;
+           když ne, vyrazím ho NAJÍT k nejbližší základně (objevím ho cestou). --- */
+    const prah = Math.round(5 + O.sila*6);
+    if(!H.tahnou && armada.length >= prah){
+      const znamy = nejblizObjevenaZakl(si, H);
+      const cil = znamy || nejblizZakl(si, H, false);
+      if(cil){
+        H.tahnou = true;
+        H.pochodCil = znamy ? null : cil;                 // když jdu jen hledat, pamatuju si kam
+        armada.forEach(u=>{
+          u.vytazeni = true;
+          if(znamy){ u.stav="utok"; u.cilE=znamy; }
+          else { u.stav="jdi"; u.cil={x:cil.x, y:cil.y}; }
+        });
+        if(G.obt>=2 && Math.random()<0.4 && maJednotku(si,"hrdina")
+           && !G.jednotky.some(j=>j.side===si && j.kind==="hrdina" && !j.mrtvy)){
+          const her = pridejJednotku("hrdina", si, zakl.x+nah(-80,80), zakl.y+nah(70,150));
+          her.armadni = true; her.vytazeni = true;
+          if(znamy){ her.stav="utok"; her.cilE=znamy; } else { her.stav="jdi"; her.cil={x:cil.x,y:cil.y}; }
+        }
+        if(znamy && !jeNepritel(G.ja, cil.side)){
+          zvuk("poplach");
+          zprava("⚔️ "+bezpecnyText(H.jm)+" ("+CIVS[H.civ].jm+") vyráží do útoku!","zle");
+        }
+      }
+    }
+    // výprava skončila, když vojáci padli nebo se rozprchli → smí se sbírat nová
+    if(H.tahnou && armada.filter(u=>u.vytazeni).length === 0){ H.tahnou = false; H.pochodCil = null; }
+
+    /* --- CHOVÁNÍ JEDNOTLIVÝCH JEDNOTEK --- */
+    for(const j of G.jednotky){
+      if(j.side!==si || j.mrtvy || j.kind==="vesnican" || j.kind==="pruzkumnik") continue;
+      if(j.kind==="kral") continue;                          // král zůstává doma
+      if(j.stav==="utok" && j.cilE && !j.cilE.mrtvy) continue;
+
+      if(j.straz){
+        // HLÍDAČ: brání okolí své pozice, na výpravy nechodí
+        const c = nejbliz(G.ents, j.straz.x, j.straz.y,
+          o=>jeNepritel(si,o.side) && !o.mrtvy && (o.druh==="jednotka"||o.druh==="budova") && o.kind!=="pruzkumnik", 520);
+        if(c){ j.stav="utok"; j.cilE=c; }
+        else if(j.stav==="stoj" && dist2(j.x,j.y,j.straz.x,j.straz.y)>70){ j.stav="jdi"; j.cil={...j.straz}; }
+      }else if(j.armadni && j.vytazeni){
+        // VYSLANÝ VOJÁK: bij, co je poblíž; jinak dobývej objevené; jinak pochoduj
+        // za soupeřem, dokud ho nenajdeš; teprve když není co dobývat, jdi domů.
+        const c = nejbliz(G.jednotky, j.x, j.y, o=>jeNepritel(si,o.side) && !o.mrtvy && o.kind!=="pruzkumnik", 360)
+               || nejblizObjevenaZakl(si, H);
+        if(c){ j.stav="utok"; j.cilE=c; }
+        else if(H.pochodCil && !H.pochodCil.mrtvy){ j.stav="jdi"; j.cil={x:H.pochodCil.x, y:H.pochodCil.y}; }
+        else { j.vytazeni=false; j.stav="jdi"; j.cil={...(j.rally||{x:zakl.x,y:zakl.y})}; }
+      }else if(j.armadni){
+        // ČEKAJÍCÍ VOJÁK: drží se u shromaždiště, ale brání se, když k němu někdo přijde
+        const c = nejbliz(G.jednotky, j.x, j.y, o=>jeNepritel(si,o.side) && !o.mrtvy && o.kind!=="pruzkumnik", 260);
+        if(c){ j.stav="utok"; j.cilE=c; }
+        else if(j.stav==="stoj" && j.rally && dist2(j.x,j.y,j.rally.x,j.rally.y)>90){ j.stav="jdi"; j.cil={...j.rally}; }
+      }
+    }
+  });
+};
+
+/* --- objevení při napadení: koho na mě pošlou, toho poznám --- */
+const ublizPredObjevem = ubliz;
+ubliz = function(cil, dmg, utocnik){
+  if(cil && utocnik && G.hraci[cil.side] && G.hraci[cil.side].bot
+     && utocnik.side>=0 && jeNepritel(cil.side, utocnik.side)){
+    const H = G.hraci[cil.side];
+    if(!H.nalezeno) H.nalezeno = {};
+    H.nalezeno[utocnik.side] = true;
+  }
+  return ublizPredObjevem(cil, dmg, utocnik);
+};
+
+/* ------------------------------------------------------------
+   46b) TABULKA CIVILIZACÍ – pod každou okénko „co má"
+   ⚔️ bojovník · 🏹 lučištník · 🐴 jezdec · 🐘 slon
+   zelené = má, prošedlé s křížkem = nemá
+   ------------------------------------------------------------ */
+if(typeof kresliCivTabulku === "function"){
+  kresliCivTabulku = function(){
+    const el = document.getElementById("civTabulka");
+    if(!el) return;
+    const druhy = [["vojak","⚔️"],["lukostrelec","🏹"],["jezdec","🐴"],["slon","🐘"]];
+    el.innerHTML = CIVKEYS.map(k => civRadek(k, CIVS[k], CIVS[k].nema || [], druhy)).join("");
+  };
+}
+function civRadek(k, c, nema, druhy){
+  const okenka = druhy.map(([u,ik])=>{
+    const chybi = nema.includes(u);
+    return `<span title="${bezpecnyText(JED[u]?JED[u].jm:u)}"
+      style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:7px;font-size:12.5px;
+        border:1.5px solid ${chybi?"rgba(120,90,50,.3)":"#4e8f3e"};
+        background:${chybi?"rgba(120,90,50,.08)":"rgba(78,143,62,.16)"};
+        color:${chybi?"rgba(90,70,40,.5)":"#2f6a25"};${chybi?"text-decoration:line-through;":"font-weight:bold;"}">
+      ${ik} ${bezpecnyText(JED[u]?JED[u].jm:u)}${chybi?"":" ✓"}</span>`;
+  }).join(" ");
+  return `<div style="padding:7px 0;border-bottom:1px solid rgba(138,106,43,.35)">
+    <div style="display:flex;gap:9px;align-items:flex-start">
+      <div style="width:42px;flex:none">${svgObal(plysak(k,"vesnican",{bezPraporku:1}))}</div>
+      <div style="flex:1;min-width:0">
+        <b>${c.emo} ${bezpecnyText(c.jm)}</b>
+        <span style="opacity:.7;font-size:11px"> – ${bezpecnyText(c.nazev||"")}</span>
+        <div style="font-size:11.5px;margin-top:2px">${bezpecnyText(c.silne||"")}</div>
+        <div style="font-size:11.5px;opacity:.85">${bezpecnyText(c.slabe||"")}</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin:5px 0 0 51px">${okenka}</div>
+  </div>`;
+}
+
+/* ------------------------------------------------------------
+   46c) MENŠÍ SEKÁNÍ
+   Minimapu a stav sítě kreslíme trochu řidčeji – oko to nepozná,
+   ale procesoru se uleví (spolu s tím, že updAI běží jen 5×/s).
+   ------------------------------------------------------------ */
+if(typeof mmCas !== "undefined"){ /* mmCas je v p5, práh 0.12 s necháme */ }
 
 </script>
 </body>
