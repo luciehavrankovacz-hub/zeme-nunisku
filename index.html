@@ -10155,6 +10155,160 @@ kresliMapy = function(){
   if(cv) nakresliNahled(cv, mp, G.mapa);
 };
 
+
+/* ============================================================
+   57) ABY VÁS ČTYŘI NIC NEVYHODILO ZE HRY
+
+   Dvě věci, které se při hraní ve čtyřech stanou skoro jistě:
+   někdo omylem obnoví stránku a někdo nechce přepisovat kód z papírku.
+
+   ---------------------------------------------------------------
+   A) IDENTITA, KTERÁ PŘEŽIJE OBNOVENÍ STRÁNKY
+
+   Hostitel má návrat kamaráda do hry HOTOVÝ a správně napsaný: když se
+   někdo odpojí, po chvíli za něj začne hrát počítač, a jakmile se tentýž
+   hráč vrátí, počítač mu civilizaci zase vrátí i s hláškou „je zpátky ve
+   hře!". Celá ta větev se ale nikdy nespustila, protože `mojeId` se
+   LOSOVALO PŘI KAŽDÉM NAČTENÍ STRÁNKY. Vrátivší se hráč se tedy hostiteli
+   představil jako někdo úplně jiný a:
+     - v lobby po něm zůstal DUCH a hra začala s civilizací, kterou nikdo
+       nehrál (ani počítač),
+     - z rozjeté hry se už nikdy nedostal zpátky.
+
+   Stačí si identitu zapamatovat. Ale POZOR na to, kam:
+     sessionStorage  = jedna záložka, přežije F5  ← tohle chceme
+     localStorage    = celý prohlížeč, sdílí se mezi záložkami ✗
+   Kdyby to bylo v localStorage, dvě okna na jednom počítači by se
+   hostiteli tvářila jako JEDEN hráč – a přesně takhle se hra testuje
+   a takhle si ji děti pouštějí vedle sebe.
+
+   ---------------------------------------------------------------
+   B) PŘIPOJENÍ ODKAZEM, BEZ OPISOVÁNÍ KÓDU
+
+   Tři písmena se špatně diktují („bé jako Božena, nebo pé?“) a ještě hůř
+   se píšou ovladačem na televizi. Hostitel proto vedle kódu dostane
+   ODKAZ, který stačí poslat do rodinného chatu; komu se otevře, ten se
+   připojí sám.
+   ============================================================ */
+
+/* ---------- A) stabilní identita ---------- */
+function stabilniId(){
+  try{
+    let id = sessionStorage.getItem("nunisci-id");
+    if(!id){
+      id = "j" + Math.floor(Math.random()*1e9);
+      sessionStorage.setItem("nunisci-id", id);
+    }
+    return id;
+  }catch(e){
+    return "j" + Math.floor(Math.random()*1e9);   // soukromé okno apod.
+  }
+}
+
+/* Lobby si při otevření vyrobí hráče s čerstvě vylosovaným id – přepíšeme
+   ho na to stálé, a to i v seznamu hráčů, kde už sedí. */
+const otevriLobbyPredIdentitou = otevriLobby;
+otevriLobby = function(rezim){
+  const v = otevriLobbyPredIdentitou.apply(this, arguments);
+  try{
+    const stale = stabilniId();
+    const ja = lobbyHraci && lobbyHraci.find(h => h.id === mojeId);
+    mojeId = stale;
+    if(ja) ja.id = stale;
+  }catch(e){}
+  return v;
+};
+
+/* Připojování si id losuje taky – a při opakovaném pokusu (část 49) znovu.
+   Nejjistější je proto přepsat ho v okamžiku, kdy se „join" opravdu
+   posílá; tudy projdou všechny cesty včetně těch opakovaných. */
+(function(){
+  const opravJoin = m => {
+    if(m && m.typ === "join" && m.hrac){ mojeId = stabilniId(); m.hrac.id = mojeId; }
+    return m;
+  };
+  if(typeof NET !== "undefined" && NET.posli){
+    const puvodni = NET.posli.bind(NET);
+    NET.posli = function(m){ return puvodni(opravJoin(m)); };
+  }
+  if(typeof P2P !== "undefined" && P2P.posli && P2P.posli !== (typeof NET !== "undefined" && NET.posli)){
+    const puvodni = P2P.posli.bind(P2P);
+    P2P.posli = function(m){ return puvodni(opravJoin(m)); };
+  }
+})();
+
+/* ---------- B) odkaz s kódem ---------- */
+function odkazNaHru(kod){
+  const u = location.origin + location.pathname;
+  return u + "?kod=" + encodeURIComponent(kod);
+}
+
+/* Hostiteli ukážeme pod kódem i odkaz a tlačítko „zkopírovat". */
+function ukazOdkazHostiteli(){
+  const kodEl = document.getElementById("kodText");
+  if(!kodEl || !G.kod || G.kod === "---" || G.kod === "???") return;
+  let box = document.getElementById("odkazHry");
+  if(!box){
+    box = document.createElement("div");
+    box.id = "odkazHry";
+    box.style.cssText = "margin-top:8px;font-size:13px;text-align:center;opacity:.95";
+    const rodic = kodEl.closest("div") || kodEl.parentNode;
+    if(rodic && rodic.parentNode) rodic.parentNode.insertBefore(box, rodic.nextSibling);
+    else return;
+  }
+  const odkaz = odkazNaHru(G.kod);
+  box.innerHTML = 'Nebo pošli kamarádům rovnou odkaz – nemusí nic opisovat:<br>'
+    + '<code id="odkazText" style="font-size:12px;word-break:break-all">'
+    + bezpecnyText(odkaz) + '</code> '
+    + '<button class="papirBtn sedy" id="odkazKopie" style="padding:3px 10px;font-size:12px">Zkopírovat</button>';
+  const b = document.getElementById("odkazKopie");
+  if(b) b.onclick = () => {
+    try{
+      navigator.clipboard.writeText(odkaz);
+      b.textContent = "Zkopírováno ✓";
+      setTimeout(() => { b.textContent = "Zkopírovat"; }, 2000);
+    }catch(e){
+      /* Když schránka nejde (starší prohlížeč, televize), aspoň to označíme,
+         ať to jde zkopírovat ručně. */
+      const t = document.getElementById("odkazText");
+      if(t && window.getSelection){
+        const r = document.createRange(); r.selectNodeContents(t);
+        const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      }
+    }
+  };
+}
+/* Kód se hostiteli píše na tři místa; přišijeme se ke všem přes malý
+   hlídač – je to levnější a odolnější než obalovat tři funkce. */
+setInterval(() => {
+  if(G.rezim === "multi" && !G.bezi && NET && NET.jsemHost) ukazOdkazHostiteli();
+}, 1200);
+
+/* Komu se hra otevřela s ?kod=XYZ, toho rovnou připojíme. */
+window.addEventListener("DOMContentLoaded", () => {
+  let kod = null;
+  try{ kod = new URLSearchParams(location.search).get("kod"); }catch(e){}
+  if(!kod) return;
+  kod = kod.trim().toUpperCase().slice(0, 3);
+  if(kod.length !== 3) return;
+  /* Chvilku počkáme, ať se stihne načíst účet (jméno a ikonka) a menu. */
+  setTimeout(() => {
+    try{
+      const pole = document.getElementById("poleKod");
+      const tl = document.getElementById("joinKodOk");
+      if(!pole || !tl) return;
+      otevri("mJoin");
+      pole.value = kod;
+      const hl = document.getElementById("joinHlaska");
+      if(hl) hl.innerHTML = "🔗 Připojuji tě k <b>" + bezpecnyText(kod) + "</b> z odkazu…";
+      tl.click();
+    }catch(e){}
+  }, 900);
+});
+
+VERZE = "v30";
+napisVerzi();
+
 </script>
 </body>
 </html>
