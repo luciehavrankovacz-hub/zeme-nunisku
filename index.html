@@ -9599,6 +9599,82 @@ zrusOpevneni = function(side){
 VERZE = "v25";
 napisVerzi();
 
+
+
+/* ============================================================
+   54) POMALÝ STROJ: KONEC SMRTÍCÍ SPIRÁLY
+
+   Části 48 a 50 zlevnily počítání i kreslení, ale měření na uměle
+   zpomaleném procesoru (Emulation.setCPUThrottlingRate, testy/mer_cpu.py)
+   ukázalo, že na slabším stroji o výsledku rozhoduje něco jiného:
+
+     4× zpomalený procesor, 150 panáčků
+       jak to je dnes                       500 ms na snímek   (2,2 fps)
+       totéž s vypnutým doháněním           117 ms na snímek   (8,1 fps)
+
+   To dohánění je Web Worker z části 39. Když prohlížeč nestíhá kreslit,
+   dožene simulaci, aby hra neběžela zpomaleně. Na rychlém stroji je
+   zadarmo. Na pomalém ale roztočí spirálu:
+
+     pomalý snímek → dožeň až deset kroků → snímek je ještě pomalejší
+     → dohánět se musí víc → …
+
+   Část 50 z doháněcích kroků odstranila jen POLOHOVÁNÍ; počítat se v nich
+   nepřestalo, takže spirála zůstala. Tady se zastaví: když jsou snímky
+   pomalé, dohánět se prostě nebude. Hra pak na slabém stroji poběží
+   o kousek pomaleji – což je nekonečně lepší než dva snímky za vteřinu.
+
+   POZOR: na SKRYTÉ ZÁLOŽCE se brzdit nesmí. Tam žádné snímky nejsou,
+   takže by se hostiteli zastavil svět a kamarádům by zamrzla hra – přesně
+   to, kvůli čemu dohánění vzniklo.
+   ============================================================ */
+
+const POMALU = {
+  prah: 40,          // ms na snímek, od kdy stroj považujeme za vytížený
+  dost: 90,          // ms na snímek, kdy už ubereme i částice úplně
+  perioda: 16.7      // klouzavý průměr doby snímku
+};
+
+/* Doba snímku se měří na requestAnimationFrame – to je jediné místo, kde
+   se pozná, jak rychle to prohlížeči doopravdy jde. */
+let pomaluPosledniT = 0;
+const tikPredMerenimTempa = tik;
+tik = function(t){
+  if(pomaluPosledniT){
+    const d = t - pomaluPosledniT;
+    if(d > 0 && d < 2000) POMALU.perioda = POMALU.perioda * 0.8 + d * 0.2;
+  }
+  pomaluPosledniT = t;
+
+  /* Částice se na vytíženém stroji ztlumí. Při dvou snímcích za vteřinu
+     stejně nikdo nepozná, jestli od sekery odlétly čtyři jiskry nebo dvě. */
+  if(typeof OMEZ !== "undefined")
+    OMEZ.maxCastic = POMALU.perioda > POMALU.dost ? 0
+                   : (POMALU.perioda > POMALU.prah ? 20 : 80);
+
+  return tikPredMerenimTempa(t);
+};
+
+/* Brzda dohánění.
+   Nešahá se do smyčky ve workeru – stačí posunout značku `posledni`.
+   TIKAC.krok totiž počítá `od = ted - posledni` a při `od < 90` se rovnou
+   vrátí, takže se v tom kole nedohání vůbec nic. */
+if(typeof TIKAC !== "undefined" && TIKAC.krok){
+  const krokPredBrzdou = TIKAC.krok.bind(TIKAC);
+  TIKAC.krok = function(){
+    const skryto = (typeof document !== "undefined" && document.hidden);
+    const klient = (typeof SYNC !== "undefined" && SYNC.jsemKlient && SYNC.jsemKlient());
+    if(!skryto && !klient && POMALU.perioda > POMALU.prah && typeof posledni === "number"){
+      const ted = performance.now();
+      if(ted - posledni > 70) posledni = ted - 70;      // pod prahem 90 → nedohání se
+    }
+    return krokPredBrzdou();
+  };
+}
+
+VERZE = "v26";
+napisVerzi();
+
 </script>
 </body>
 </html>
