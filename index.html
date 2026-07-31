@@ -10549,6 +10549,173 @@ if(typeof kameraNa === "function"){
   };
 }
 
+
+
+/* ============================================================
+   59) KDYŽ NĚKDO VYPADNE, AŤ SE TO POZNÁ HNED
+
+   Hra je na výpadek připravená: hostitel dá kamarádovi 8 vteřin na návrat
+   a pak za něj začne hrát počítač. Jenže těch 8 vteřin se počítá až od
+   chvíle, kdy hostitel výpadek ZPOZORUJE – a to trvalo mnohem déle, než
+   by člověk čekal.
+
+   Naměřeno (testy/mp-navrat.py, 3 hráči): okno zabito v 35. vteřině,
+   počítač převzal civilizaci až ve 123. Osmdesát vteřin nikdo nevěděl,
+   že je hráč pryč, a jeho panáčci celou tu dobu jen stáli.
+
+   Důvod: když okno zmizí bez rozloučení, spojení se nezavře – jen ztichne.
+   A ticho nikdo neměřil. Datový kanál sám o sobě nemá „tep", takže WebRTC
+   to pozná až po vypršení vlastních lhůt.
+
+   Řešení je obyčejné: kamarádi posílají každé dvě vteřiny „žiju" a
+   hostitel hlídá, kdo se dlouho neozval. Zpráva je pár bajtů, takže to nic
+   nestojí ani na mobilních datech.
+   ============================================================ */
+
+const TEP = {
+  posilatPo: 2000,      // jak často kamarád řekne „žiju"
+  ticho: 9000,          // po jak dlouhém tichu bereme spojení za mrtvé
+  kontrolaPo: 1500
+};
+
+/* Časovače se zakládají AŽ s multiplayerem, ne hned při načtení hry.
+   Ve hře pro jednoho by k ničemu nebyly, a hlavně: opakované časovače
+   spotřebují „virtuální čas", který testům přiděluje headless Chrome
+   (--virtual-time-budget), takže testu pak nezbude na vlastní práci a
+   vypadá to, že se zasekl. Stálo mě to dva zdánlivě rozbité testy. */
+let tepBezi = false;
+function spustTep(){
+  if(tepBezi) return;
+  tepBezi = true;
+
+  /* kamarád: pravidelně dá o sobě vědět */
+  setInterval(() => {
+    try{
+      if(typeof SYNC === "undefined" || !SYNC.jsemKlient || !SYNC.jsemKlient()) return;
+      if(G.rezim !== "multi") return;
+      NET.posli({typ:"ziju"});
+    }catch(e){}
+  }, TEP.posilatPo);
+
+  /* hostitel: kdo dlouho mlčí, ten spadl */
+  setInterval(() => {
+    try{
+      if(typeof P2P === "undefined" || !P2P.jeHost || !P2P.spoje) return;
+      const ted = Date.now();
+      for(const spoj of P2P.spoje){
+        if(!spoj || spoj.stav === "odpojeno" || !spoj.hracId) continue;
+        /* Spojení, které se ještě neozvalo ani jednou, neřešíme – teprve se
+           navazuje a `odpojen` by se na něj rozzlobil zbytečně. */
+        if(!spoj.slyseno){ spoj.slyseno = ted; continue; }
+        if(ted - spoj.slyseno < TEP.ticho) continue;
+        spoj.stav = "odpojeno";
+        try{ P2P.odpojen(spoj); }catch(e){}
+      }
+    }catch(e){}
+  }, TEP.kontrolaPo);
+}
+
+const otevriLobbyPredTepem = otevriLobby;
+otevriLobby = function(rezim){
+  const v = otevriLobbyPredTepem.apply(this, arguments);
+  if(rezim === "multi") spustTep();
+  return v;
+};
+if(typeof P2P !== "undefined" && P2P.pripojKodem){
+  const pripojPredTepem = P2P.pripojKodem.bind(P2P);
+  P2P.pripojKodem = function(kod){ spustTep(); return pripojPredTepem(kod); };
+}
+
+/* ---- hostitel: každá došlá zpráva je důkaz života ---- */
+if(typeof P2P !== "undefined" && P2P.zprava){
+  const zpravaPredTepem = P2P.zprava.bind(P2P);
+  P2P.zprava = function(spoj, data){
+    if(spoj) spoj.slyseno = Date.now();
+    return zpravaPredTepem(spoj, data);
+  };
+}
+
+/* „žiju" se dál nikam nešíří – posloužilo už tím, že dorazilo. */
+if(typeof NET !== "undefined" && NET.prijmi){
+  const prijmiPredTepem = NET.prijmi.bind(NET);
+  NET.prijmi = function(m){
+    if(m && !(m instanceof ArrayBuffer) && m.typ === "ziju") return;
+    return prijmiPredTepem(m);
+  };
+}
+
+/* ---------- a ať se pozná i návrat ----------
+   Kdo se vrátí, začne posílat „žiju" hned, takže hostiteli stačí, že
+   zase něco slyší. Bez tohohle by ho hlídač za chvíli odpojil znovu. */
+if(typeof P2P !== "undefined" && P2P.odpojen){
+  const odpojenPredTepem = P2P.odpojen.bind(P2P);
+  P2P.odpojen = function(spoj){
+    if(spoj && spoj.stav !== "odpojeno" && spoj.slyseno
+       && (Date.now() - spoj.slyseno) < TEP.ticho) return;   // planý poplach
+    return odpojenPredTepem(spoj);
+  };
+}
+
+/* ============================================================
+   60) KLID NA ZAČÁTKU AŤ OPRAVDU PLATÍ
+
+   Klidové období (část 56) mělo dát hráči čas na rozjezd. Změřeno ale
+   vyšlo, že nepřítel dorazí k základně dávno předtím, než klid skončí:
+
+     obtížnost      klid má trvat    první nepřítel u základny
+     Klidná             260 s               62 s
+     Normální           165 s               59 s
+     Těžká              130 s               75 s
+     Šílená             105 s               48 s
+     Nelidská            80 s               43 s
+
+   Důvod: klid odvolával domů jen jednotky, které ÚTOČÍ a jsou dál než
+   700 px od SVÉ VLASTNÍ základny. Bot tedy směl dojít skoro až k hráči,
+   aniž by ho to zastavilo – a k tomu ho pošle běžné „braň okolí", jakmile
+   mu do dohledu vjede cokoli cizího.
+
+   Teď se během klidu vrací domů každý bojovník, který se vzdálil od své
+   základny, ať dělá co dělá. Bránit domov může dál: kdo je blízko svého,
+   se neodvolává, takže když na něj hráč zaútočí první, normálně se pere.
+   ============================================================ */
+const KLID = {
+  dosah: 850,        // dál od své základny se bojovník během klidu nezatoulá
+  kontrolaPo: 0.5
+};
+let klidCas = 0;
+
+const updAIPredPrisnymKlidem = updAI;
+updAI = function(dt){
+  const v = updAIPredPrisnymKlidem(dt);
+  try{
+    if(SYNC.jsemKlient && SYNC.jsemKlient()) return v;
+    if(typeof klidDoKdy !== "function" || G.cas >= klidDoKdy()) return v;
+    klidCas += dt;
+    if(klidCas < KLID.kontrolaPo) return v;
+    klidCas = 0;
+
+    G.hraci.forEach((H, si) => {
+      if(!H || !H.bot || H.porazen) return;
+      const zakl = ZAKL[si];
+      if(!zakl) return;
+      for(const j of G.jednotky){
+        if(j.side !== si || j.mrtvy || j.naPalube) continue;
+        if(j.kind === "vesnican" || j.kind === "pruzkumnik") continue;
+        if(JED[j.kind] && JED[j.kind].lod) continue;      // lodě řeší část 51
+        if(dist2(j.x, j.y, zakl.x, zakl.y) <= KLID.dosah) continue;
+        // zatoulal se – domů, ať už ho tam hnalo cokoli
+        j.vytazeni = false; j.cilE = null;
+        j.stav = "jdi";
+        j.cil = j.rally ? {x:j.rally.x, y:j.rally.y} : {x:zakl.x, y:zakl.y};
+      }
+    });
+  }catch(e){}
+  return v;
+};
+
+VERZE = "v35";
+napisVerzi();
+
 </script>
 </body>
 </html>
