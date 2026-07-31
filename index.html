@@ -9131,7 +9131,7 @@ function vodaUBrehu(pevninaX, pevninaY, kBodu, maxR, vaha){
   const k = TEREN.krok, idZeme = oblastZeme(pevninaX, pevninaY);
   if(!idZeme) return null;
   const w = (vaha === undefined) ? 0.3 : vaha;
-  let nej = null, nd = 1e9;
+  let nej = null, nd = 1e9, prvniNalez = -1;
   for(let r = k; r <= (maxR || 1800); r += k){
     for(let a = 0; a < Math.PI*2; a += Math.PI/24){
       const sx = pevninaX + Math.cos(a)*r, sy = pevninaY + Math.sin(a)*r;
@@ -9144,8 +9144,10 @@ function vodaUBrehu(pevninaX, pevninaY, kBodu, maxR, vaha){
       if(d < nd){ nd = d; nej = {voda:{x:v.x, y:v.y}, breh:{x:sx, y:sy}}; }
     }
     /* Jakmile něco máme, dohledáme ještě dva prstence (třeba je hned vedle
-       lepší) a končíme – dál od domova už se stejně nechceme trmácet. */
-    if(nej && r > (nd > 900 ? 1400 : 320)) break;
+       lepší) a končíme – dál od domova už se stejně nechceme trmácet.
+       Původní podmínka skenovala vždycky aspoň do r=360, což při osmi
+       botech a opakovaném neúspěchu dělalo statisíce zbytečných dotazů. */
+    if(nej){ if(prvniNalez < 0) prvniNalez = r; if(r > prvniNalez + 2*k) break; }
   }
   return nej;
 }
@@ -9163,14 +9165,47 @@ function najdiPrepravu(zakl, cilBod){
 /* ---------- C) námořní rozhodování bota ---------- */
 let aiMoreCas = 0;
 
+/* Kdo má rozkaz „nalod", ať mu ho základní AI nepřepisuje. */
+function drzNalodeni(){
+  for(const u of G.jednotky){
+    if(u.mrtvy || !u.namorniCil || u.naPalube) continue;
+    const lod = u.namorniCil;
+    if(lod.mrtvy || !jePrevoz(lod) || volnoNaPalube(lod) <= 0){ u.namorniCil = null; continue; }
+    if(u.stav !== "nalod"){ u.stav = "nalod"; u.cilE = lod; }
+  }
+}
+
+/* Když se potopí loď, jdou pasažéři ke dnu s ní – jenže původní kód si
+   nejdřív nastavil `mrtvy = true` a teprve pak zavolal zabij(), který se
+   pro už mrtvého hned vrátí. Panáček tak zůstal v polích a nesnížil
+   populaci. Řešíme to dřív, než se k tomu původní kód dostane. */
+const updJednotkuPredUtonutim = updJednotku;
+updJednotku = function(e, dt){
+  if(e && e.naPalube && (!e.naPalube || e.naPalube.mrtvy)){
+    e.naPalube = null;
+    e.hp = 0;
+    if(e.el) e.el.style.display = "";
+    zabij(e);                       // zabij() si `mrtvy` nastaví sám
+    return;
+  }
+  return updJednotkuPredUtonutim(e, dt);
+};
+
 const updAIPredMorem = updAI;
 updAI = function(dt){
+  /* Kontrola klienta patří na SAMÝ ZAČÁTEK. Dnes je to jedno, protože klient
+     updAI vůbec nevolá, ale spoléhat se na to je křehké – kdyby se to jednou
+     změnilo, počítal by klient vlastní AI a rozešel by se s hostitelem. */
+  if(SYNC.jsemKlient && SYNC.jsemKlient()) return;
   updAIPredMorem(dt);
+  /* Rozkaz „nalod" musíme obnovovat KAŽDÝ TIK. Základní AI se rozhoduje
+     5× za vteřinu a vyslanému vojákovi zase nastaví útok; kdybychom to
+     spravovali jen 2× za vteřinu, půl vteřiny by šel špatným směrem. */
+  drzNalodeni();
   aiMoreCas += dt;
   if(aiMoreCas < 0.5) return;                 // stačí dvakrát za vteřinu
   const krok = aiMoreCas; aiMoreCas = 0;
   if(!TEREN.pripraven || !TEREN.jeVoda) return;      // suchá mapa, není co řešit
-  if(SYNC.jsemKlient && SYNC.jsemKlient()) return;   // počítá vždycky hostitel
   G.hraci.forEach((H, si) => {
     if(H && H.bot && !H.porazen){
       try{ botNamornictvo(si, H, krok); }
@@ -9229,18 +9264,35 @@ function botNamornictvo(si, H, krok){
 
   /* 4) výprava přes moře. Jede se, až když má bot vojsko pohromadě –
      o to se stará základní AI (H.tahnou), my se na to jen svezeme. */
-  const vojsko = G.jednotky.filter(j => j.side === si && !j.mrtvy && j.armadni
-                                     && !j.naPalube && !JED[j.kind].lod);
   const naPalube = (lod.pasazeri || []).filter(u => u && !u.mrtvy).length;
 
-  if(!H.vyprava || H.vyprava.komu !== cil.side){
+  /* Výpravu nejdřív ověříme. Bez toho uměl kterýkoli z těchhle případů
+     zmrazit stav navždy: padne poslední nepřátelská budova, potopí se loď,
+     zboří se přístav. */
+  if(H.vyprava && (H.vyprava.lod !== lod || H.vyprava.komu !== cil.side)){
+    for(const u of G.jednotky) if(u.side === si && u.namorniCil) u.namorniCil = null;
+    H.vyprava = null;
+  }
+  if(!H.vyprava){
     if(!H.tahnou && naPalube === 0) return;          // ještě není koho vozit
+    H.prepravaCekej = (H.prepravaCekej || 0) - krok;
+    if(H.prepravaCekej > 0) return;                  // po neúspěchu chvíli nezkoušíme
     const p = najdiPrepravu(zakl, cil);
-    if(!p) return;                                   // sem loď nedoplave, nedá se nic dělat
-    H.vyprava = {faze:"naklada", komu:cil.side, nastup:p.nastup, pristani:p.pristani, cas:0};
+    if(!p){ H.prepravaCekej = 8; return; }           // sem loď nedoplave
+    H.vyprava = {faze:"naklada", komu:cil.side, lod:lod,
+                 nastup:p.nastup, pristani:p.pristani, cas:0};
   }
   const V = H.vyprava;
   V.cas += krok;
+
+  /* Vojsko výpravy = JEN to, co stojí na naší pevnině. Bez téhle podmínky
+     dostali „nalod" i vojáci, kteří se právě vylodili u nepřítele – a ti
+     se pak snažili dojít zpátky k lodi přes moře, takže se útok po pár
+     vteřinách sám zrušil. (Našel Codex.) */
+  const domaObl = oblastZeme(V.nastup.breh.x, V.nastup.breh.y);
+  const vojsko = G.jednotky.filter(j => j.side === si && !j.mrtvy && j.armadni
+                                     && !j.naPalube && !JED[j.kind].lod
+                                     && oblastZeme(j.x, j.y) === domaObl);
 
   if(V.faze === "naklada"){
     // loď čeká u našeho břehu
@@ -9249,14 +9301,23 @@ function botNamornictvo(si, H, krok){
     }
     // vojáci jdou k lodi a nalodí se (stejnou cestou jako u člověka)
     for(const u of vojsko){
+      u.namorniCil = lod;
       if(u.stav === "nalod" && u.cilE === lod) continue;
       u.stav = "nalod"; u.cilE = lod; u.vytazeni = true;
     }
-    /* Nalodění má malý dosah (poloměry + 34), a loď stojí ve vodě kousek od
-       břehu. Kdo dojde na břeh a dál nemůže, ať se nalodí i tak – jinak by
-       se celá výprava zasekla na jednom pixelu. */
-    for(const u of vojsko)
-      if(dist2(u.x, u.y, lod.x, lod.y) < 130 && volnoNaPalube(lod) > 0) nalod(u, lod);
+    /* Nalodění má malý dosah (poloměry + 34 ≈ 78 px), jenže loď stojí ve
+       vodě až sto pixelů od místa, kam pěšák dojde. Kdo dojde na břeh a dál
+       nemůže, ať se nalodí i tak – jinak by výprava uvázla na pár pixelech.
+       Zároveň to ale nesmí být volná teleportace: musí stát NA NAŠEM BŘEHU
+       (stejná pevnina) a kousek od nástupního místa, jinak by se přes vodu
+       „naloďovali" i vojáci ze sousedního ostrůvku. */
+    for(const u of vojsko){
+      if(volnoNaPalube(lod) <= 0) break;
+      if(dist2(u.x, u.y, lod.x, lod.y) >= 130) continue;
+      if(oblastZeme(u.x, u.y) !== domaObl) continue;
+      if(dist2(u.x, u.y, V.nastup.breh.x, V.nastup.breh.y) > 90) continue;
+      if(nalod(u, lod)) u.namorniCil = null;
+    }
 
     /* Když se za minutu a půl nenalodil vůbec nikdo, něco je špatně –
        nejspíš vojsko k tomu břehu nedojde. Výpravu zrušíme a za chvíli
@@ -9269,13 +9330,24 @@ function botNamornictvo(si, H, krok){
     const doPlna = volnoNaPalube(lod) <= 0;
     const vsichni = vojsko.length === 0 && naPalube > 0;
     const dost = naPalube >= 5 && V.cas > 25;
-    const cekaMocDlouho = naPalube >= 2 && V.cas > 55;
+    /* Pozor na „přesně jeden pasažér": dřív se čekalo na dva, takže když se
+       nalodil jediný voják a další už se nedostavil, výprava stála navždy. */
+    const cekaMocDlouho = naPalube >= 1 && V.cas > 55;
     if(doPlna || vsichni || dost || cekaMocDlouho){
+      /* Doplave tam vůbec? Když ne, `TEREN.cesta` vrátí null a plujK by
+         loď hnal rovnou přes břeh – radši výpravu zrušíme a naplánujeme
+         znovu za chvíli. */
+      if(!stejnaVoda(lod.x, lod.y, V.pristani.voda.x, V.pristani.voda.y)){
+        for(const u of vojsko) if(u.namorniCil){ u.namorniCil = null; u.stav = "stoj"; u.cilE = null; }
+        H.vyprava = null; H.prepravaCekej = 8;
+        return;
+      }
       V.faze = "plavba"; V.cas = 0;
       lod.stav = "vyloz";
       lod.cil = {x:V.pristani.voda.x, y:V.pristani.voda.y,
                  kamX:V.pristani.breh.x, kamY:V.pristani.breh.y};
       lod.trasa = null; lod.trasaCil = null;
+      for(const u of (lod.pasazeri || [])) if(u) u.namorniCil = null;
     }
     return;
   }
@@ -9297,8 +9369,12 @@ function botNamornictvo(si, H, krok){
   }
 
   if(V.faze === "vylodeno"){
-    // loď se vrátí pro další partu
-    if(V.cas > 6){ H.vyprava = null; lod.stav = "stoj"; lod.cil = null; }
+    // loď se vrátí pro další partu (vylodění vojáci už do vojska nepatří –
+    // filtr podle domácí pevniny je vynechá)
+    if(V.cas > 6){
+      for(const u of G.jednotky) if(u.side === si && u.namorniCil) u.namorniCil = null;
+      H.vyprava = null; lod.stav = "stoj"; lod.cil = null;
+    }
   }
 }
 
@@ -9425,12 +9501,14 @@ function botObleh(si, H, krok){
 let oblehCas = 0;
 const updAIPredObleh = updAI;
 updAI = function(dt){
+  /* Kontrola klienta patří úplně na začátek – prorazZdi() mění stav
+     jednotek, a to smí dělat jen ten, kdo svět počítá. */
+  if(SYNC.jsemKlient && SYNC.jsemKlient()) return;
   updAIPredObleh(dt);
   prorazZdi(dt);
   oblehCas += dt;
   if(oblehCas < 0.6) return;
   const krok = oblehCas; oblehCas = 0;
-  if(SYNC.jsemKlient && SYNC.jsemKlient()) return;
   G.hraci.forEach((H, si) => {
     if(H && H.bot && !H.porazen){
       try{ botObleh(si, H, krok); }
@@ -9518,7 +9596,7 @@ zrusOpevneni = function(side){
   return v;
 };
 
-VERZE = "v24";
+VERZE = "v25";
 napisVerzi();
 
 </script>
