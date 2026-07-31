@@ -9675,6 +9675,216 @@ if(typeof TIKAC !== "undefined" && TIKAC.krok){
 VERZE = "v26";
 napisVerzi();
 
+
+/* ============================================================
+   55) HRANÍ NA XBOXU (a s jakýmkoli ovladačem)
+
+   Xbox má vestavěný prohlížeč Edge, který je postavený na Chromiu, takže
+   hra na něm poběží stejně jako na počítači – stačí otevřít adresu.
+   Funguje tam i připojená USB nebo bluetooth myš s klávesnicí, a to je
+   pro strategii nejpohodlnější.
+
+   Kdo ale myš u gauče nemá, ovládal by hru gamepadem přes kurzor, který
+   Edge sám nabízí – a to je pro realtimovou strategii mučení. Proto tady
+   hra rozumí ovladači sama.
+
+   Trik: nic se nepřepisuje. Ovladač jen VYRÁBÍ OBYČEJNÉ MYŠÍ UDÁLOSTI na
+   místě svého kurzoru, takže se tím samo od sebe ovládá úplně všechno, co
+   už umí myš – výběr rámečkem, stavění, tažení hradby i tlačítka v panelu.
+   Kdyby se do hry přidalo cokoli nového, ovladač to bude umět taky.
+
+   Rozložení (standardní rozvržení podle Gamepad API):
+     levá páčka     kurzor
+     pravá páčka    posouvání mapy
+     křížek         posouvání mapy (po kouscích)
+     A              klik levým (vybírat, stavět)
+     B              klik pravým (poslat, zrušit stavění)
+     X              všichni vojáci
+     Y              všichni těžit
+     LB / RB        oddálit / přiblížit
+     Start          pauza
+
+   POZOR na televizi: obraz z konzole bývá na krajích oříznutý (overscan),
+   takže se hra při zapnutém ovladači odsadí od okrajů. Bez toho by šly
+   suroviny nahoře a část panelu dole mimo obrazovku.
+   ============================================================ */
+
+const PAD = {
+  zap: false,            // ovladač se probudí, až s ním někdo hne
+  x: 0, y: 0,            // kde je jeho kurzor
+  rychlost: 950,         // px za vteřinu při plném vychýlení
+  mrtvaZona: 0.22,       // páčky v klidu nikdy nesedí přesně na nule
+  drziA: false,
+  bylo: {},              // co bylo zmáčknuté minule (kvůli „právě stisknuto")
+  prvek: null,
+  cas: 0
+};
+
+/* ---- kurzor, který je vidět i přes televizi ---- */
+function padKurzor(){
+  if(PAD.prvek) return PAD.prvek;
+  const d = document.createElement("div");
+  d.id = "padKurzor";
+  d.style.cssText =
+    "position:fixed;left:0;top:0;width:30px;height:30px;pointer-events:none;" +
+    "z-index:99997;display:none;transform:translate(-4px,-4px);" +
+    "filter:drop-shadow(0 2px 3px rgba(0,0,0,.85))";
+  d.innerHTML =
+    '<svg viewBox="0 0 30 30" width="30" height="30">' +
+    '<path d="M4 2 L4 23 L10 17.5 L13.5 26 L17.5 24 L14 16 L22 16 Z" ' +
+    'fill="#fff" stroke="#222" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  document.body.appendChild(d);
+  PAD.prvek = d;
+  return d;
+}
+
+/* ---- vyrobí opravdovou myší událost tam, kde stojí kurzor ---- */
+function padMys(typ, tlacitko){
+  const el = document.elementFromPoint(PAD.x, PAD.y) || document.body;
+  el.dispatchEvent(new MouseEvent(typ, {
+    bubbles: true, cancelable: true, view: window,
+    clientX: PAD.x, clientY: PAD.y,
+    button: tlacitko || 0,
+    buttons: (typ === "mouseup") ? 0 : (tlacitko === 2 ? 2 : 1)
+  }));
+}
+/* Tlačítka v panelu poslouchají na `click`, ne na mousedown/mouseup. */
+function padKlik(){
+  const el = document.elementFromPoint(PAD.x, PAD.y);
+  if(el) el.dispatchEvent(new MouseEvent("click", {
+    bubbles: true, cancelable: true, view: window,
+    clientX: PAD.x, clientY: PAD.y, button: 0
+  }));
+}
+
+/* ---- odsazení od krajů, ať televize nic neuřízne ---- */
+function padBezpecneOkraje(zapnout){
+  const h = document.getElementById("hra");
+  if(!h) return;
+  h.style.setProperty("--tvOkraj", zapnout ? "3.5%" : "0%");
+  const horni = document.getElementById("horni");
+  const panel = document.getElementById("panel");
+  if(horni) horni.style.marginTop = zapnout ? "2.5vh" : "";
+  if(panel) panel.style.marginBottom = zapnout ? "2.5vh" : "";
+}
+
+function padPrvniPomoc(){
+  if(typeof zprava !== "function") return;
+  zprava("🎮 Ovladač funguje! Levá páčka = kurzor, A = vybrat, B = poslat, "
+       + "pravá páčka nebo křížek = rozhlížení, LB/RB = přiblížit.", "dobre");
+}
+
+/* ---- hlavní čtení ovladače, jednou za snímek ---- */
+function padTik(dt){
+  if(!navigator.getGamepads) return;
+  let g = null;
+  const pole = navigator.getGamepads();
+  for(let i = 0; i < pole.length; i++) if(pole[i] && pole[i].connected){ g = pole[i]; break; }
+  if(!g){
+    if(PAD.zap){ PAD.zap = false; padKurzor().style.display = "none"; padBezpecneOkraje(false); }
+    return;
+  }
+
+  const os = g.axes || [];
+  const t = g.buttons || [];
+  const stisk = i => !!(t[i] && (t[i].pressed || t[i].value > 0.5));
+  const packa = v => (Math.abs(v || 0) < PAD.mrtvaZona) ? 0
+                   : (v - Math.sign(v) * PAD.mrtvaZona) / (1 - PAD.mrtvaZona);
+
+  const lx = packa(os[0]), ly = packa(os[1]);
+  const rx = packa(os[2]), ry = packa(os[3]);
+  let cokoli = lx || ly || rx || ry;
+  for(let i = 0; i < t.length && !cokoli; i++) if(stisk(i)) cokoli = 1;
+
+  /* Probudíme se, až s ovladačem někdo opravdu hne – jinak by se kurzor
+     ukázal i tomu, kdo má ovladač jen připojený a hraje myší. */
+  if(!PAD.zap){
+    if(!cokoli) return;
+    PAD.zap = true;
+    PAD.x = window.innerWidth / 2;
+    PAD.y = window.innerHeight / 2;
+    padKurzor().style.display = "block";
+    padBezpecneOkraje(true);
+    padPrvniPomoc();
+  }
+
+  // 1) kurzor levou páčkou (zrychlení: malé vychýlení = jemné doladění)
+  if(lx || ly){
+    const zryc = Math.min(1, Math.hypot(lx, ly));
+    const v = PAD.rychlost * dt * (0.35 + 0.65 * zryc * zryc);
+    PAD.x = klam(PAD.x + lx * v, 2, window.innerWidth - 2);
+    PAD.y = klam(PAD.y + ly * v, 2, window.innerHeight - 2);
+    padMys("mousemove");
+  }
+  const k = padKurzor();
+  k.style.left = PAD.x + "px";
+  k.style.top = PAD.y + "px";
+
+  // 2) rozhlížení pravou páčkou a křížkem
+  let px = rx, py = ry;
+  if(stisk(14)) px -= 1;            // křížek vlevo
+  if(stisk(15)) px += 1;
+  if(stisk(12)) py -= 1;
+  if(stisk(13)) py += 1;
+  if((px || py) && typeof posunKameru === "function" && G.bezi)
+    posunKameru(px * 1100 * dt, py * 1100 * dt);
+
+  // 3) tlačítka
+  const A = stisk(0), B = stisk(1), X = stisk(2), Y = stisk(3);
+  const LB = stisk(4), RB = stisk(5), START = stisk(9);
+
+  if(A && !PAD.drziA){ PAD.drziA = true; padMys("mousedown", 0); }
+  else if(!A && PAD.drziA){ PAD.drziA = false; padMys("mouseup", 0); padKlik(); }
+
+  if(B && !PAD.bylo.B) padMys("mousedown", 2);
+
+  /* Tlačítka „Všichni vojáci" a „Všichni těžit" se v panelu vyrábějí za
+     běhu a nemají id, tak voláme rovnou funkce, které dělají totéž. */
+  if(X && !PAD.bylo.X && typeof vyberVojsko === "function" && G.bezi) vyberVojsko();
+  if(Y && !PAD.bylo.Y && typeof vsichniTezit === "function" && G.bezi) vsichniTezit();
+
+  if(typeof nastavZoom === "function" && G.bezi){
+    if(LB) nastavZoom(G.zoom * 0.975, PAD.x, PAD.y);
+    if(RB) nastavZoom(G.zoom * 1.025, PAD.x, PAD.y);
+  }
+  if(START && !PAD.bylo.START && typeof prepniPauzu === "function" && G.bezi && !G.divak)
+    prepniPauzu();
+
+  PAD.bylo = {B:B, X:X, Y:Y, START:START};
+}
+
+/* Ovladač se čte v obrázkové smyčce – tam je k dispozici čas snímku
+   a zároveň to neběží, když se hra nekreslí. */
+let padPosledni = 0;
+const tikPredOvladacem = tik;
+tik = function(t){
+  const dt = padPosledni ? Math.min(0.1, (t - padPosledni) / 1000) : 0.016;
+  padPosledni = t;
+  try{ padTik(dt); }catch(e){ /* ovladač nikdy nesmí shodit hru */ }
+  return tikPredOvladacem(t);
+};
+
+/* Když se ovladač připojí až během hraní, ať se hned pozná. */
+window.addEventListener("gamepadconnected", () => {
+  if(typeof zprava === "function")
+    zprava("🎮 Připojil se ovladač – hni páčkou a můžeš hrát.", "dobre");
+});
+
+/* ---- odkazy v patičce menu ----
+   Přehled změn a kontrola pro Xbox jsou samostatné stránky vedle hry;
+   z menu se na ně dá kliknout, ať je Daník nemusí na konzoli vypisovat. */
+const napisVerziPredOdkazy = napisVerzi;
+napisVerzi = function(){
+  napisVerziPredOdkazy();
+  const p = document.getElementById("menuPata");
+  if(!p) return;
+  p.innerHTML += ' · <a href="novinky.html" style="color:#ffd47a">Co je nového</a>'
+               + ' · <a href="xbox.html" style="color:#ffd47a">Jde to na Xboxu?</a>';
+};
+
+VERZE = "v27";
+napisVerzi();
+
 </script>
 </body>
 </html>
