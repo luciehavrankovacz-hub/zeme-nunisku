@@ -8991,6 +8991,457 @@ function napisVerzi(){
 napisVerzi();
 
 
+
+/* ============================================================
+   51) BOT SE NAUČIL LODĚ
+
+   Do teď stavěl počítačový protivník jenom domky, věže, kasárna, stáj a
+   hrad – přístav v jeho seznamu vůbec nebyl. Na ostrovních mapách proto
+   celou partii proseděl doma, protože jeho vojáci došli na břeh a tam
+   zůstali stát. V kódu u generování map o tom byla i poznámka („boti zatím
+   lodě neumí, tam ať hrajou lidi proti lidem"). Tohle to napravuje.
+
+   Postup je schválně stejný, jaký dělá člověk, a používá TYTÉŽ funkce
+   (nalod, vylod, plujK) – nic se pro bota neobchází:
+
+     1) zjistí, že k nepříteli se po SOUŠI dojít nedá
+     2) postaví u moře přístav
+     3) pořídí převozní loď a k ní jednu dvě galeony jako doprovod
+     4) loď připluje k vlastnímu břehu, vojsko se na ni nalodí
+     5) přepluje k nepřátelskému ostrovu a vylodí se
+     6) vylodění vojáci útočí dál normální pozemní cestou
+
+   Klíč k prvnímu kroku jsou SOUVISLÉ OBLASTI: mapa se jednou projde a
+   každému kousku souše (a zvlášť každé ploše vody) se dá číslo. Pak je
+   otázka „dojdu tam pěšky?" jen porovnání dvou čísel. Bez toho by se to
+   muselo hádat z hledání cesty, což je stokrát dražší a stejně nespolehlivé.
+   ============================================================ */
+
+/* ---------- A) souvislé oblasti souše a vody ----------
+   Spočítá se jednou pro mapu (a znovu, až kdyby se terén změnil).
+   0 = nikam nepatří, jinak číslo oblasti. */
+const OBL = {platne:false, sl:0, ra:0, zeme:null, voda:null};
+
+function oblastiSpocitej(){
+  if(!TEREN.pripraven) return false;
+  const sl = TEREN.sl, ra = TEREN.ra, n = sl*ra;
+  const zeme = new Int32Array(n), voda = new Int32Array(n);
+  const fronta = new Int32Array(n);
+  /* Souš i voda se počítají přes ČTYŘI sousedy, ne osm: přes roh se pěšky
+     neprojde (rozestup by ho vytlačil) a loď se rohem taky neprosmýkne. */
+  const zaplav = (pole, jeTo, zacatek, cislo) => {
+    let patka = 0, hlava = 0;
+    pole[zacatek] = cislo; fronta[patka++] = zacatek;
+    while(hlava < patka){
+      const i = fronta[hlava++], cx = i % sl, cy = (i / sl) | 0;
+      if(cx > 0    && !pole[i-1]  && jeTo(i-1))  { pole[i-1]  = cislo; fronta[patka++] = i-1; }
+      if(cx < sl-1 && !pole[i+1]  && jeTo(i+1))  { pole[i+1]  = cislo; fronta[patka++] = i+1; }
+      if(cy > 0    && !pole[i-sl] && jeTo(i-sl)) { pole[i-sl] = cislo; fronta[patka++] = i-sl; }
+      if(cy < ra-1 && !pole[i+sl] && jeTo(i+sl)) { pole[i+sl] = cislo; fronta[patka++] = i+sl; }
+    }
+  };
+  const jeZeme = i => TEREN.bunky[i] === 0;      // 0 = souš, 1 = voda, 2 = skála
+  const jeVoda = i => TEREN.bunky[i] === 1;
+  let cz = 0, cv = 0;
+  for(let i = 0; i < n; i++){
+    if(!zeme[i] && jeZeme(i)) zaplav(zeme, jeZeme, i, ++cz);
+    if(!voda[i] && jeVoda(i)) zaplav(voda, jeVoda, i, ++cv);
+  }
+  OBL.platne = true; OBL.sl = sl; OBL.ra = ra; OBL.zeme = zeme; OBL.voda = voda;
+  OBL.pocetZeme = cz; OBL.pocetVody = cv;
+  return true;
+}
+
+function oblastZeme(x, y){
+  if(!OBL.platne && !oblastiSpocitej()) return 0;
+  const i = TEREN.index(x, y);
+  return i < 0 ? 0 : OBL.zeme[i];
+}
+function oblastVody(x, y){
+  if(!OBL.platne && !oblastiSpocitej()) return 0;
+  const i = TEREN.index(x, y);
+  return i < 0 ? 0 : OBL.voda[i];
+}
+/* Dojde pěšák z jednoho místa na druhé po souši? */
+function stejnaPevnina(x1, y1, x2, y2){
+  const a = oblastZeme(x1, y1), b = oblastZeme(x2, y2);
+  return a !== 0 && a === b;
+}
+/* Doplave loď? */
+function stejnaVoda(x1, y1, x2, y2){
+  const a = oblastVody(x1, y1), b = oblastVody(x2, y2);
+  return a !== 0 && a === b;
+}
+
+/* Terén se staví na začátku hry; oblasti k němu patří, tak je zahodíme
+   spolu s ním. */
+const terenPostavPredOblastmi = TEREN.postav;
+TEREN.postav = function(mapa){
+  const v = terenPostavPredOblastmi.apply(this, arguments);
+  OBL.platne = false;
+  return v;
+};
+
+/* Vedlejší užitek: hledání cesty pro loď se ptalo i na cíle, kam se doplavat
+   NEDÁ, a pokaždé kvůli tomu prohledalo celou vodní plochu. Na souostrovních
+   mapách takhle dopadlo 95 % volání – hodně práce pro odpověď „nejde to".
+   Když jsou obě místa na vodě a v jiné oblasti, víme to hned. */
+const cestaPredOblastmi = TEREN.cesta.bind(TEREN);
+TEREN.cesta = function(e, x1, y1, x2, y2){
+  if(e && JED[e.kind] && JED[e.kind].lod && this.voda(x1, y1) && this.voda(x2, y2)
+     && !stejnaVoda(x1, y1, x2, y2)) return null;
+  return cestaPredOblastmi(e, x1, y1, x2, y2);
+};
+
+/* ---------- B) kam s přístavem, odkud vyplout, kde přistát ---------- */
+
+/* Místo pro přístav: na naší souši, u vody, a ať se tam dá stavět. */
+function mistoProPristav(si, zakl, cilBod){
+  const k = TEREN.krok;
+  let nej = null, nd = 1e9;
+  for(let r = 120; r <= 1600; r += k){
+    for(let a = 0; a < Math.PI*2; a += Math.PI/16){
+      const x = klam(zakl.x + Math.cos(a)*r, 100, SVET_W-100);
+      const y = klam(zakl.y + Math.sin(a)*r, 100, SVET_H-100);
+      if(!TEREN.sucho(x, y)) continue;
+      if(!stejnaPevnina(x, y, zakl.x, zakl.y)) continue;     // ne na cizím ostrově
+      if(!TEREN.vodaBlizko(x, y, 150)) continue;
+      if(!mistoVolne("pristav", x, y)) continue;
+      // z několika možných ber ten, co je blíž k nepříteli
+      const d = cilBod ? dist2(x, y, cilBod.x, cilBod.y) : r;
+      if(d < nd){ nd = d; nej = {x, y}; }
+    }
+    if(nej) break;            // první prstenec, kde něco je, stačí
+  }
+  return nej;
+}
+
+/* Voda těsně u břehu dané pevniny. Vrací i ten břeh, ať víme, kam se
+   vojáci mají sejít.
+
+   POZOR na to, PODLE ČEHO se vybírá. První verze brala břeh nejbližší
+   NEPŘÍTELI, což vypadalo chytře, ale na mapě „Ostrovy" poslala vojsko
+   kilometr daleko po členitém pobřeží – a tam uvázlo, protože pěší jednotky
+   NEUMÍ hledat cestu (A* mají v téhle hře jen lodě, viz plujK). Loď pak
+   čekala celou partii s prázdnou palubou.
+
+   Proto se teď především hledí na to, aby to vojsko mělo BLÍZKO; směr
+   k nepříteli je jen mírné přiklonění při shodě. */
+function vodaUBrehu(pevninaX, pevninaY, kBodu, maxR, vaha){
+  const k = TEREN.krok, idZeme = oblastZeme(pevninaX, pevninaY);
+  if(!idZeme) return null;
+  const w = (vaha === undefined) ? 0.3 : vaha;
+  let nej = null, nd = 1e9;
+  for(let r = k; r <= (maxR || 1800); r += k){
+    for(let a = 0; a < Math.PI*2; a += Math.PI/24){
+      const sx = pevninaX + Math.cos(a)*r, sy = pevninaY + Math.sin(a)*r;
+      if(!TEREN.sucho(sx, sy) || oblastZeme(sx, sy) !== idZeme) continue;
+      const v = TEREN.vodaBlizko(sx, sy, k*1.6);        // voda hned vedle břehu
+      if(!v) continue;
+      const doma = dist2(sx, sy, pevninaX, pevninaY);   // jak daleko se musí jít
+      const kCili = kBodu ? dist2(v.x, v.y, kBodu.x, kBodu.y) : 0;
+      const d = doma + w * kCili;
+      if(d < nd){ nd = d; nej = {voda:{x:v.x, y:v.y}, breh:{x:sx, y:sy}}; }
+    }
+    /* Jakmile něco máme, dohledáme ještě dva prstence (třeba je hned vedle
+       lepší) a končíme – dál od domova už se stejně nechceme trmácet. */
+    if(nej && r > (nd > 900 ? 1400 : 320)) break;
+  }
+  return nej;
+}
+
+/* Naplánuje přepravu: odkud vyplout a kde přistát, aby to loď doplavala. */
+function najdiPrepravu(zakl, cilBod){
+  const odsud = vodaUBrehu(zakl.x, zakl.y, cilBod, 1800, 0.3);
+  if(!odsud) return null;
+  const tam = vodaUBrehu(cilBod.x, cilBod.y, odsud.voda, 1800, 0.3);
+  if(!tam) return null;
+  if(!stejnaVoda(odsud.voda.x, odsud.voda.y, tam.voda.x, tam.voda.y)) return null;
+  return {nastup:odsud, pristani:tam};
+}
+
+/* ---------- C) námořní rozhodování bota ---------- */
+let aiMoreCas = 0;
+
+const updAIPredMorem = updAI;
+updAI = function(dt){
+  updAIPredMorem(dt);
+  aiMoreCas += dt;
+  if(aiMoreCas < 0.5) return;                 // stačí dvakrát za vteřinu
+  const krok = aiMoreCas; aiMoreCas = 0;
+  if(!TEREN.pripraven || !TEREN.jeVoda) return;      // suchá mapa, není co řešit
+  if(SYNC.jsemKlient && SYNC.jsemKlient()) return;   // počítá vždycky hostitel
+  G.hraci.forEach((H, si) => {
+    if(H && H.bot && !H.porazen){
+      try{ botNamornictvo(si, H, krok); }
+      catch(e){ /* radši nechat bota hloupého než shodit celou hru */ }
+    }
+  });
+};
+
+function botNamornictvo(si, H, krok){
+  const zakl = ZAKL[si];
+  const cil = nejblizZakl(si, H, false);
+  if(!cil) return;
+  // po souši to jde → tohle není práce pro loďstvo
+  if(stejnaPevnina(zakl.x, zakl.y, cil.x, cil.y)){ H.vyprava = null; return; }
+
+  const moje = G.budovy.filter(b => b.side === si && !b.mrtvy);
+  const pristavy = moje.filter(b => b.kind === "pristav" && b.hotova);
+
+  /* 1) přístav. Bot si ho (jako všechno ostatní) postaví rovnou hotový –
+     stejně jako domky a kasárna o pár řádků výš v části 13. */
+  if(!pristavy.length){
+    H.pristavCas = (H.pristavCas || 0) - krok;
+    if(H.pristavCas <= 0){
+      H.pristavCas = 5;
+      const m = mistoProPristav(si, zakl, cil);
+      if(m) pridejBudovu("pristav", si, m.x, m.y, true);
+    }
+    return;
+  }
+
+  /* 2) loďstvo: jedna převozní loď, k ní doprovod podle obtížnosti */
+  const lodi = G.jednotky.filter(j => j.side === si && !j.mrtvy && JED[j.kind] && JED[j.kind].lod);
+  const prevozy = lodi.filter(jePrevoz);
+  const galeony = lodi.filter(j => j.kind === "galeona");
+  const chceGaleon = G.obt >= 3 ? 2 : (G.obt >= 2 ? 1 : 0);
+  H.lodCas = (H.lodCas || 0) - krok;
+  if(H.lodCas <= 0){
+    H.lodCas = 9;
+    const p = pristavy[0];
+    if(!prevozy.length) pridejJednotku("prevoz", si, p.x, p.y);
+    else if(galeony.length < chceGaleon) pridejJednotku("galeona", si, p.x, p.y);
+  }
+  const lod = prevozy.find(l => !l.mrtvy);
+  if(!lod) return;
+
+  /* 3) galeony: perou se s tím, na co vůbec dosáhnou (tedy s loděmi), jinak
+     plavou k převozní lodi a dělají jí doprovod. */
+  for(const g of galeony){
+    if(g.mrtvy) continue;
+    if(g.stav === "utok" && g.cilE && !g.cilE.mrtvy) continue;
+    const nepratelskaLod = nejbliz(G.jednotky, g.x, g.y,
+      o => jeNepritel(si, o.side) && !o.mrtvy && JED[o.kind] && JED[o.kind].lod, 640);
+    if(nepratelskaLod){ g.stav = "utok"; g.cilE = nepratelskaLod; }
+    else if(dist2(g.x, g.y, lod.x, lod.y) > 260){ g.stav = "jdi"; g.cil = {x:lod.x, y:lod.y}; }
+  }
+
+  /* 4) výprava přes moře. Jede se, až když má bot vojsko pohromadě –
+     o to se stará základní AI (H.tahnou), my se na to jen svezeme. */
+  const vojsko = G.jednotky.filter(j => j.side === si && !j.mrtvy && j.armadni
+                                     && !j.naPalube && !JED[j.kind].lod);
+  const naPalube = (lod.pasazeri || []).filter(u => u && !u.mrtvy).length;
+
+  if(!H.vyprava || H.vyprava.komu !== cil.side){
+    if(!H.tahnou && naPalube === 0) return;          // ještě není koho vozit
+    const p = najdiPrepravu(zakl, cil);
+    if(!p) return;                                   // sem loď nedoplave, nedá se nic dělat
+    H.vyprava = {faze:"naklada", komu:cil.side, nastup:p.nastup, pristani:p.pristani, cas:0};
+  }
+  const V = H.vyprava;
+  V.cas += krok;
+
+  if(V.faze === "naklada"){
+    // loď čeká u našeho břehu
+    if(dist2(lod.x, lod.y, V.nastup.voda.x, V.nastup.voda.y) > 60){
+      if(lod.stav !== "jdi"){ lod.stav = "jdi"; lod.cil = {x:V.nastup.voda.x, y:V.nastup.voda.y}; }
+    }
+    // vojáci jdou k lodi a nalodí se (stejnou cestou jako u člověka)
+    for(const u of vojsko){
+      if(u.stav === "nalod" && u.cilE === lod) continue;
+      u.stav = "nalod"; u.cilE = lod; u.vytazeni = true;
+    }
+    /* Nalodění má malý dosah (poloměry + 34), a loď stojí ve vodě kousek od
+       břehu. Kdo dojde na břeh a dál nemůže, ať se nalodí i tak – jinak by
+       se celá výprava zasekla na jednom pixelu. */
+    for(const u of vojsko)
+      if(dist2(u.x, u.y, lod.x, lod.y) < 130 && volnoNaPalube(lod) > 0) nalod(u, lod);
+
+    /* Když se za minutu a půl nenalodil vůbec nikdo, něco je špatně –
+       nejspíš vojsko k tomu břehu nedojde. Výpravu zrušíme a za chvíli
+       zkusíme plán znovu (mezitím se mohl posunout i cíl). */
+    if(naPalube === 0 && V.cas > 90){
+      H.vyprava = null;
+      for(const u of vojsko) if(u.stav === "nalod"){ u.stav = "stoj"; u.cilE = null; }
+      return;
+    }
+    const doPlna = volnoNaPalube(lod) <= 0;
+    const vsichni = vojsko.length === 0 && naPalube > 0;
+    const dost = naPalube >= 5 && V.cas > 25;
+    const cekaMocDlouho = naPalube >= 2 && V.cas > 55;
+    if(doPlna || vsichni || dost || cekaMocDlouho){
+      V.faze = "plavba"; V.cas = 0;
+      lod.stav = "vyloz";
+      lod.cil = {x:V.pristani.voda.x, y:V.pristani.voda.y,
+                 kamX:V.pristani.breh.x, kamY:V.pristani.breh.y};
+      lod.trasa = null; lod.trasaCil = null;
+    }
+    return;
+  }
+
+  if(V.faze === "plavba"){
+    // vyloz si obslouží updJednotku sama; my jen počkáme, až bude prázdno
+    if(naPalube === 0){
+      V.faze = "vylodeno"; V.cas = 0;
+      // kdo se vylodil, ať se pustí do nejbližší nepřátelské budovy
+      for(const u of G.jednotky){
+        if(u.side !== si || u.mrtvy || !u.armadni || u.naPalube) continue;
+        if(!stejnaPevnina(u.x, u.y, cil.x, cil.y)) continue;
+        u.vytazeni = true; u.stav = "utok"; u.cilE = cil;
+      }
+    }else if(V.cas > 90){               // něco se zvrtlo, zkusíme to znovu
+      V.faze = "naklada"; V.cas = 0; lod.stav = "stoj"; lod.cil = null;
+    }
+    return;
+  }
+
+  if(V.faze === "vylodeno"){
+    // loď se vrátí pro další partu
+    if(V.cas > 6){ H.vyprava = null; lod.stav = "stoj"; lod.cil = null; }
+  }
+}
+
+VERZE = "v22";
+napisVerzi();
+
+
+/* ============================================================
+   52) HRADBY MAJÍ SMYSL, JEN KDYŽ SE DAJÍ PRORAZIT
+
+   Daník si vyžádal hradby, bránu a k tomu dílnu na stroje s beranidlem
+   a trebuchetem. Hradby i stroje se udělaly, jenže dohromady to nefungovalo:
+
+   1) Kdo narazil na zeď, ZASTAVIL SE A STÁL. Pěší jednotky v téhle hře
+      neumí obcházet překážky (hledání cesty mají jen lodě), takže když
+      jdiK() někoho 2,5 s nikam neposunul, prostě mu zrušil rozkaz. Vojáci
+      tedy došli k hradbě a čekali tam do konce partie. Zeď nepřítele
+      nezdržela – ona ho úplně vypnula.
+   2) Bot dílnu na stroje NIKDY nepostavil (v jeho seznamu byly jen domek,
+      věž, kasárna, stáj a hrad), takže neměl čím zeď prorazit ani kdyby
+      chtěl.
+
+   Následek: jakmile si hráč klikl na „Opevnit základnu", byl nezranitelný
+   a hra skončila jako nudné čekání. Tohle to napravuje z obou stran.
+   ============================================================ */
+
+/* ---------- A) narazil jsem na zeď → tak ji zbourám ----------
+   Hledá se jen kousek okolo (150 px), takže se nestane, že by vojáci
+   běhali bourat zdi přes půl mapy. Zajímají nás zdi, brány a věže –
+   tedy to, co opravdu stojí v cestě. */
+const PRORAZ = {dosah: 150, prodleva: 1.2};
+let prorazCas = 0;
+
+function jeStavbaVCeste(b){
+  if(!b || b.mrtvy || !BUD[b.kind]) return false;
+  return !!(BUD[b.kind].zed || b.kind === "vez");
+}
+
+function prorazZdi(dt){
+  prorazCas -= dt;
+  if(prorazCas > 0) return;
+  prorazCas = PRORAZ.prodleva;
+
+  for(const j of G.jednotky){
+    if(j.mrtvy || j.naPalube) continue;
+    if(!j.armadni && !j.vytazeni) continue;          // vesničané a lodě ne
+    if(JED[j.kind] && JED[j.kind].lod) continue;
+    if(j.stav === "utok" && j.cilE && !j.cilE.mrtvy) continue;   // už něco mlátí
+    if(j.stav !== "stoj") continue;                  // jde si po svém, nech ho
+    if(!j.vytazeni && !j.zasekloSe) continue;        // doma stojící hlídač ne
+
+    const zed = nejbliz(G.budovy, j.x, j.y,
+      b => jeNepritel(j.side, b.side) && jeStavbaVCeste(b), PRORAZ.dosah);
+    if(zed){ j.stav = "utok"; j.cilE = zed; }
+  }
+}
+
+/* jdiK() při zákysu rozkaz zruší (stav = "stoj"). Poznamenáme si to, ať
+   výš víme, že tenhle panáček někam chtěl a nemohl. */
+const jdiKPredProrazenim = jdiK;
+jdiK = function(e, tx, ty, dt, blizko){
+  const bylStav = e.stav;
+  const v = jdiKPredProrazenim(e, tx, ty, dt, blizko);
+  if(e.stav === "stoj" && (bylStav === "jdi" || bylStav === "utok")) e.zasekloSe = true;
+  else if(e.stav !== "stoj") e.zasekloSe = false;
+  return v;
+};
+
+/* ---------- B) bot si postaví dílnu a obléhací stroje ----------
+   Stroje si pořizuje, jen když je proti komu – tedy když nepřítel opravdu
+   staví hradby. Bez toho by jen zdržovaly. */
+function botObleh(si, H, krok){
+  const zakl = ZAKL[si];
+  const cil = nejblizZakl(si, H, false);
+  if(!cil) return;
+
+  // má nepřítel zeď, kterou by bylo potřeba prorazit?
+  let zdi = 0;
+  for(const b of G.budovy)
+    if(!b.mrtvy && jeNepritel(si, b.side) && BUD[b.kind] && BUD[b.kind].zed
+       && dist2(b.x, b.y, cil.x, cil.y) < 1400) zdi++;
+  if(zdi < 6){ return; }
+
+  const moje = G.budovy.filter(b => b.side === si && !b.mrtvy);
+  if(!moje.some(b => b.kind === "dilna")){
+    H.dilnaCas = (H.dilnaCas || 0) - krok;
+    if(H.dilnaCas <= 0){
+      H.dilnaCas = 8;
+      const a = nah(0, Math.PI*2), d = nah(170, 300);
+      const x = klam(zakl.x + Math.cos(a)*d, 90, SVET_W-90);
+      const y = klam(zakl.y + Math.sin(a)*d, 90, SVET_H-90);
+      if(mistoVolne("dilna", x, y)) pridejBudovu("dilna", si, x, y, true);
+    }
+    return;
+  }
+
+  /* Kolik strojů: na lehké obtížnosti jeden beranidlo, výš i trebuchet.
+     Víc než tři nemá smysl – jsou pomalé a hra by se zasekla na nich. */
+  const stroje = G.jednotky.filter(j => j.side === si && !j.mrtvy
+                    && (j.kind === "beranidlo" || j.kind === "trebuchet"));
+  const chce = G.obt >= 3 ? 3 : (G.obt >= 2 ? 2 : 1);
+  H.strojCas = (H.strojCas || 0) - krok;
+  if(H.strojCas <= 0 && stroje.length < chce){
+    H.strojCas = 12;
+    const druh = (G.obt >= 3 && stroje.some(s => s.kind === "beranidlo")) ? "trebuchet" : "beranidlo";
+    if(maJednotku(si, druh)){
+      const s = pridejJednotku(druh, si, zakl.x + nah(-120,120), zakl.y + nah(70,170));
+      s.armadni = true;
+      /* Stroj se přidá k probíhající výpravě, aby nezůstal doma sám. */
+      if(H.tahnou){ s.vytazeni = true; s.stav = "utok"; s.cilE = cil; }
+    }
+  }
+
+  /* Stroje míří přednostně na zdi a věže – na to jsou. */
+  for(const s of stroje){
+    if(s.mrtvy || (s.stav === "utok" && s.cilE && !s.cilE.mrtvy)) continue;
+    const zed = nejbliz(G.budovy, s.x, s.y,
+      b => jeNepritel(si, b.side) && jeStavbaVCeste(b), 900);
+    if(zed){ s.stav = "utok"; s.cilE = zed; s.vytazeni = true; }
+  }
+}
+
+/* ---------- zapojení do běhu hry ---------- */
+let oblehCas = 0;
+const updAIPredObleh = updAI;
+updAI = function(dt){
+  updAIPredObleh(dt);
+  prorazZdi(dt);
+  oblehCas += dt;
+  if(oblehCas < 0.6) return;
+  const krok = oblehCas; oblehCas = 0;
+  if(SYNC.jsemKlient && SYNC.jsemKlient()) return;
+  G.hraci.forEach((H, si) => {
+    if(H && H.bot && !H.porazen){
+      try{ botObleh(si, H, krok); }
+      catch(e){ /* ať se kvůli obléhání nikdy nesesype celá hra */ }
+    }
+  });
+};
+
+VERZE = "v23";
+napisVerzi();
+
 </script>
 </body>
 </html>
