@@ -10306,7 +10306,60 @@ window.addEventListener("DOMContentLoaded", () => {
   }, 900);
 });
 
-VERZE = "v30";
+/* ---------- C) aby ten návrat opravdu prošel ----------
+   Stabilní identita sama nestačí. Hostitel má dvě místa, která návrat
+   zastaví, a obě dřív nevadila JEN proto, že si vracející se hráč vylosoval
+   nové id (a tím pádem se nikdy nepoznalo, že je to on):
+
+   1) „pod stejným ID smí být jen jedno ŽIVÉ spojení". Když se dítě vrátí
+      dřív, než si hostitel všimne, že staré spojení spadlo, je pro něj to
+      staré pořád živé – a nové tiše odmítne. Dítě pak kouká na
+      „Připojuji…" a neděje se nic. Bereme to jako NÁVRAT: staré spojení
+      zavřeme a pustíme to nové. Vydávat se za někoho jiného tím nejde o nic
+      snáz než dřív – id je pořád náhodné číslo, které nikdo nezná.
+
+   2) Kdo už v seznamu hráčů je, tomu hostitel nepošle stav lobby (posílá
+      ho jen při přidání NOVÉHO hráče). Vracející se hráč by tedy sice byl
+      připojený, ale viděl by prázdno. Tak mu ho pošleme. */
+if(typeof P2P !== "undefined" && P2P.zprava){
+  const zpravaPredNavratem = P2P.zprava.bind(P2P);
+  P2P.zprava = function(spoj, data){
+    try{
+      if(typeof data === "string" && P2P.jeHost && spoj && !spoj.hracId){
+        const m = JSON.parse(data);
+        const id = m && m.typ === "join" && m.hrac && m.hrac.id;
+        if(id) for(const s of P2P.spoje){
+          if(s !== spoj && s.hracId === id && s.stav !== "odpojeno"){
+            s.stav = "odpojeno";
+            try{ s.kanal && s.kanal.close(); }catch(e){}
+            try{ s.pc && s.pc.close(); }catch(e){}
+          }
+        }
+      }
+    }catch(e){}
+    return zpravaPredNavratem(spoj, data);
+  };
+}
+
+if(typeof NET !== "undefined" && NET.prijmi){
+  const prijmiPredNavratem = NET.prijmi.bind(NET);
+  NET.prijmi = function(m){
+    const v = prijmiPredNavratem(m);
+    try{
+      if(!(m instanceof ArrayBuffer) && m && m.typ === "join" && m.hrac
+         && (P2P.jeHost || NET.jsemHost) && !G.bezi
+         && lobbyHraci.some(h => h.id === m.hrac.id)){
+        // je zpátky a v seznamu už je – ať vidí, jak to v lobby vypadá
+        NET.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt,
+                   seed:G.seed, velikost:G.velikost, limit:G.limit});
+        kresliLobby(); kresliP2P();
+      }
+    }catch(e){}
+    return v;
+  };
+}
+
+VERZE = "v31";
 napisVerzi();
 
 </script>
