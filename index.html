@@ -10285,6 +10285,19 @@ setInterval(() => {
 }, 1200);
 
 /* Komu se hra otevřela s ?kod=XYZ, toho rovnou připojíme. */
+function pripojZOdkazu(kod){
+  try{
+    const pole = document.getElementById("poleKod");
+    const tl = document.getElementById("joinKodOk");
+    if(!pole || !tl) return;
+    otevri("mJoin");
+    pole.value = kod;
+    const hl = document.getElementById("joinHlaska");
+    if(hl) hl.innerHTML = "🔗 Připojuji tě k <b>" + bezpecnyText(kod) + "</b> z odkazu…";
+    tl.click();
+  }catch(e){}
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   let kod = null;
   try{ kod = new URLSearchParams(location.search).get("kod"); }catch(e){}
@@ -10293,16 +10306,23 @@ window.addEventListener("DOMContentLoaded", () => {
   if(kod.length !== 3) return;
   /* Chvilku počkáme, ať se stihne načíst účet (jméno a ikonka) a menu. */
   setTimeout(() => {
-    try{
-      const pole = document.getElementById("poleKod");
-      const tl = document.getElementById("joinKodOk");
-      if(!pole || !tl) return;
-      otevri("mJoin");
-      pole.value = kod;
+    /* POZOR: tlačítko „Připojit se" v menu se ptá na jméno (`maJmeno()`),
+       ale odkaz to obchází – kdo hru otevře na novém mobilu poprvé, připojil
+       by se bezejmenný a v lobby by nikdo nepoznal, kdo je kdo. Tak se
+       zeptáme a připojíme až potom. */
+    if(typeof UCET !== "undefined" && !UCET.jm && typeof maJmeno === "function"){
+      maJmeno();
       const hl = document.getElementById("joinHlaska");
-      if(hl) hl.innerHTML = "🔗 Připojuji tě k <b>" + bezpecnyText(kod) + "</b> z odkazu…";
-      tl.click();
-    }catch(e){}
+      if(hl) hl.innerHTML = "Napiš si jméno a hned tě připojím ke hře <b>"
+                          + bezpecnyText(kod) + "</b>.";
+      let pokusu = 0;
+      const hlidac = setInterval(() => {
+        if(UCET.jm){ clearInterval(hlidac); pripojZOdkazu(kod); }
+        else if(++pokusu > 600) clearInterval(hlidac);   // po pěti minutách toho necháme
+      }, 500);
+      return;
+    }
+    pripojZOdkazu(kod);
   }, 900);
 });
 
@@ -10359,8 +10379,9 @@ if(typeof NET !== "undefined" && NET.prijmi){
   };
 }
 
-VERZE = "v31";
-napisVerzi();
+/* Číslo verze nastavuje POSLEDNÍ díl (teď p33) – tady by se jen přepsalo.
+   Necháváme to na něm, ať nevzniknou dva různé buildy se stejným číslem:
+   podle něj se totiž hráči poznají, když se spojují. */
 
 ﻿
 /* ============================================================
@@ -10377,7 +10398,7 @@ napisVerzi();
    není vidět. Nepočítá se to každý snímek, ale jen když se pohne kamera
    o kus dál – takže je to skoro zadarmo.
    ============================================================ */
-VERZE = "v32";
+VERZE = "v33";
 (function(){
   const p = document.getElementById("menuPata");
   if(p) p.innerHTML = "Země Ňuňísků · <b>verze " + VERZE + "</b> · Sepsáno v Zemi Ňuňísků";
