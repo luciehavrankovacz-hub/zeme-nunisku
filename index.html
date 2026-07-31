@@ -1733,7 +1733,29 @@ const MAPY = [
   {jm:"Spojenci na břehu",popis:"Týmy na společném pobřeží",
     zeme:"#5f9e4f", lesy:1.2, zlato:1.1, zelezo:1.1, sirka:4200, vyska:3000, voda:"tymove"},
   {jm:"Poslední pevnina",popis:"Skoro všude voda, země je vzácná",
-    zeme:"#63a552", lesy:1, zlato:1.3, zelezo:1.3, sirka:4400, vyska:3100, voda:"ostrovy"}
+    zeme:"#63a552", lesy:1, zlato:1.3, zelezo:1.3, sirka:4400, vyska:3100, voda:"ostrovy"},
+
+  /* ---- nové mapy (v28) ---- */
+  {jm:"Ňuňí ráj",        popis:"Všeho je tu spousta – kdo staví rychleji, vyhrává",
+    zeme:"#5fae4d", lesy:1.7, zlato:1.6, zelezo:1.5, sirka:4000, vyska:2900},
+  {jm:"Velký hvozd",     popis:"Jeden obrovský les – dřeva nekonečno, zlata skoro nic",
+    zeme:"#3f8438", lesy:2.4, zlato:0.45, zelezo:0.7, sirka:4000, vyska:2900},
+  {jm:"Souboj u brodu",  popis:"Malá mapa, řeka s brodem – bitva bude hned",
+    zeme:"#5f9e4f", lesy:1, zlato:1.2, zelezo:1.2, sirka:2800, vyska:2000, voda:"rec"},
+  {jm:"Medová zátoka",   popis:"Zlaté pobřeží – bohaté, ale ze všech stran otevřené",
+    zeme:"#8fa855", lesy:1, zlato:1.9, zelezo:0.9, sirka:4000, vyska:2900, voda:"okraj"},
+  {jm:"Zamrzlé moře",    popis:"Ledové ostrovy a mráz – železa dost, dřeva málo",
+    zeme:"#b9d4dd", lesy:0.5, zlato:1.1, zelezo:1.8, sirka:4200, vyska:3000, voda:"ostrovy"},
+  {jm:"Poklad na ostrově",popis:"Uprostřed ostrov s pokladem – kdo tam doplave první?",
+    zeme:"#63a552", lesy:1.1, zlato:1.1, zelezo:1, sirka:4200, vyska:3000, voda:"jezero", stred:"zlato"},
+  {jm:"Tři jezera",      popis:"Voda všude kolem, cestičky mezi jezery",
+    zeme:"#5a9a6a", lesy:1.3, zlato:1.1, zelezo:1.1, sirka:4000, vyska:2900, voda:"jezero"},
+  {jm:"Bratrská pláň",   popis:"Týmy vedle sebe na jedné pevnině – držte se spolu",
+    zeme:"#6aa85c", lesy:1.3, zlato:1.2, zelezo:1.2, sirka:4200, vyska:3000, voda:"tymove"},
+  {jm:"Poslední hvozd",  popis:"Obří mapa, hluboké lesy a daleko k sobě",
+    zeme:"#4f9a44", lesy:1.8, zlato:1.1, zelezo:1.1, sirka:4800, vyska:3400},
+  {jm:"Železné srdce",   popis:"Uprostřed hora železa – kdo ji udrží, má armádu",
+    zeme:"#7d8a7a", lesy:0.9, zlato:0.9, zelezo:1.7, sirka:3800, vyska:2700, stred:"zelezo"}
 ];
 
 /* ---- ikony hráče (obrázek u jména) ---- */
@@ -9921,7 +9943,7 @@ napisVerzi();
 
 
 /* ============================================================
-   55) v27 — TABULKA SKÓRE, KLID NA ZAČÁTKU HRY, VELKÝ NÁHLED MAPY
+   56) v28 — TABULKA SKÓRE, KLID NA ZAČÁTKU HRY, VELKÝ NÁHLED MAPY
    ============================================================ */
 VERZE = "v28";
 (function(){
@@ -9930,7 +9952,7 @@ VERZE = "v28";
 })();
 
 /* ------------------------------------------------------------
-   55a) SKÓRE JAKO V AGE OF EMPIRES
+   56a) SKÓRE JAKO V AGE OF EMPIRES
    Body se sbírají za všechno: co máš, co jsi nasbíral a koho jsi porazil.
    ------------------------------------------------------------ */
 function skoreHrace(i){
@@ -10023,7 +10045,7 @@ spustHru = function(){
 };
 
 /* ------------------------------------------------------------
-   55b) KLID NA ZAČÁTKU – bot se nesmí přiřítit hned
+   56b) KLID NA ZAČÁTKU – bot se nesmí přiřítit hned
    Dřív se soupeř objevil skoro hned, i když mezi vámi bylo moře. Teď má
    každá obtížnost svoje „klidné období": než uplyne, bot si jenom staví,
    těží a cvičí vojsko. Easiest ~5,5 minuty, Extreme ~1,5 minuty.
@@ -10070,7 +10092,7 @@ spustHru = function(){
 };
 
 /* ------------------------------------------------------------
-   55c) VELKÝ NÁHLED VYBRANÉ MAPY
+   56c) VELKÝ NÁHLED VYBRANÉ MAPY
    Klikneš na mapu → nahoře ji uvidíš pořádně zblízka i s popisem.
    ------------------------------------------------------------ */
 const kresliMapyPredNahledem = kresliMapy;
