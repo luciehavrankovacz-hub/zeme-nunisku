@@ -10238,9 +10238,14 @@ otevriLobby = function(rezim){
 })();
 
 /* ---------- B) odkaz s kódem ---------- */
+/* POZOR na jméno toho parametru. Nejdřív se jmenoval `kod` – jenže tím se
+   ve stejné adrese řídí i testovací nástroj (`testy/mp-scenar.js` otevírá
+   VŠECHNA okna včetně hostitelova jako `?kod=XYZ&role=...`). Automatický
+   vstup se tedy spustil i hostiteli, ten se začal připojovat sám k sobě
+   a hra se nespojila vůbec. Proto `pripoj`, ať se to nemá s čím potkat. */
 function odkazNaHru(kod){
   const u = location.origin + location.pathname;
-  return u + "?kod=" + encodeURIComponent(kod);
+  return u + "?pripoj=" + encodeURIComponent(kod);
 }
 
 /* Hostiteli ukážeme pod kódem i odkaz a tlačítko „zkopírovat". */
@@ -10300,7 +10305,13 @@ function pripojZOdkazu(kod){
 
 window.addEventListener("DOMContentLoaded", () => {
   let kod = null;
-  try{ kod = new URLSearchParams(location.search).get("kod"); }catch(e){}
+  try{
+    const Q = new URLSearchParams(location.search);
+    kod = Q.get("pripoj");
+    /* Starší podoba odkazu (?kod=) se bere jen tehdy, když stránku neřídí
+       testovací nástroj – ten si `kod` používá pro svoje. */
+    if(!kod && !Q.get("role")) kod = Q.get("kod");
+  }catch(e){}
   if(!kod) return;
   kod = kod.trim().toUpperCase().slice(0, 3);
   if(kod.length !== 3) return;
@@ -10398,7 +10409,7 @@ if(typeof NET !== "undefined" && NET.prijmi){
    není vidět. Nepočítá se to každý snímek, ale jen když se pohne kamera
    o kus dál – takže je to skoro zadarmo.
    ============================================================ */
-VERZE = "v33";
+VERZE = "v34";
 /* Patičku menu píše napisVerzi() z části 50 – nedělej to znovu vlastním
    kouskem kódu. Právě na tom se to 31. 7. rozbilo: každá verze si patičku
    přepisovala sama, kdo přidal díl a jen změnil VERZE, tomu v menu dál
