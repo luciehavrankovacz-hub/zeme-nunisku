@@ -10362,6 +10362,159 @@ if(typeof NET !== "undefined" && NET.prijmi){
 VERZE = "v31";
 napisVerzi();
 
+﻿
+/* ============================================================
+   58) v32 — AŤ TO NESEKÁ ANI NA LUDICROUS
+
+   Na obří mapě je přes 6000 stromů a rud. Každý z nich je vlastní kousek
+   obrázku v prohlížeči – a i když je někde na druhém konci mapy a nevidíš
+   ho, prohlížeč ho pořád počítá a překresluje. Tím to sekalo.
+
+   Panáčci se schovávali odjakživa (viz `polohuj` v p3), ale stromy, rudy,
+   budovy a kytičky ne – ty se kreslily jednou a zůstaly navěky.
+
+   Tady se to spraví: mapu si rozdělíme na čtverce a schováme všechno, co
+   není vidět. Nepočítá se to každý snímek, ale jen když se pohne kamera
+   o kus dál – takže je to skoro zadarmo.
+   ============================================================ */
+VERZE = "v32";
+(function(){
+  const p = document.getElementById("menuPata");
+  if(p) p.innerHTML = "Země Ňuňísků · <b>verze " + VERZE + "</b> · Sepsáno v Zemi Ňuňísků";
+})();
+
+const KULISY = {
+  krok: 700,
+  sl: 0, ra: 0,
+  bunky: null,
+  videne: null,
+  zap: false,
+  camX: -99999, camY: -99999, zoom: -1,
+
+  index(x, y){
+    const cx = Math.floor(x / this.krok), cy = Math.floor(y / this.krok);
+    if(cx < 0 || cy < 0 || cx >= this.sl || cy >= this.ra) return -1;
+    return cy * this.sl + cx;
+  },
+
+  /* zaregistruje jeden obrázek na dané pozici */
+  pridej(el, x, y){
+    if(!this.zap || !el) return;
+    const i = this.index(x, y);
+    if(i < 0) return;
+    (this.bunky[i] || (this.bunky[i] = [])).push(el);
+    // co vzniklo mimo obrazovku, rovnou schováme
+    if(!this.videne.has(i)) el.style.display = "none";
+  },
+
+  ukaz(i, jak){
+    const pole = this.bunky[i];
+    if(!pole) return;
+    for(let k = 0; k < pole.length; k++){
+      const el = pole[k];
+      if(el && el.style) el.style.display = jak;
+    }
+  },
+
+  prepocti(){
+    if(!this.zap) return;
+    /* stejné okraje jako u panáčků v `polohuj`, ať nic „nevyskakuje" na kraji */
+    const x0 = G.cam.x - 420, x1 = G.cam.x + vidW() + 420;
+    const y0 = G.cam.y - 480, y1 = G.cam.y + vidH() + 480;
+    const cx0 = Math.max(0, Math.floor(x0 / this.krok)), cx1 = Math.min(this.sl-1, Math.floor(x1 / this.krok));
+    const cy0 = Math.max(0, Math.floor(y0 / this.krok)), cy1 = Math.min(this.ra-1, Math.floor(y1 / this.krok));
+    const nove = new Set();
+    for(let cy = cy0; cy <= cy1; cy++)
+      for(let cx = cx0; cx <= cx1; cx++)
+        nove.add(cy * this.sl + cx);
+    // co zmizelo z dohledu → schovat
+    for(const i of this.videne) if(!nove.has(i)) this.ukaz(i, "none");
+    // co přibylo → ukázat
+    for(const i of nove) if(!this.videne.has(i)) this.ukaz(i, "");
+    this.videne = nove;
+  },
+
+  /* volá se každý snímek, ale skutečnou práci dělá, jen když se kamera pohnula */
+  tik(){
+    if(!this.zap) return;
+    const z = (typeof G.zoom === "number") ? G.zoom : 1;
+    if(Math.abs(G.cam.x - this.camX) < 160 && Math.abs(G.cam.y - this.camY) < 160 && z === this.zoom) return;
+    this.camX = G.cam.x; this.camY = G.cam.y; this.zoom = z;
+    this.prepocti();
+  },
+
+  start(){
+    this.sl = Math.max(1, Math.ceil(SVET_W / this.krok));
+    this.ra = Math.max(1, Math.ceil(SVET_H / this.krok));
+    this.bunky = new Array(this.sl * this.ra);
+    this.videne = new Set();
+    this.camX = -99999; this.camY = -99999; this.zoom = -1;
+    this.zap = true;
+    /* nasypeme dovnitř všechno, co na mapě stojí a nehýbe se */
+    const vloz = e => { if(e && e.el && !e.mrtvy) this.pridej(e.el, e.x, e.y); };
+    (G.zdroje || []).forEach(vloz);
+    (G.budovy || []).forEach(vloz);
+    (KULISY.dekorace || []).forEach(d => this.pridej(d.el, d.x, d.y));
+    this.prepocti();
+  },
+  konec(){ this.zap = false; this.bunky = null; this.videne = new Set(); },
+  dekorace: []
+};
+
+/* --- dekorace (kytky, kameny, keře) nejsou entity, tak si je posbíráme sami --- */
+const pridejDekoraciPredKulisami = pridejDekoraci;
+pridejDekoraci = function(kind, x, y, vel){
+  const el = pridejDekoraciPredKulisami(kind, x, y, vel);
+  const prvek = el && el.style ? el : SVET.lastElementChild;
+  if(prvek){
+    KULISY.dekorace.push({el:prvek, x, y});
+    KULISY.pridej(prvek, x, y);
+  }
+  return el;
+};
+
+/* --- nové stromy/rudy a nové budovy se musí taky přihlásit --- */
+const pridejZdrojPredKulisami = pridejZdroj;
+pridejZdroj = function(kind, x, y){
+  const e = pridejZdrojPredKulisami(kind, x, y);
+  if(e && e.el) KULISY.pridej(e.el, e.x, e.y);
+  return e;
+};
+const pridejBudovuPredKulisami = pridejBudovu;
+pridejBudovu = function(kind, side, x, y, hotova){
+  const b = pridejBudovuPredKulisami(kind, side, x, y, hotova);
+  if(b && b.el) KULISY.pridej(b.el, b.x, b.y);
+  return b;
+};
+
+/* --- rozjezd a zastavení --- */
+const spustHruPredKulisami = spustHru;
+spustHru = function(){
+  KULISY.zap = false;
+  KULISY.dekorace = [];
+  spustHruPredKulisami.apply(this, arguments);
+  KULISY.start();
+};
+
+/* --- každý snímek se jen podíváme, jestli se kamera pohnula --- */
+const tikPredKulisami = tik;
+tik = function(t){
+  const r = tikPredKulisami(t);
+  try{ KULISY.tik(); }catch(e){ /* kulisy nikdy nesmí shodit hru */ }
+  return r;
+};
+
+/* Kdyby si někdo skočil kamerou přes půl mapy (minimapa, klávesa),
+   ať se to přepočítá hned a ne až za snímek. */
+if(typeof kameraNa === "function"){
+  const kameraNaPredKulisami = kameraNa;
+  kameraNa = function(){
+    const r = kameraNaPredKulisami.apply(this, arguments);
+    try{ KULISY.tik(); }catch(e){}
+    return r;
+  };
+}
+
 </script>
 </body>
 </html>
