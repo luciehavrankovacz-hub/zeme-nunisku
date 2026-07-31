@@ -9274,33 +9274,6 @@ function botNamornictvo(si, H, krok){
   const zakl = ZAKL[si];
   const cil = nejblizZakl(si, H, false);
   if(!cil) return;
-
-  /* KLID NA ZAČÁTKU (část 56, p31) PLATÍ I NA MOŘI.
-     Lucie ho přidala právě proto, že se k ní bot „portne za minutu i přes
-     moře" – a to moře je tahle invaze. Její kód ale ruší jen pozemní
-     výpravy: hlídá jednotky se `stav === "utok"`, kdežto ty nalodděné mají
-     `stav === "nalod"` nebo sedí na palubě, takže mu proklouzly. Naměřeno:
-     na těžkou obtížnost má být klid 130 s a bot se vyloďoval v 48.
-     Stavět přístav a lodě smí dál – to je stavění, ne útok. */
-  if(typeof klidDoKdy === "function" && G.cas < klidDoKdy()){
-    if(H.vyprava){
-      const l = H.vyprava.lod;
-      if(l && !l.mrtvy && (l.pasazeri || []).length){
-        // koho už veze, ať vysadí doma, ne u nepřítele
-        l.stav = "vyloz";
-        l.cil = {x:H.vyprava.nastup.voda.x, y:H.vyprava.nastup.voda.y,
-                 kamX:H.vyprava.nastup.breh.x, kamY:H.vyprava.nastup.breh.y};
-        l.trasa = null; l.trasaCil = null;
-      }
-      H.vyprava = null;
-    }
-    for(const u of G.jednotky)
-      if(u.side === si && u.namorniCil){
-        u.namorniCil = null;
-        if(u.stav === "nalod"){ u.stav = "stoj"; u.cilE = null; }
-      }
-    return;
-  }
   // po souši to jde → tohle není práce pro loďstvo
   if(stejnaPevnina(zakl.x, zakl.y, cil.x, cil.y)){ H.vyprava = null; return; }
 
@@ -9972,7 +9945,7 @@ napisVerzi();
 /* ============================================================
    56) v28 — TABULKA SKÓRE, KLID NA ZAČÁTKU HRY, VELKÝ NÁHLED MAPY
    ============================================================ */
-VERZE = "v29";
+VERZE = "v28";
 (function(){
   const p = document.getElementById("menuPata");
   if(p) p.innerHTML = "Země Ňuňísků · <b>verze " + VERZE + "</b> · Sepsáno v Zemi Ňuňísků";
@@ -10157,210 +10130,156 @@ kresliMapy = function(){
 
 
 /* ============================================================
-   57) ABY VÁS ČTYŘI NIC NEVYHODILO ZE HRY
+   57) v29 — AŤ TO NESEKÁ ANI NA LUDICROUS
 
-   Dvě věci, které se při hraní ve čtyřech stanou skoro jistě:
-   někdo omylem obnoví stránku a někdo nechce přepisovat kód z papírku.
+   Na obří mapě je přes 6000 stromů a rud. Každý z nich je vlastní kousek
+   obrázku v prohlížeči – a i když je někde na druhém konci mapy a nevidíš
+   ho, prohlížeč ho pořád počítá a překresluje. Tím to sekalo.
 
-   ---------------------------------------------------------------
-   A) IDENTITA, KTERÁ PŘEŽIJE OBNOVENÍ STRÁNKY
+   Panáčci se schovávali odjakživa (viz `polohuj` v p3), ale stromy, rudy,
+   budovy a kytičky ne – ty se kreslily jednou a zůstaly navěky.
 
-   Hostitel má návrat kamaráda do hry HOTOVÝ a správně napsaný: když se
-   někdo odpojí, po chvíli za něj začne hrát počítač, a jakmile se tentýž
-   hráč vrátí, počítač mu civilizaci zase vrátí i s hláškou „je zpátky ve
-   hře!". Celá ta větev se ale nikdy nespustila, protože `mojeId` se
-   LOSOVALO PŘI KAŽDÉM NAČTENÍ STRÁNKY. Vrátivší se hráč se tedy hostiteli
-   představil jako někdo úplně jiný a:
-     - v lobby po něm zůstal DUCH a hra začala s civilizací, kterou nikdo
-       nehrál (ani počítač),
-     - z rozjeté hry se už nikdy nedostal zpátky.
-
-   Stačí si identitu zapamatovat. Ale POZOR na to, kam:
-     sessionStorage  = jedna záložka, přežije F5  ← tohle chceme
-     localStorage    = celý prohlížeč, sdílí se mezi záložkami ✗
-   Kdyby to bylo v localStorage, dvě okna na jednom počítači by se
-   hostiteli tvářila jako JEDEN hráč – a přesně takhle se hra testuje
-   a takhle si ji děti pouštějí vedle sebe.
-
-   ---------------------------------------------------------------
-   B) PŘIPOJENÍ ODKAZEM, BEZ OPISOVÁNÍ KÓDU
-
-   Tři písmena se špatně diktují („bé jako Božena, nebo pé?“) a ještě hůř
-   se píšou ovladačem na televizi. Hostitel proto vedle kódu dostane
-   ODKAZ, který stačí poslat do rodinného chatu; komu se otevře, ten se
-   připojí sám.
+   Tady se to spraví: mapu si rozdělíme na čtverce a schováme všechno, co
+   není vidět. Nepočítá se to každý snímek, ale jen když se pohne kamera
+   o kus dál – takže je to skoro zadarmo.
    ============================================================ */
-
-/* ---------- A) stabilní identita ---------- */
-function stabilniId(){
-  try{
-    let id = sessionStorage.getItem("nunisci-id");
-    if(!id){
-      id = "j" + Math.floor(Math.random()*1e9);
-      sessionStorage.setItem("nunisci-id", id);
-    }
-    return id;
-  }catch(e){
-    return "j" + Math.floor(Math.random()*1e9);   // soukromé okno apod.
-  }
-}
-
-/* Lobby si při otevření vyrobí hráče s čerstvě vylosovaným id – přepíšeme
-   ho na to stálé, a to i v seznamu hráčů, kde už sedí. */
-const otevriLobbyPredIdentitou = otevriLobby;
-otevriLobby = function(rezim){
-  const v = otevriLobbyPredIdentitou.apply(this, arguments);
-  try{
-    const stale = stabilniId();
-    const ja = lobbyHraci && lobbyHraci.find(h => h.id === mojeId);
-    mojeId = stale;
-    if(ja) ja.id = stale;
-  }catch(e){}
-  return v;
-};
-
-/* Připojování si id losuje taky – a při opakovaném pokusu (část 49) znovu.
-   Nejjistější je proto přepsat ho v okamžiku, kdy se „join" opravdu
-   posílá; tudy projdou všechny cesty včetně těch opakovaných. */
+VERZE = "v29";
 (function(){
-  const opravJoin = m => {
-    if(m && m.typ === "join" && m.hrac){ mojeId = stabilniId(); m.hrac.id = mojeId; }
-    return m;
-  };
-  if(typeof NET !== "undefined" && NET.posli){
-    const puvodni = NET.posli.bind(NET);
-    NET.posli = function(m){ return puvodni(opravJoin(m)); };
-  }
-  if(typeof P2P !== "undefined" && P2P.posli && P2P.posli !== (typeof NET !== "undefined" && NET.posli)){
-    const puvodni = P2P.posli.bind(P2P);
-    P2P.posli = function(m){ return puvodni(opravJoin(m)); };
-  }
+  const p = document.getElementById("menuPata");
+  if(p) p.innerHTML = "Země Ňuňísků · <b>verze " + VERZE + "</b> · Sepsáno v Zemi Ňuňísků";
 })();
 
-/* ---------- B) odkaz s kódem ---------- */
-function odkazNaHru(kod){
-  const u = location.origin + location.pathname;
-  return u + "?kod=" + encodeURIComponent(kod);
-}
+const KULISY = {
+  krok: 700,
+  sl: 0, ra: 0,
+  bunky: null,
+  videne: null,
+  zap: false,
+  camX: -99999, camY: -99999, zoom: -1,
 
-/* Hostiteli ukážeme pod kódem i odkaz a tlačítko „zkopírovat". */
-function ukazOdkazHostiteli(){
-  const kodEl = document.getElementById("kodText");
-  if(!kodEl || !G.kod || G.kod === "---" || G.kod === "???") return;
-  let box = document.getElementById("odkazHry");
-  if(!box){
-    box = document.createElement("div");
-    box.id = "odkazHry";
-    box.style.cssText = "margin-top:8px;font-size:13px;text-align:center;opacity:.95";
-    const rodic = kodEl.closest("div") || kodEl.parentNode;
-    if(rodic && rodic.parentNode) rodic.parentNode.insertBefore(box, rodic.nextSibling);
-    else return;
-  }
-  const odkaz = odkazNaHru(G.kod);
-  box.innerHTML = 'Nebo pošli kamarádům rovnou odkaz – nemusí nic opisovat:<br>'
-    + '<code id="odkazText" style="font-size:12px;word-break:break-all">'
-    + bezpecnyText(odkaz) + '</code> '
-    + '<button class="papirBtn sedy" id="odkazKopie" style="padding:3px 10px;font-size:12px">Zkopírovat</button>';
-  const b = document.getElementById("odkazKopie");
-  if(b) b.onclick = () => {
-    try{
-      navigator.clipboard.writeText(odkaz);
-      b.textContent = "Zkopírováno ✓";
-      setTimeout(() => { b.textContent = "Zkopírovat"; }, 2000);
-    }catch(e){
-      /* Když schránka nejde (starší prohlížeč, televize), aspoň to označíme,
-         ať to jde zkopírovat ručně. */
-      const t = document.getElementById("odkazText");
-      if(t && window.getSelection){
-        const r = document.createRange(); r.selectNodeContents(t);
-        const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
-      }
+  index(x, y){
+    const cx = Math.floor(x / this.krok), cy = Math.floor(y / this.krok);
+    if(cx < 0 || cy < 0 || cx >= this.sl || cy >= this.ra) return -1;
+    return cy * this.sl + cx;
+  },
+
+  /* zaregistruje jeden obrázek na dané pozici */
+  pridej(el, x, y){
+    if(!this.zap || !el) return;
+    const i = this.index(x, y);
+    if(i < 0) return;
+    (this.bunky[i] || (this.bunky[i] = [])).push(el);
+    // co vzniklo mimo obrazovku, rovnou schováme
+    if(!this.videne.has(i)) el.style.display = "none";
+  },
+
+  ukaz(i, jak){
+    const pole = this.bunky[i];
+    if(!pole) return;
+    for(let k = 0; k < pole.length; k++){
+      const el = pole[k];
+      if(el && el.style) el.style.display = jak;
     }
+  },
+
+  prepocti(){
+    if(!this.zap) return;
+    /* stejné okraje jako u panáčků v `polohuj`, ať nic „nevyskakuje" na kraji */
+    const x0 = G.cam.x - 420, x1 = G.cam.x + vidW() + 420;
+    const y0 = G.cam.y - 480, y1 = G.cam.y + vidH() + 480;
+    const cx0 = Math.max(0, Math.floor(x0 / this.krok)), cx1 = Math.min(this.sl-1, Math.floor(x1 / this.krok));
+    const cy0 = Math.max(0, Math.floor(y0 / this.krok)), cy1 = Math.min(this.ra-1, Math.floor(y1 / this.krok));
+    const nove = new Set();
+    for(let cy = cy0; cy <= cy1; cy++)
+      for(let cx = cx0; cx <= cx1; cx++)
+        nove.add(cy * this.sl + cx);
+    // co zmizelo z dohledu → schovat
+    for(const i of this.videne) if(!nove.has(i)) this.ukaz(i, "none");
+    // co přibylo → ukázat
+    for(const i of nove) if(!this.videne.has(i)) this.ukaz(i, "");
+    this.videne = nove;
+  },
+
+  /* volá se každý snímek, ale skutečnou práci dělá, jen když se kamera pohnula */
+  tik(){
+    if(!this.zap) return;
+    const z = (typeof G.zoom === "number") ? G.zoom : 1;
+    if(Math.abs(G.cam.x - this.camX) < 160 && Math.abs(G.cam.y - this.camY) < 160 && z === this.zoom) return;
+    this.camX = G.cam.x; this.camY = G.cam.y; this.zoom = z;
+    this.prepocti();
+  },
+
+  start(){
+    this.sl = Math.max(1, Math.ceil(SVET_W / this.krok));
+    this.ra = Math.max(1, Math.ceil(SVET_H / this.krok));
+    this.bunky = new Array(this.sl * this.ra);
+    this.videne = new Set();
+    this.camX = -99999; this.camY = -99999; this.zoom = -1;
+    this.zap = true;
+    /* nasypeme dovnitř všechno, co na mapě stojí a nehýbe se */
+    const vloz = e => { if(e && e.el && !e.mrtvy) this.pridej(e.el, e.x, e.y); };
+    (G.zdroje || []).forEach(vloz);
+    (G.budovy || []).forEach(vloz);
+    (KULISY.dekorace || []).forEach(d => this.pridej(d.el, d.x, d.y));
+    this.prepocti();
+  },
+  konec(){ this.zap = false; this.bunky = null; this.videne = new Set(); },
+  dekorace: []
+};
+
+/* --- dekorace (kytky, kameny, keře) nejsou entity, tak si je posbíráme sami --- */
+const pridejDekoraciPredKulisami = pridejDekoraci;
+pridejDekoraci = function(kind, x, y, vel){
+  const el = pridejDekoraciPredKulisami(kind, x, y, vel);
+  const prvek = el && el.style ? el : SVET.lastElementChild;
+  if(prvek){
+    KULISY.dekorace.push({el:prvek, x, y});
+    KULISY.pridej(prvek, x, y);
+  }
+  return el;
+};
+
+/* --- nové stromy/rudy a nové budovy se musí taky přihlásit --- */
+const pridejZdrojPredKulisami = pridejZdroj;
+pridejZdroj = function(kind, x, y){
+  const e = pridejZdrojPredKulisami(kind, x, y);
+  if(e && e.el) KULISY.pridej(e.el, e.x, e.y);
+  return e;
+};
+const pridejBudovuPredKulisami = pridejBudovu;
+pridejBudovu = function(kind, side, x, y, hotova){
+  const b = pridejBudovuPredKulisami(kind, side, x, y, hotova);
+  if(b && b.el) KULISY.pridej(b.el, b.x, b.y);
+  return b;
+};
+
+/* --- rozjezd a zastavení --- */
+const spustHruPredKulisami = spustHru;
+spustHru = function(){
+  KULISY.zap = false;
+  KULISY.dekorace = [];
+  spustHruPredKulisami.apply(this, arguments);
+  KULISY.start();
+};
+
+/* --- každý snímek se jen podíváme, jestli se kamera pohnula --- */
+const tikPredKulisami = tik;
+tik = function(t){
+  const r = tikPredKulisami(t);
+  try{ KULISY.tik(); }catch(e){ /* kulisy nikdy nesmí shodit hru */ }
+  return r;
+};
+
+/* Kdyby si někdo skočil kamerou přes půl mapy (minimapa, klávesa),
+   ať se to přepočítá hned a ne až za snímek. */
+if(typeof kameraNa === "function"){
+  const kameraNaPredKulisami = kameraNa;
+  kameraNa = function(){
+    const r = kameraNaPredKulisami.apply(this, arguments);
+    try{ KULISY.tik(); }catch(e){}
+    return r;
   };
 }
-/* Kód se hostiteli píše na tři místa; přišijeme se ke všem přes malý
-   hlídač – je to levnější a odolnější než obalovat tři funkce. */
-setInterval(() => {
-  if(G.rezim === "multi" && !G.bezi && NET && NET.jsemHost) ukazOdkazHostiteli();
-}, 1200);
-
-/* Komu se hra otevřela s ?kod=XYZ, toho rovnou připojíme. */
-window.addEventListener("DOMContentLoaded", () => {
-  let kod = null;
-  try{ kod = new URLSearchParams(location.search).get("kod"); }catch(e){}
-  if(!kod) return;
-  kod = kod.trim().toUpperCase().slice(0, 3);
-  if(kod.length !== 3) return;
-  /* Chvilku počkáme, ať se stihne načíst účet (jméno a ikonka) a menu. */
-  setTimeout(() => {
-    try{
-      const pole = document.getElementById("poleKod");
-      const tl = document.getElementById("joinKodOk");
-      if(!pole || !tl) return;
-      otevri("mJoin");
-      pole.value = kod;
-      const hl = document.getElementById("joinHlaska");
-      if(hl) hl.innerHTML = "🔗 Připojuji tě k <b>" + bezpecnyText(kod) + "</b> z odkazu…";
-      tl.click();
-    }catch(e){}
-  }, 900);
-});
-
-/* ---------- C) aby ten návrat opravdu prošel ----------
-   Stabilní identita sama nestačí. Hostitel má dvě místa, která návrat
-   zastaví, a obě dřív nevadila JEN proto, že si vracející se hráč vylosoval
-   nové id (a tím pádem se nikdy nepoznalo, že je to on):
-
-   1) „pod stejným ID smí být jen jedno ŽIVÉ spojení". Když se dítě vrátí
-      dřív, než si hostitel všimne, že staré spojení spadlo, je pro něj to
-      staré pořád živé – a nové tiše odmítne. Dítě pak kouká na
-      „Připojuji…" a neděje se nic. Bereme to jako NÁVRAT: staré spojení
-      zavřeme a pustíme to nové. Vydávat se za někoho jiného tím nejde o nic
-      snáz než dřív – id je pořád náhodné číslo, které nikdo nezná.
-
-   2) Kdo už v seznamu hráčů je, tomu hostitel nepošle stav lobby (posílá
-      ho jen při přidání NOVÉHO hráče). Vracející se hráč by tedy sice byl
-      připojený, ale viděl by prázdno. Tak mu ho pošleme. */
-if(typeof P2P !== "undefined" && P2P.zprava){
-  const zpravaPredNavratem = P2P.zprava.bind(P2P);
-  P2P.zprava = function(spoj, data){
-    try{
-      if(typeof data === "string" && P2P.jeHost && spoj && !spoj.hracId){
-        const m = JSON.parse(data);
-        const id = m && m.typ === "join" && m.hrac && m.hrac.id;
-        if(id) for(const s of P2P.spoje){
-          if(s !== spoj && s.hracId === id && s.stav !== "odpojeno"){
-            s.stav = "odpojeno";
-            try{ s.kanal && s.kanal.close(); }catch(e){}
-            try{ s.pc && s.pc.close(); }catch(e){}
-          }
-        }
-      }
-    }catch(e){}
-    return zpravaPredNavratem(spoj, data);
-  };
-}
-
-if(typeof NET !== "undefined" && NET.prijmi){
-  const prijmiPredNavratem = NET.prijmi.bind(NET);
-  NET.prijmi = function(m){
-    const v = prijmiPredNavratem(m);
-    try{
-      if(!(m instanceof ArrayBuffer) && m && m.typ === "join" && m.hrac
-         && (P2P.jeHost || NET.jsemHost) && !G.bezi
-         && lobbyHraci.some(h => h.id === m.hrac.id)){
-        // je zpátky a v seznamu už je – ať vidí, jak to v lobby vypadá
-        NET.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt,
-                   seed:G.seed, velikost:G.velikost, limit:G.limit});
-        kresliLobby(); kresliP2P();
-      }
-    }catch(e){}
-    return v;
-  };
-}
-
-VERZE = "v31";
-napisVerzi();
 
 </script>
 </body>
