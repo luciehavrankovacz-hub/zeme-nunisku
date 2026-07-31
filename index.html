@@ -10996,6 +10996,139 @@ if(typeof prevozSVG === "function"){
   };
 }
 
+
+/* ============================================================
+   61) v37 — LUDICROUS UŽ NESEKÁ (rozmazání a minimapa)
+
+   Změřeno profilerem (testprof.js) na 11880x8580 se 6600 surovinami a 214
+   panáčky: JavaScript stíhá levně (2,8 ms na krok). Sekání tedy nedělá
+   počítání, ale KRESLENÍ – dvě vrstvy roztažené přes celou mapu, obě
+   s CSS rozmazáním. To profiler nezachytí, protože to dělá grafická karta.
+
+   POKUS, KTERÝ NEVYŠEL: zkusil jsem k surovinám mřížku, aby se nehledalo
+   ve všech 6600. Bylo to POMALEJŠÍ (4,4 vs 2,9 ms na krok) – filtr většinu
+   blízkých surovin zamítne a hledání se rozlézá do kruhů dokola. Vyhozeno;
+   kdyby to někdo chtěl zkusit znovu, tudy cesta nevede.
+   ============================================================ */
+VERZE = "v37";
+if(typeof napisVerzi === "function") napisVerzi();
+
+/* ------------------------------------------------------------
+   61b) MINIMAPA SI SUROVINY PŘEDKRESLÍ
+
+   Suroviny se skoro nemění, ale kreslily se znovu 8× za vteřinu – 6300
+   obdélníčků pokaždé. Teď se jednou vykreslí do obrázku stranou a ten se
+   jen obtiskne. Obrázek se obnoví, až když se něco změní (vytěžený strom,
+   odkrytá mlha), nejvýš ale jednou za 1,2 s.
+   ------------------------------------------------------------ */
+const MMZDROJE = {
+  cv: null, w: 0, h: 0, cas: -99, pocet: -1, zname: -1,
+  obrazek(w, h){
+    const ted = (typeof G !== "undefined" ? G.cas : 0);
+    const pocet = G.zdroje.length;
+    /* kolik políček mlhy je odkrytých – hrubé, ale stačí to na poznání,
+       že se má obrázek obnovit (nepočítáme to celé, jen každé 16. pole) */
+    let zname = 0;
+    if(typeof MLHA !== "undefined" && MLHA.znam)
+      for(let i = 0; i < MLHA.znam.length; i += 16) zname += MLHA.znam[i];
+
+    const jineRozmery = (!this.cv || this.w !== w || this.h !== h);
+    const zmena = jineRozmery || pocet !== this.pocet || zname !== this.zname;
+    if(!zmena || (ted - this.cas < 1.2 && !jineRozmery)) return this.cv;
+
+    if(jineRozmery){
+      this.cv = document.createElement("canvas");
+      this.cv.width = w; this.cv.height = h;
+      this.w = w; this.h = h;
+    }
+    const x = this.cv.getContext("2d");
+    x.clearRect(0, 0, w, h);
+    const sx = w / SVET_W, sy = h / SVET_H;
+    for(const z of G.zdroje){
+      if(z.mrtvy) continue;
+      if(typeof MLHA !== "undefined" && MLHA.zap && MLHA.znamBod && !MLHA.znamBod(z.x, z.y)) continue;
+      x.fillStyle = z.typ === "drevo" ? "#2f7a35" : z.typ === "zlato" ? "#ffd447" : "#c3d6e8";
+      x.fillRect(z.x * sx - 1.5, z.y * sy - 1.5, 3, 3);
+    }
+    this.cas = ted; this.pocet = pocet; this.zname = zname;
+    return this.cv;
+  }
+};
+
+kresliMinimapu = function(){
+  const w = MMC.width, h = MMC.height, sx = w / SVET_W, sy = h / SVET_H;
+  MMX.fillStyle = MAPY[G.mapa].zeme; MMX.fillRect(0, 0, w, h);
+  if(typeof TEREN !== "undefined" && TEREN.pripraven && TEREN.miniObrazek)
+    MMX.drawImage(TEREN.miniObrazek(w, h), 0, 0);
+
+  const zdr = MMZDROJE.obrazek(w, h);
+  if(zdr) MMX.drawImage(zdr, 0, 0);
+
+  const vidim = e => (typeof MLHA === "undefined" || !MLHA.zap || !MLHA.viditelna) ? true : MLHA.viditelna(e);
+  for(const b of G.budovy){
+    if(b.mrtvy || !vidim(b)) continue;
+    MMX.fillStyle = barvaHrace(b.side).h;
+    const s = (b.kind === "radnice" || b.kind === "hrad") ? 8 : 5;
+    MMX.fillRect(b.x * sx - s / 2, b.y * sy - s / 2, s, s);
+  }
+  for(const j of G.jednotky){
+    if(j.mrtvy || !vidim(j)) continue;
+    MMX.fillStyle = barvaHrace(j.side).h;
+    MMX.fillRect(j.x * sx - 2, j.y * sy - 2, 4, 4);
+  }
+  if(typeof MLHA !== "undefined" && MLHA.zap && MLHA.znam && typeof mmZavoj === "function"){
+    const zav = mmZavoj();
+    if(zav){
+      const hl = MMX.imageSmoothingEnabled;
+      MMX.imageSmoothingEnabled = false;
+      MMX.drawImage(zav, 0, 0, w, h);
+      MMX.imageSmoothingEnabled = hl;
+    }
+  }
+  MMX.strokeStyle = "#fff"; MMX.lineWidth = 2;
+  MMX.strokeRect(G.cam.x * sx, G.cam.y * sy, vidW() * sx, vidH() * sy);
+};
+
+/* ------------------------------------------------------------
+   61c) ROZMAZÁNÍ PŘES CELOU OBŘÍ MAPU
+
+   Tohle je na Ludicrous ta největší brzda, a v profileru ji NENÍ vidět –
+   protože ji nedělá JavaScript, ale grafická karta při skládání obrázku.
+
+   Dvě vrstvy jsou roztažené přes CELOU mapu a obě mají CSS `filter: blur()`:
+     • mlha války (p16)  – blur(6px)
+     • moře a skály (p20)– blur(2.5px)
+   Na Small (3600×2600) to je 9 megapixelů, na Ludicrous (11880×8580) už
+   102 megapixelů – tedy 11× víc plochy, kterou musí karta rozmazávat
+   v každém snímku. Odtud to „cukání", které se nedalo naměřit.
+
+   Na velkých mapách proto rozmazání zmenšíme (a na těch úplně největších
+   úplně vypneme). Okraje budou o chlup ostřejší, ale hra pojede plynule.
+   ------------------------------------------------------------ */
+function uravnejRozmazani(){
+  const megapixely = (SVET_W * SVET_H) / 1e6;
+  /* do ~25 Mpx (Small a Normal) necháme, jak to bylo */
+  const mlhaBlur  = megapixely > 60 ? 0 : (megapixely > 25 ? 3 : 6);
+  const terenBlur = megapixely > 60 ? 0 : (megapixely > 25 ? 1.4 : 2.5);
+
+  if(typeof MLHA !== "undefined" && MLHA.cv)
+    MLHA.cv.style.filter = mlhaBlur ? "blur(" + mlhaBlur + "px)" : "none";
+  if(typeof TEREN !== "undefined" && TEREN.cv)
+    TEREN.cv.style.filter = terenBlur ? "blur(" + terenBlur + "px)" : "none";
+}
+
+/* ------------------------------------------------------------
+   61d) rozjezd
+   ------------------------------------------------------------ */
+const spustHruPredZrychlenim = spustHru;
+spustHru = function(){
+  spustHruPredZrychlenim.apply(this, arguments);
+  MMZDROJE.cv = null; MMZDROJE.pocet = -1; MMZDROJE.zname = -1; MMZDROJE.cas = -99;
+  /* vrstvy vznikají až při stavění světa, tak to srovnáme hned potom */
+  setTimeout(uravnejRozmazani, 60);
+  setTimeout(uravnejRozmazani, 900);
+};
+
 </script>
 </body>
 </html>
