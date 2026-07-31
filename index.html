@@ -9274,6 +9274,33 @@ function botNamornictvo(si, H, krok){
   const zakl = ZAKL[si];
   const cil = nejblizZakl(si, H, false);
   if(!cil) return;
+
+  /* KLID NA ZAČÁTKU (část 56, p31) PLATÍ I NA MOŘI.
+     Lucie ho přidala právě proto, že se k ní bot „portne za minutu i přes
+     moře" – a to moře je tahle invaze. Její kód ale ruší jen pozemní
+     výpravy: hlídá jednotky se `stav === "utok"`, kdežto ty nalodděné mají
+     `stav === "nalod"` nebo sedí na palubě, takže mu proklouzly. Naměřeno:
+     na těžkou obtížnost má být klid 130 s a bot se vyloďoval v 48.
+     Stavět přístav a lodě smí dál – to je stavění, ne útok. */
+  if(typeof klidDoKdy === "function" && G.cas < klidDoKdy()){
+    if(H.vyprava){
+      const l = H.vyprava.lod;
+      if(l && !l.mrtvy && (l.pasazeri || []).length){
+        // koho už veze, ať vysadí doma, ne u nepřítele
+        l.stav = "vyloz";
+        l.cil = {x:H.vyprava.nastup.voda.x, y:H.vyprava.nastup.voda.y,
+                 kamX:H.vyprava.nastup.breh.x, kamY:H.vyprava.nastup.breh.y};
+        l.trasa = null; l.trasaCil = null;
+      }
+      H.vyprava = null;
+    }
+    for(const u of G.jednotky)
+      if(u.side === si && u.namorniCil){
+        u.namorniCil = null;
+        if(u.stav === "nalod"){ u.stav = "stoj"; u.cilE = null; }
+      }
+    return;
+  }
   // po souši to jde → tohle není práce pro loďstvo
   if(stejnaPevnina(zakl.x, zakl.y, cil.x, cil.y)){ H.vyprava = null; return; }
 
@@ -9945,7 +9972,7 @@ napisVerzi();
 /* ============================================================
    56) v28 — TABULKA SKÓRE, KLID NA ZAČÁTKU HRY, VELKÝ NÁHLED MAPY
    ============================================================ */
-VERZE = "v28";
+VERZE = "v29";
 (function(){
   const p = document.getElementById("menuPata");
   if(p) p.innerHTML = "Země Ňuňísků · <b>verze " + VERZE + "</b> · Sepsáno v Zemi Ňuňísků";
