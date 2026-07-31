@@ -9442,6 +9442,85 @@ updAI = function(dt){
 VERZE = "v23";
 napisVerzi();
 
+
+/* ============================================================
+   53) KAMARÁD VIDÍ, JAK MU HRADBA PŘIBÝVÁ
+
+   Opevnění (část 47) počítá a staví vždycky hostitel – to je správně,
+   protože svět počítá on. Jenže fronta rozestavěných kusů (`H.opevneni`)
+   zůstávala jen u něj, takže kamarádovi se v panelu neukázalo vůbec nic:
+   klikl na „Opevnit základnu", hradba mu opravdu rostla, ale nevěděl,
+   kolik zbývá, ani že se to vůbec počítá.
+
+   Neposíláme to ve snímku světa (ten má pevný tvar a sahat do něj kvůli
+   jednomu číslu se nevyplatí) – stačí obyčejná zprávička jednou za
+   vteřinu. Zrušit opevnění šlo kamarádovi i dřív, jen to bylo poslepu.
+   ============================================================ */
+
+/* ---- hostitel: jednou za vteřinu rozešle, komu kolik zbývá ---- */
+let opevRozesilaniCas = 0;
+const updOpevneniPredHlasenim = updOpevneni;
+updOpevneni = function(dt){
+  const v = updOpevneniPredHlasenim(dt);
+  if(typeof SYNC === "undefined" || !SYNC.jsemHost || !SYNC.jsemHost()) return v;
+  opevRozesilaniCas += dt;
+  if(opevRozesilaniCas < 1) return v;
+  opevRozesilaniCas = 0;
+  G.hraci.forEach((H, si) => {
+    if(!H || H.bot) return;
+    const zbyva = (H.opevneni && H.opevneni.fronta) ? H.opevneni.fronta.length : 0;
+    if(H.opevHlaseno === zbyva) return;          // nic se nezměnilo, neposíláme
+    H.opevHlaseno = zbyva;
+    try{ NET.posli({typ:"opevStav", side:si, zbyva:zbyva}); }catch(e){}
+  });
+  return v;
+};
+
+/* ---- kamarád: přijme to a schová si to k sobě ---- */
+const prijmiPredOpevStavem = NET.prijmi.bind(NET);
+NET.prijmi = function(m){
+  if(m && m.typ === "opevStav"){
+    /* Hostiteli tahle zpráva nepatří – ten má pravdu sám u sebe. */
+    if(typeof SYNC !== "undefined" && SYNC.jsemHost && SYNC.jsemHost()) return;
+    const H = G.hraci[m.side];
+    if(H) H.opevZbyva = m.zbyva | 0;
+    if(m.side === G.ja && typeof obnovPanel === "function") obnovPanel();
+    return;
+  }
+  return prijmiPredOpevStavem(m);
+};
+
+/* ---- panel: hostitel čte frontu, kamarád to poslané číslo ---- */
+const obnovPanelPredOpevSitiVidem = obnovPanel;
+obnovPanel = function(){
+  obnovPanelPredOpevSitiVidem();
+  const A = document.getElementById("akce");
+  if(!A || G.konec) return;
+  const H = G.hraci[G.ja];
+  if(!H || H.opevneni) return;              // hostiteli to vykreslila část 47
+  const zbyva = H.opevZbyva | 0;
+  if(zbyva <= 0) return;
+  A.appendChild(tlacitko("⏳", "Opevnění: zbývá " + zbyva, "", true, ()=>{},
+    "<b>Opevnění se staví</b><br>Zbývá " + zbyva + " kusů. Staví je za tebe "
+    + "ten, kdo hru řídí, jak přibývají suroviny."));
+  A.appendChild(tlacitko("✖️", "Zrušit opevnění", "", true, ()=>{
+    NET.posli({typ:"cmd", cmd:"opevnitZrus", side:G.ja});
+    H.opevZbyva = 0; obnovPanel();
+  }, "Přestane stavět zbytek opevnění."));
+};
+
+/* Když opevnění doběhne nebo se zruší, ať u kamaráda číslo nezůstane viset. */
+const zrusOpevneniPredHlasenim = zrusOpevneni;
+zrusOpevneni = function(side){
+  const v = zrusOpevneniPredHlasenim(side);
+  const H = G.hraci[side];
+  if(H){ H.opevZbyva = 0; H.opevHlaseno = -1; }
+  return v;
+};
+
+VERZE = "v24";
+napisVerzi();
+
 </script>
 </body>
 </html>
