@@ -8975,6 +8975,22 @@ if(typeof TIKAC !== "undefined" && TIKAC.krok){
 
 VERZE = "v21";
 
+/* ---------- popisek verze v menu ----------
+   POZOR, tohle je past, na kterou se přišlo až 31. 7. 2026: každá verze si
+   po sobě přepisovala patičku menu vlastním IIFE hned při načtení (v12 na
+   p11, v18 na p19, v19 na p21…). Kdo přidal díl a jen změnil VERZE, změnil
+   číslo pro spojení kamarádů, ale v menu dál svítilo číslo té poslední
+   verze, která si patičku přepsala – tedy v19, i když hra byla v21.
+
+   Proto to od teď dělá JEDNA funkce, kterou stačí zavolat. Kdo přidá další
+   díl, ať za `VERZE = "vXX"` napíše `napisVerzi()` a je hotovo. */
+function napisVerzi(){
+  const p = document.getElementById("menuPata");
+  if(p) p.innerHTML = "Země Ňuňísků · <b>verze " + VERZE + "</b> · Sepsáno v Zemi Ňuňísků";
+}
+napisVerzi();
+
+
 </script>
 </body>
 </html>
