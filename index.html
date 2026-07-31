@@ -10399,10 +10399,12 @@ if(typeof NET !== "undefined" && NET.prijmi){
    o kus dál – takže je to skoro zadarmo.
    ============================================================ */
 VERZE = "v33";
-(function(){
-  const p = document.getElementById("menuPata");
-  if(p) p.innerHTML = "Země Ňuňísků · <b>verze " + VERZE + "</b> · Sepsáno v Zemi Ňuňísků";
-})();
+/* Patičku menu píše napisVerzi() z části 50 – nedělej to znovu vlastním
+   kouskem kódu. Právě na tom se to 31. 7. rozbilo: každá verze si patičku
+   přepisovala sama, kdo přidal díl a jen změnil VERZE, tomu v menu dál
+   svítilo staré číslo, a táta hlásil „vidím pořád v19", i když hra byla v21.
+   napisVerzi() navíc dopisuje odkazy na novinky a kontrolu pro Xbox. */
+napisVerzi();
 
 const KULISY = {
   krok: 700,
