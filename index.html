@@ -2035,15 +2035,49 @@ function postavSvet(){
     zilaZdroje("zelezo", klam(z.x-smerX*200, 120, SVET_W-120), klam(z.y+smerY*300, 120, SVET_H-120), Math.round(6*mapa.zelezo));
   });
 
-  // střed mapy a náhodné shluky
-  const shluku = Math.round(9 * mapa.lesy * (SVET_W*SVET_H)/(3600*2600));
-  for(let i=0;i<shluku;i++)
-    shlukStromu(nah(SVET_W*0.2,SVET_W*0.8), nah(SVET_H*0.2,SVET_H*0.8), nahI(8,16), nah(150,240));
-  const zil = Math.round(5*mapa.zlato), zelez = Math.round(5*mapa.zelezo);
-  for(let i=0;i<zil;i++)   zilaZdroje("zlato",  nah(SVET_W*0.25,SVET_W*0.75), nah(SVET_H*0.25,SVET_H*0.75), 6);
-  for(let i=0;i<zelez;i++) zilaZdroje("zelezo", nah(SVET_W*0.25,SVET_W*0.75), nah(SVET_H*0.25,SVET_H*0.75), 6);
+  /* ---- LESY, ZLATO A ŽELEZO PO CELÉ MAPĚ ----
+     Dřív se suroviny sypaly úplně náhodně a pevným počtem, takže na velké
+     (a hlavně na Ludicrous) mapě zůstávaly nekonečné prázdné louky.
+     Teď mapu rozdělíme na políčka ~620 px a v KAŽDÉM něco vyroste. Díky tomu
+     roste množství surovin spolu s mapou a nikde není dlouhá pustá pláň.
+     Les navíc neděláme jako jeden kulatý flek, ale jako HVOZD – několik
+     shluků poskládaných vedle sebe, ať to vypadá jako opravdový les. */
+  function hvozd(cx, cy, sila){
+    const casti = nahI(2, 4);
+    for(let i=0;i<casti;i++){
+      const a = nah(0, Math.PI*2), d = nah(0, 150);
+      shlukStromu(cx + Math.cos(a)*d, cy + Math.sin(a)*d,
+                  Math.round(nahI(9, 17) * sila), nah(130, 215));
+    }
+  }
+  const BUNKA = 620;
+  const sloupcu = Math.max(2, Math.round(SVET_W/BUNKA));
+  const radku   = Math.max(2, Math.round(SVET_H/BUNKA));
+  const dalekoOdZakladny = (x,y) => ZAKL.every(z => dist2(x, y, z.x, z.y) > 460);
+  for(let ry=0; ry<radku; ry++){
+    for(let rx=0; rx<sloupcu; rx++){
+      // střed políčka trochu rozhýbeme, ať to není mřížka jako na šachovnici
+      const cx = klam((rx+0.5)*(SVET_W/sloupcu) + nah(-150,150), 90, SVET_W-90);
+      const cy = klam((ry+0.5)*(SVET_H/radku)   + nah(-150,150), 90, SVET_H-90);
+      if(!suchoNa(cx,cy) || !dalekoOdZakladny(cx,cy)) continue;
+      /* co v tomhle políčku vyroste – podle toho, čeho má mapa hodně */
+      const vahaLes = 3.2*mapa.lesy, vahaZl = 1.15*mapa.zlato, vahaZe = 1.15*mapa.zelezo;
+      const los = rnd() * (vahaLes + vahaZl + vahaZe + 0.55);   // 0.55 = občas mýtina
+      if(los < vahaLes)                       hvozd(cx, cy, Math.min(1.4, mapa.lesy));
+      else if(los < vahaLes + vahaZl)         zilaZdroje("zlato",  cx, cy, nahI(5,8));
+      else if(los < vahaLes + vahaZl + vahaZe)zilaZdroje("zelezo", cx, cy, nahI(5,8));
+      else { /* mýtina – jen pár keřů, ať je kde stavět a svádět bitvy */
+        for(let k=0;k<4;k++){
+          const dx = cx+nah(-160,160), dy = cy+nah(-160,160);
+          if(suchoNa(dx,dy)) pridejDekoraci("ker", dx, dy, nah(50,70));
+        }
+      }
+    }
+  }
   if(mapa.stred){
-    for(let i=0;i<7;i++) zilaZdroje(mapa.stred, SVET_W/2+nah(-260,260), SVET_H/2+nah(-200,200), 7);
+    const kolik = Math.round(7 * Math.max(1, Math.sqrt((SVET_W*SVET_H)/(3600*2600))));
+    for(let i=0;i<kolik;i++)
+      zilaZdroje(mapa.stred, SVET_W/2+nah(-320,320), SVET_H/2+nah(-250,250), 7);
   }
 
   // základny hráčů
@@ -9884,6 +9918,193 @@ napisVerzi = function(){
 
 VERZE = "v27";
 napisVerzi();
+
+
+/* ============================================================
+   55) v27 — TABULKA SKÓRE, KLID NA ZAČÁTKU HRY, VELKÝ NÁHLED MAPY
+   ============================================================ */
+VERZE = "v27";
+(function(){
+  const p = document.getElementById("menuPata");
+  if(p) p.innerHTML = "Země Ňuňísků · <b>verze " + VERZE + "</b> · Sepsáno v Zemi Ňuňísků";
+})();
+
+/* ------------------------------------------------------------
+   55a) SKÓRE JAKO V AGE OF EMPIRES
+   Body se sbírají za všechno: co máš, co jsi nasbíral a koho jsi porazil.
+   ------------------------------------------------------------ */
+function skoreHrace(i){
+  const H = G.hraci[i]; if(!H) return 0;
+  const bud = G.budovy.filter(x=>x.side===i && !x.mrtvy).length;
+  const jed = G.jednotky.filter(x=>x.side===i && !x.mrtvy).length;
+  return Math.round(bud*20 + jed*8 + (H.zabil||0)*15 + (H.zboril||0)*40 + (H.nasbirano||0)/10);
+}
+
+/* --- počítání zabitých: kdo komu co sestřelil --- */
+const ublizPredSkore = ubliz;
+ubliz = function(cil, dmg, utocnik){
+  const zilPred = cil && !cil.mrtvy;
+  const r = ublizPredSkore(cil, dmg, utocnik);
+  if(zilPred && cil.mrtvy && utocnik && utocnik.side >= 0 && G.hraci[utocnik.side]
+     && cil.side >= 0 && jeNepritel(utocnik.side, cil.side)){
+    const H = G.hraci[utocnik.side];
+    if(cil.druh === "budova") H.zboril = (H.zboril||0) + 1;
+    else                      H.zabil  = (H.zabil ||0) + 1;
+  }
+  return r;
+};
+
+/* --- počítání nasbíraných surovin: sledujeme, o kolik komu přibylo --- */
+let skoreHodiny = null;
+function sledujSuroviny(){
+  if(!G.bezi) return;
+  G.hraci.forEach(H=>{
+    if(!H || !H.res) return;
+    if(!H.predRes){ H.predRes = {drevo:H.res.drevo, zelezo:H.res.zelezo, zlato:H.res.zlato}; return; }
+    let pribylo = 0;
+    for(const k of ["drevo","zelezo","zlato"]){
+      const d = H.res[k] - H.predRes[k];
+      if(d > 0) pribylo += d;            // utrácení se neodečítá – nasbíráno je nasbíráno
+      H.predRes[k] = H.res[k];
+    }
+    H.nasbirano = (H.nasbirano||0) + pribylo;
+  });
+}
+
+/* --- vlastní tabulka --- */
+obnovSkore = function(){
+  const el = document.getElementById("skore");
+  if(!el || !el.classList.contains("zap")) return;
+  const poradi = G.hraci.map((h,i)=>({h, i, s:skoreHrace(i)}))
+                        .sort((a,b)=> b.s - a.s);
+  const nej = Math.max(1, poradi.length ? poradi[0].s : 1);
+  el.innerHTML =
+    `<div style="font:bold 11px 'Trebuchet MS',sans-serif;letter-spacing:1px;opacity:.75;
+       padding:1px 2px 4px;border-bottom:1px solid rgba(255,255,255,.18);margin-bottom:3px">
+       🏆 SKÓRE</div>` +
+    poradi.map((z, poradiIdx) => {
+      const h = z.h, i = z.i, b = BARVY[h.barva];
+      const bud = G.budovy.filter(x=>x.side===i && !x.mrtvy).length;
+      const jed = G.jednotky.filter(x=>x.side===i && !x.mrtvy).length;
+      const ja  = (i === G.ja);
+      const medaile = ["🥇","🥈","🥉"][poradiIdx] || "&nbsp;&nbsp;";
+      return `<div class="rad${h.porazen?" mrtvy":""}" style="${ja?"background:rgba(255,255,255,.10);border-radius:5px;":""}
+          display:block;padding:3px 4px;margin-bottom:1px">
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="width:15px;font-size:11px">${medaile}</span>
+          <span class="tec" style="background:${b.h}"></span>
+          <b style="${ja?"text-decoration:underline":""}">${bezpecnyText(h.jm)}</b>
+          <span style="font-size:10px;opacity:.6">${h.bot?"💻":"🧒"}T${h.tym}</span>
+          <span style="margin-left:auto;font-weight:bold;font-size:14px">${z.s}</span>
+        </div>
+        <div style="height:3px;border-radius:2px;background:rgba(255,255,255,.14);margin:2px 0 1px">
+          <div style="height:100%;border-radius:2px;background:${b.h};width:${Math.round(z.s/nej*100)}%"></div>
+        </div>
+        <div style="font-size:9.5px;opacity:.72;display:flex;gap:6px">
+          <span title="budovy">🏠${bud}</span><span title="panáčci">🧍${jed}</span>
+          <span title="poražené jednotky">⚔️${h.zabil||0}</span>
+          <span title="zbořené budovy">💥${h.zboril||0}</span>
+          <span title="nasbírané suroviny">📦${Math.round((h.nasbirano||0)/100)/10}k</span>
+        </div>
+      </div>`;
+    }).join("");
+};
+
+/* tabulka se ukáže hned, jak hra začne (dá se schovat stejnou klávesou jako dřív) */
+const spustHruPredSkore = spustHru;
+spustHru = function(){
+  spustHruPredSkore.apply(this, arguments);
+  G.hraci.forEach(H=>{ H.zabil = 0; H.zboril = 0; H.nasbirano = 0; H.predRes = null; });
+  const el = document.getElementById("skore");
+  if(el) el.classList.add("zap");
+  if(skoreHodiny) clearInterval(skoreHodiny);
+  skoreHodiny = setInterval(sledujSuroviny, 500);
+  obnovSkore();
+};
+
+/* ------------------------------------------------------------
+   55b) KLID NA ZAČÁTKU – bot se nesmí přiřítit hned
+   Dřív se soupeř objevil skoro hned, i když mezi vámi bylo moře. Teď má
+   každá obtížnost svoje „klidné období": než uplyne, bot si jenom staví,
+   těží a cvičí vojsko. Easiest ~5,5 minuty, Extreme ~1,5 minuty.
+   Bránit se samozřejmě smí pořád – jen sám nevyráží do útoku.
+   ------------------------------------------------------------ */
+function klidDoKdy(){ return (OBTIZNOSTI[G.obt] || OBTIZNOSTI[2]).prvniVlna; }
+
+let klidOhlaseno = false;
+const updAIPredKlidem = updAI;
+updAI = function(dt){
+  updAIPredKlidem(dt);
+  if(SYNC.jsemKlient && SYNC.jsemKlient()) return;
+  const konecKlidu = klidDoKdy();
+  if(G.cas >= konecKlidu){
+    if(!klidOhlaseno && G.cas < konecKlidu + 2 && !G.konec){
+      klidOhlaseno = true;
+      zprava("⏳ Klid skončil – od teď můžou počítače vyrazit do útoku!","zle");
+      zvuk("poplach");
+    }
+    return;
+  }
+  /* ještě je klid: zrušíme botům všechny výpravy (bránit se smí dál) */
+  G.hraci.forEach((H, si)=>{
+    if(!H || !H.bot || H.porazen) return;
+    H.tahnou = false; H.pochodCil = null;
+    for(const j of G.jednotky){
+      if(j.side !== si || j.mrtvy || !j.vytazeni) continue;
+      j.vytazeni = false;
+      const utociNaCizi = j.stav === "utok" && j.cilE && j.cilE.side >= 0 && jeNepritel(si, j.cilE.side);
+      // nechá se odvolat jen ten, kdo se vydal pryč – ne ten, kdo brání domov
+      if(utociNaCizi && dist2(j.x, j.y, ZAKL[si].x, ZAKL[si].y) > 700){
+        j.cilE = null; j.stav = "jdi";
+        j.cil = j.rally ? {x:j.rally.x, y:j.rally.y} : {x:ZAKL[si].x, y:ZAKL[si].y};
+      }
+    }
+  });
+};
+const spustHruPredKlidem = spustHru;
+spustHru = function(){
+  klidOhlaseno = false;
+  spustHruPredKlidem.apply(this, arguments);
+  zprava("🕊️ Máš " + Math.round(klidDoKdy()/60*10)/10 + " min klidu na rozjezd – "
+       + "počítače zatím nebudou útočit. Stavěj a těž!", "dobre");
+};
+
+/* ------------------------------------------------------------
+   55c) VELKÝ NÁHLED VYBRANÉ MAPY
+   Klikneš na mapu → nahoře ji uvidíš pořádně zblízka i s popisem.
+   ------------------------------------------------------------ */
+const kresliMapyPredNahledem = kresliMapy;
+kresliMapy = function(){
+  kresliMapyPredNahledem.apply(this, arguments);
+  const mriz = document.getElementById("mapyMriz");
+  if(!mriz || typeof nakresliNahled !== "function") return;
+  let vel = document.getElementById("velkyNahled");
+  if(!vel){
+    vel = document.createElement("div");
+    vel.id = "velkyNahled";
+    vel.style.cssText = "display:flex;gap:12px;align-items:center;margin:2px 0 10px;padding:8px;"
+      + "border:1.5px solid rgba(138,106,43,.45);border-radius:8px;background:rgba(255,250,235,.55)";
+    mriz.parentNode.insertBefore(vel, mriz);
+  }
+  const mp = MAPY[G.mapa];
+  if(!mp) return;
+  const znak = mp.voda ? (mp.voda==="ostrovy"?"🏝️" : mp.voda==="tymove"?"🏝️🤝"
+                : mp.voda==="rec"?"🌊" : mp.voda==="okraj"?"⛵" : "💧") : "🌿";
+  vel.innerHTML =
+    `<canvas width="300" height="150" style="border-radius:5px;border:1.5px solid rgba(90,60,20,.4);flex:none"></canvas>
+     <div style="min-width:0">
+       <div style="font:bold 16px 'Trebuchet MS',sans-serif">${znak} ${bezpecnyText(mp.jm)}</div>
+       <div style="font-size:12px;opacity:.85;margin-top:2px">${bezpecnyText(mp.popis||"")}</div>
+       <div style="font-size:11px;opacity:.7;margin-top:4px">
+         🌳 dřevo ${"★".repeat(Math.max(1,Math.round((mp.lesy||1)*2)))} ·
+         🪙 zlato ${"★".repeat(Math.max(1,Math.round((mp.zlato||1)*2)))} ·
+         ⛏️ železo ${"★".repeat(Math.max(1,Math.round((mp.zelezo||1)*2)))}
+       </div>
+       <div style="font-size:10.5px;opacity:.6;margin-top:3px">Klikni dole na jinou mapu a uvidíš ji tady zblízka.</div>
+     </div>`;
+  const cv = vel.querySelector("canvas");
+  if(cv) nakresliNahled(cv, mp, G.mapa);
+};
 
 </script>
 </body>
