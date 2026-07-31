@@ -10716,6 +10716,286 @@ updAI = function(dt){
 VERZE = "v35";
 napisVerzi();
 
+
+/* ============================================================
+   60) v36 — STAVITELÉ DODĚLÁVAJÍ, HRADBA OBEJDE LES, HEZČÍ STROJE A LODĚ
+   ============================================================ */
+VERZE = "v36";
+if(typeof napisVerzi === "function") napisVerzi();
+
+/* ------------------------------------------------------------
+   60a) VESNIČAN DODĚLÁ VŠECHNO, TEPRVE POTOM JDE TĚŽIT
+
+   Dřív: vesničan dostavěl svůj kus hradby a zůstal stát (nebo šel těžit),
+   i když vedle bylo dalších třicet rozestavěných. Musel jsi ho ručně
+   překlikávat, a to u opevnění nikdo nezvládne.
+
+   Teď: jakmile dodělá, sám si najde NEJBLIŽŠÍ vlastní rozestavěnou budovu
+   a jde na ni. Až není co stavět, teprve pak se vrátí k těžbě.
+   ------------------------------------------------------------ */
+function dalsiRozdelana(e){
+  let nej = null, nd = 1e9;
+  for(const b of G.budovy){
+    if(b.mrtvy || b.hotova || b.side !== e.side) continue;
+    /* Ať se na jeden základ nenahrne celá vesnice – když už na něm někdo
+       dělá a je jich tam dost, radši jdi jinam. Čtyři na jeden kus stačí. */
+    if((b.stavitele || 0) >= 4) continue;
+    const d = dist2(e.x, e.y, b.x, b.y);
+    if(d < nd){ nd = d; nej = b; }
+  }
+  return nej;
+}
+
+/* HLAVNÍ MÍSTO, kde se to lámalo: jakmile je budova hotová, `updBudovu`
+   v p4a rovnou pošle všechny její stavitele těžit
+   (`for(const j of G.jednotky) if(j.cilE===b && j.stav==="stav") novyZdroj(j)`).
+   Stane se to uvnitř aktualizace BUDOV, tedy až po panáčcích – hook nad
+   `updJednotku` na to proto nikdy nedosáhl a vesničan byl v tu chvíli
+   nenávratně přehozený na těžbu. Musíme se svézt tady.
+
+   Seznam stavitelů si bereme jen u budov těsně před dokončením, ať se kvůli
+   tomu neprochází všichni panáčci u každé budovy v každém snímku. */
+const updBudovuPredStavenim = updBudovu;
+updBudovu = function(b, dt){
+  const skoroHotova = b && !b.hotova && (b.postup || 0) > 0.85;
+  const stavitele = skoroHotova
+    ? G.jednotky.filter(j => j.cilE === b && j.stav === "stav" && !j.mrtvy && !j.rucniStop)
+    : null;
+  const r = updBudovuPredStavenim(b, dt);
+  if(stavitele && stavitele.length && b.hotova){
+    for(const j of stavitele){
+      const dalsi = dalsiRozdelana(j);
+      if(!dalsi) continue;                       // není co stavět → ať klidně těží
+      j.stav = "stav"; j.cilE = dalsi;
+      j.slotBId = null; j.kotva = false; j.tezar = false; j.uCile = false;
+    }
+  }
+  return r;
+};
+
+const updJednotkuPredStavenim = updJednotku;
+updJednotku = function(e, dt){
+  /* Chytneme okamžik, kdy vesničanovi zmizel důvod stavět (dodělal / cíl
+     padl). Musí to být PŘED původní funkcí, protože ta ho v tu chvíli
+     přepne na "stoj" a informace se ztratí. */
+  if(e.kind === "vesnican" && e.stav === "stav" && !e.rucniStop){
+    const b = e.cilE;
+    if(!b || b.mrtvy || b.hotova){
+      const dalsi = dalsiRozdelana(e);
+      if(dalsi){
+        e.cilE = dalsi; e.slotBId = null; e.kotva = false;
+        /* stav zůstává "stav", takže hned pokračuje na další kus */
+      }
+    }
+  }
+  return updJednotkuPredStavenim(e, dt);
+};
+
+/* „Stůj" a ruční rozkaz tohle chování vypnou, ať si dítě může vesničana
+   kdykoli vzít zpátky. Znovu se zapne, jakmile mu dáš stavět. */
+const rozkazPredStavenim = rozkaz;
+rozkaz = function(x, y){
+  G.sel.forEach(u => { if(u.kind === "vesnican") u.rucniStop = true; });
+  const r = rozkazPredStavenim(x, y);
+  /* když ho rozkaz poslal stavět, ať zase řetězí */
+  G.sel.forEach(u => { if(u.kind === "vesnican" && u.stav === "stav") u.rucniStop = false; });
+  return r;
+};
+
+/* ------------------------------------------------------------
+   60b) HRADBA DRŽÍ U POSLEDNÍCH BUDOV A LES OBEJDE
+
+   Dvě změny proti p17:
+   1) Z několika vzdáleností se dřív brala ta, kde se vešlo nejvíc kusů –
+      a to bývala ta nejširší, takže hradba byla zbytečně daleko. Teď
+      vybíráme NEJTĚSNĚJŠÍ, která je ještě dost dobrá (aspoň 90 % toho
+      nejlepšího) – zeď tedy vede hned kolem krajních budov.
+   2) Když v cestě stojí les, dřív se pokácel. Teď zeď nejdřív zkusí uhnout
+      VEN (les tak zůstane stát a skončí uvnitř opevnění) a teprve když ani
+      to nejde, teprve se kácí.
+   ------------------------------------------------------------ */
+if(typeof planOpevneni === "function" && typeof mistoVolne === "function"){
+  const opevniZakladnuPredLesem = opevniZakladnu;
+
+  opevniZakladnu = function(){
+    const moje = G.budovy.filter(b => jeMuj(b.side) && !b.mrtvy);
+    if(!moje.length){ zprava("Nemáš žádné budovy, které by šlo opevnit.","zle"); return; }
+
+    /* --- 1) vyber nejtěsnější rozumný rez --- */
+    const varianty = [];
+    for(const rez of [110, 150, 200, 260, 330]){
+      const v = planOpevneni(moje, rez);
+      const projde = v.plan.filter(p => mistoVolne(p.kind, p.x, p.y)).length;
+      varianty.push({rez, podil: projde / Math.max(1, v.plan.length), v});
+    }
+    const nejlepsi = Math.max(...varianty.map(x => x.podil));
+    const vybrana = varianty.find(x => x.podil >= nejlepsi * 0.9) || varianty[0];
+
+    /* --- 2) postav podle vybraného plánu, s uhýbáním VEN kolem lesa --- */
+    const {plan, x1, x2, y1, y2} = vybrana.v;
+    const stredX = (x1 + x2) / 2, stredY = (y1 + y2) / 2;
+    plan.sort((a, b) => {
+      const va = a.kind === "vez" ? 0 : 1, vb = b.kind === "vez" ? 0 : 1;
+      if(va !== vb) return va - vb;
+      return dist2(a.x, a.y, stredX, stredY) - dist2(b.x, b.y, stredX, stredY);
+    });
+
+    let postaveno = 0, preskoceno = 0, dosly = false, vykliceno = 0, obesli = 0;
+    const pred = G.budovy.length;
+    const puvodniStavim = G.stavim;
+
+    for(const p of plan){
+      if(!lzeZaplatit(cenaBudovy(p.kind, G.ja))){ dosly = true; break; }
+      let x = p.x, y = p.y;
+      if(!mistoVolne(p.kind, x, y)){
+        const venX = p.x < stredX ? -1 : 1, venY = p.y < stredY ? -1 : 1;
+        const zkus = [];
+        /* NEJDŘÍV ven – tím se les (nebo co tam stojí) obestaví a zůstane
+           uvnitř. Teprve potom podél zdi a nakonec dovnitř. */
+        for(const d of [30, 60, 90, 120, 160]){
+          zkus.push([venX*d, 0], [0, venY*d], [venX*d, venY*d]);
+        }
+        for(const d of [26, 52, 78]){
+          if(p.osaX) zkus.push([d, 0], [-d, 0]);
+          if(p.osaY) zkus.push([0, d], [0, -d]);
+        }
+        for(const d of [30, 60]) zkus.push([-venX*d, 0], [0, -venY*d]);
+
+        let nasel = false, venku = false;
+        for(const [ox, oy] of zkus){
+          const nx = klam(p.x+ox, 60, SVET_W-60), ny = klam(p.y+oy, 60, SVET_H-60);
+          if(mistoVolne(p.kind, nx, ny)){
+            x = nx; y = ny; nasel = true;
+            venku = (ox*venX > 0 || oy*venY > 0);
+            break;
+          }
+        }
+        if(venku) obesli++;
+        /* Až úplně nakonec kácíme – když se opravdu nedá uhnout nikam. */
+        if(!nasel && typeof vyklidOpevneni === "function"){
+          const prekazky = vyklidOpevneni(p.kind, p.x, p.y);
+          if(prekazky > 0){ vykliceno += prekazky; nasel = true; x = p.x; y = p.y; }
+        }
+        if(!nasel){ preskoceno++; continue; }
+      }
+      G.stavim = p.kind;
+      postav(x, y);
+      postaveno++;
+    }
+    G.stavim = puvodniStavim;
+    zrusStaveni(); if(typeof skryjNahledZdi === "function") skryjNahledZdi();
+
+    /* Rozdělíme stavitele po nových základech. Díky 60a) si pak každý sám
+       najde další kus, takže se opevnění dodělá celé. */
+    const nove = G.budovy.slice(pred);
+    const stavitele = G.sel.filter(e => e.druh==="jednotka" && jeMuj(e.side)
+                                     && e.kind==="vesnican" && !e.mrtvy);
+    if(nove.length && stavitele.length) stavitele.forEach((u, i) => {
+      u.stav="stav"; u.cilE = nove[i % nove.length];
+      u.hlidka=null; u.tezar=false; u.slotBId=null; u.rucniStop=false;
+    });
+
+    if(!postaveno){ zprava("Opevnění se sem nevejde – přes budovy a vodu stavět nejde.","zle"); return; }
+    zprava("🏰 Stavím opevnění: " + postaveno + " kusů. Vesničani to dodělají sami "
+         + "a teprve pak půjdou těžit.","dobre");
+    if(obesli)    zprava("🌲 " + obesli + " kusů hradby obešlo les – stromy zůstaly stát uvnitř.","dobre");
+    if(vykliceno) zprava("🪓 " + vykliceno + " stromů muselo padnout, jinudy to nešlo.","dobre");
+    if(preskoceno)zprava("⚠️ " + preskoceno + " kusů se nevešlo – překáží budova nebo voda.","zle");
+    if(dosly)     zprava("Došly suroviny, postavil jsem, co šlo.","zle");
+    obnovPanel();
+  };
+}
+
+/* ------------------------------------------------------------
+   60c) HEZČÍ A PROPRACOVANĚJŠÍ STROJE A LODĚ
+   ------------------------------------------------------------ */
+if(typeof galeonaSVG === "function"){
+  const galeonaPuvodni = galeonaSVG;
+  galeonaSVG = function(civK, barva){
+    const c = CIVS[civK] || CIVS[CIVKEYS[0]];
+    const s = (typeof STYLY !== "undefined" && STYLY[civK]) || {ram:"#8a6a3a", strecha:"#a33", strecha2:"#822"};
+    const bar = barva || c.akcent;
+    const drevo = s.ram, drevoSv = svetlej(s.ram, 0.3), drevoTm = tmavej(s.ram, 0.32);
+    const zlato = "#e8c05a";
+    const posadka = plysak(civK, "vesnican", {bezStinu:1, bezPraporku:1, barva:bar});
+    try{
+      return `
+      <ellipse cx="50" cy="88" rx="42" ry="8" fill="rgba(0,0,0,.22)"/>
+      <!-- vlny kolem trupu -->
+      <path d="M6 84 q10 -5 20 0 t20 0 t20 0 t20 0" stroke="rgba(255,255,255,.5)" stroke-width="2.5" fill="none"/>
+      <!-- trup s bortem a okénky -->
+      <path d="M10 66 q6 18 40 18 q34 0 40 -18 q-14 -7 -40 -7 q-26 0 -40 7 Z" fill="${drevoTm}"/>
+      <path d="M12 65 q7 15 38 15 q31 0 38 -15 q-13 -6 -38 -6 q-25 0 -38 6 Z" fill="${drevo}"/>
+      <path d="M12 63 q38 -8 76 0" stroke="${drevoSv}" stroke-width="3" fill="none"/>
+      <g fill="${zlato}"><circle cx="30" cy="70" r="2.6"/><circle cx="44" cy="72" r="2.6"/>
+        <circle cx="58" cy="72" r="2.6"/><circle cx="70" cy="70" r="2.6"/></g>
+      <!-- příď a záď -->
+      <path d="M88 62 q10 -3 8 -13 q-6 4 -10 8 Z" fill="${drevoSv}"/>
+      <path d="M12 62 q-8 -4 -6 -12 q6 4 9 8 Z" fill="${drevoSv}"/>
+      <!-- posádka na palubě (v koši na stěžni zakrývala plachty) -->
+      <g transform="translate(6,34) scale(0.27)">${posadka}</g>
+      <!-- stěžně -->
+      <path d="M40 62 V10 M66 62 V22" stroke="${drevoTm}" stroke-width="3.4" stroke-linecap="round"/>
+      <!-- lanoví (pod plachtami) -->
+      <g stroke="rgba(90,60,25,.5)" stroke-width="1.1" fill="none">
+        <path d="M40 14 L16 60"/><path d="M40 14 L62 58"/><path d="M66 24 L88 58"/>
+      </g>
+      <!-- plachty: velké a vyduté větrem -->
+      <path d="M22 18 q18 -7 36 0 q-18 26 -36 0 Z" fill="#fdf6e6"/>
+      <path d="M22 18 q18 -7 36 0 q-9 13 -18 17 Z" fill="rgba(0,0,0,.06)"/>
+      <path d="M24 38 q16 -6 32 0 q-16 22 -32 0 Z" fill="#f3e9d2"/>
+      <path d="M24 38 q16 -6 32 0 q-8 11 -16 14 Z" fill="rgba(0,0,0,.05)"/>
+      <path d="M54 28 q14 -5 28 0 q-14 22 -28 0 Z" fill="#fdf6e6"/>
+      <path d="M54 28 q14 -5 28 0 q-7 11 -14 14 Z" fill="rgba(0,0,0,.06)"/>
+      <!-- ráhna -->
+      <path d="M21 18 H59 M23 38 H57 M53 28 H83" stroke="${drevoTm}" stroke-width="2"/>
+      <!-- vlajky v barvě hráče -->
+      <path d="M41 10 q13 4 0 9 Z" fill="${bar}"/>
+      <path d="M67 22 q11 3 0 7 Z" fill="${bar}"/>
+      <!-- děla -->
+      <g fill="#4a4f57"><rect x="6" y="66" width="9" height="4" rx="2"/><rect x="85" y="66" width="9" height="4" rx="2"/></g>`;
+    }catch(e){ return galeonaPuvodni(civK, barva); }
+  };
+}
+
+if(typeof prevozSVG === "function"){
+  const prevozPuvodni = prevozSVG;
+  prevozSVG = function(civK, barva){
+    const c = CIVS[civK] || CIVS[CIVKEYS[0]];
+    const s = (typeof STYLY !== "undefined" && STYLY[civK]) || {ram:"#8a6a3a", strecha:"#a33"};
+    const bar = barva || c.akcent;
+    const drevo = s.ram, drevoSv = svetlej(s.ram, 0.3), drevoTm = tmavej(s.ram, 0.32);
+    try{
+      return `
+      <ellipse cx="50" cy="86" rx="40" ry="8" fill="rgba(0,0,0,.22)"/>
+      <path d="M8 82 q10 -5 20 0 t20 0 t20 0 t20 0" stroke="rgba(255,255,255,.5)" stroke-width="2.5" fill="none"/>
+      <!-- široký plochý trup, ať je poznat, že veze náklad -->
+      <path d="M8 60 q4 22 42 22 q38 0 42 -22 q-16 -8 -42 -8 q-26 0 -42 8 Z" fill="${drevoTm}"/>
+      <path d="M11 59 q5 18 39 18 q34 0 39 -18 q-15 -7 -39 -7 q-24 0 -39 7 Z" fill="${drevo}"/>
+      <!-- prkna paluby -->
+      <g stroke="${drevoTm}" stroke-width="1.2" opacity=".55">
+        <path d="M22 56 V74"/><path d="M36 55 V77"/><path d="M50 54 V78"/><path d="M64 55 V77"/><path d="M78 56 V74"/></g>
+      <path d="M11 55 q39 -8 78 0" stroke="${drevoSv}" stroke-width="3.2" fill="none"/>
+      <!-- nájezdová rampa vpředu (tudy nastupují panáčci) -->
+      <path d="M89 58 q10 2 12 10 q-8 3 -13 -2 Z" fill="${drevoSv}"/>
+      <!-- bedny a sudy nákladu -->
+      <rect x="26" y="40" width="16" height="14" rx="2" fill="${drevoSv}"/>
+      <path d="M26 46 H42 M34 40 V54" stroke="${drevoTm}" stroke-width="1.6"/>
+      <rect x="46" y="44" width="13" height="11" rx="2" fill="${drevo}"/>
+      <ellipse cx="68" cy="48" rx="7" ry="8" fill="${drevoSv}"/>
+      <path d="M61 46 h14 M61 51 h14" stroke="${drevoTm}" stroke-width="1.5"/>
+      <!-- stěžeň s malou plachtou a vlajkou -->
+      <path d="M50 44 V14" stroke="${drevoTm}" stroke-width="3" stroke-linecap="round"/>
+      <path d="M50 18 q16 8 0 16 Z" fill="#fdf6e6"/>
+      <path d="M50 18 q16 8 0 16 Z" fill="rgba(0,0,0,.06)"/>
+      <path d="M49 14 q12 3 0 7 Z" fill="${bar}"/>
+      <!-- vesla -->
+      <g stroke="${drevoTm}" stroke-width="2.6" stroke-linecap="round">
+        <path d="M18 64 L6 74"/><path d="M82 64 L94 74"/></g>`;
+    }catch(e){ return prevozPuvodni(civK, barva); }
+  };
+}
+
 </script>
 </body>
 </html>
