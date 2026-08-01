@@ -11392,15 +11392,21 @@ function odhalCelouMapu(){
    na minimapě zamrzl na místě, i když jsi jezdila kamerou dál. Řešení:
    vlastní tenoučký časovač, který běží NAVZDORY zastavené hře. */
 let spectatorHodiny = null;
+let spectCamX = -99999, spectCamY = -99999;
 function spectatorTik(){
-  for(const j of G.jednotky) if(!j.mrtvy) polohuj(j);
+  /* Na Ludicrous se stovkami jednotek stálo přepočítávat VŠECHNY 6,7×/s
+     zbytečně – kamera se hýbe málokdy. Přepočítáme jen když se doopravdy
+     pohnula (stejný trik jako u KULISY). Minimapa je levná, ta jede dál. */
   if(typeof kresliMinimapu === "function") kresliMinimapu();
+  if(Math.abs(G.cam.x - spectCamX) < 40 && Math.abs(G.cam.y - spectCamY) < 40) return;
+  spectCamX = G.cam.x; spectCamY = G.cam.y;
+  for(const j of G.jednotky) if(!j.mrtvy) polohuj(j);
 }
 
 function pryDoMapy(){
   document.getElementById("konec").classList.remove("zap");
   odhalCelouMapu();
-  if(!spectatorHodiny) spectatorHodiny = setInterval(spectatorTik, 150);
+  if(!spectatorHodiny) spectatorHodiny = setInterval(spectatorTik, 250);
   let b = document.getElementById("bZpetNaVysledky");
   if(!b){
     b = document.createElement("button");
@@ -11833,7 +11839,10 @@ NET.prijmi = function(m){
    žádný rozkaz nikam nedošel. Teď to i VYPADÁ zamčené, ne jen JE.
    ------------------------------------------------------------ */
 function zamcenoPoKonci(){
-  if(G.konec){ vyber([]); return true; }
+  /* POZOR: hostitel, který prohrál, ale kamarádi hrají dál, NEMÁ
+     G.konec – má G.divak (hra mu musí dál běžet, jen sám už nehraje).
+     Bez týhle podmínky by právě jemu zůstalo ovládání odemčené. */
+  if(G.konec || G.divak){ vyber([]); return true; }
   return false;
 }
 const rozkazPredZamkem = rozkaz;
@@ -11884,14 +11893,20 @@ zprava = function(txt, typ){
       prázdno. Bez výběru se skoro celý panel akcí ani nevykreslí.
    B) `NET.posli` – klient v multiplayeru VŽDY posílá příkaz hostiteli
       přes tohle, ať už to je rozkaz, cvičení, zkoumání nebo cokoli
-      budoucího. Po G.konec se „cmd" zprávy prostě neodešlou.
+      budoucího. Po G.konec/G.divak se „cmd" zprávy prostě neodešlou.
+
+   G.divak: hostitel, který prohrál, ale hra běží dál pro kamarády – tomu
+   G.konec zůstává false schválně (ať mu neumře simulace), ale hrát sám
+   už nesmí. `provedCizi()` (obsluha PŘÍCHOZÍCH příkazů OD kamarádů) tohle
+   nepoužívá vůbec – volá `rozkazLokalne` a nastavuje `G.sel` napřímo
+   (p7), takže kamarádům se ovládání nezavře.
    ------------------------------------------------------------ */
 const vyberPredZamkemV2 = vyber;
-vyber = function(pole){ return vyberPredZamkemV2(G.konec ? [] : pole); };
+vyber = function(pole){ return vyberPredZamkemV2((G.konec || G.divak) ? [] : pole); };
 
 const posliPredZamkem = NET.posli;
 NET.posli = function(m){
-  if(m && m.typ === "cmd" && G.konec) return;
+  if(m && m.typ === "cmd" && (G.konec || G.divak)) return;
   return posliPredZamkem(m);
 };
 
