@@ -11518,21 +11518,49 @@ if(typeof konecProDivaka === "function"){
    všechno. POZOR ale na to, proč tam nebyla rovnou: `localStorage` se
    sdílí mezi VŠEMI záložkami prohlížeče, takže dvě okna na jednom
    počítači by se hostiteli tvářila jako jeden hráč – a přesně takhle si
-   to děti pouštějí vedle sebe a takhle se to i testuje.
+   to děti pouštějí vedle sebe a takhle se to i testuje. Uloženou průkazku
+   tedy smí převzít jen okno, které si ověří, že po ní nikdo živý nesahá
+   (jak, to je popsané kousek níž u VÝZVY).
 
-   Řešení: uložená průkazka se smí převzít, jen když je po ní TICHO.
-   Každá záložka svoji průkazku každé dvě vteřiny „orazítkuje" časem.
-   Nová záložka smí sáhnout jen po takové, která se osm vteřin neozvala –
-   tedy po mrtvé. Když vedle běží živé okno, jeho průkazku nedostane
-   a vylosuje si vlastní, přesně jako dosud.
+   Pozor: samo tohle nestačilo. Pravá příčina byla ještě o patro níž a je
+   popsaná dole u `P2P.posliHostovi` – kamarád posílá přihlášku do hry
+   TŘETÍMI dveřmi, které část 57 nehlídala, takže se stálá průkazka na
+   připojujícího se hráče nepoužila NIKDY, ani po obyčejném F5.
    ============================================================ */
 
 const NAVRAT = {
-  ticho: 8000,       // po jak dlouhém tichu bereme záložku za mrtvou
   razitkoPo: 2000,
+  odpovedDo: 800,    // kolik času dáváme ostatním oknům na ozvání
   zapomenPo: 600000, // po deseti minutách se stará průkazka zahodí
-  klic: kod => "nunisci-navrat-" + kod
+  klic: kod => "nunisci-navrat-" + kod,
+  vyzva: "nunisci-vyzva"
 };
+
+/* ---- jak se pozná ŽIVÉ okno ----
+   První pokus měřil čas: „kdo se osm vteřin neozval, je mrtvý". Nefunguje
+   to ze dvou stran naráz. Kdo se vrátí rychle, ještě není osm vteřin
+   mrtvý a průkazku nedostane (změřeno: vrací se za šest vteřin, takže to
+   jednou vyšlo a podruhé ne). A naopak okno, které si dítě odloží na
+   pozadí, prohlížeč zpomalí – časovače tam běží třeba jednou za minutu –
+   takže by vypadalo mrtvé, i když se v něm normálně hraje. To by mu
+   sebralo průkazku, a přesně tomu se celou dobu vyhýbáme.
+
+   Tak se jich radši zeptáme. Každé nově otevřené okno hned při načtení
+   vyhodí VÝZVU, živá okna na ni odpovědí orazítkováním své průkazky —
+   a to je obsluha události, kterou prohlížeč na pozadí nebrzdí. Kdo se
+   do chvilky neozve, ten opravdu není. */
+let navratVyzvaKdy = 0;
+try{
+  navratVyzvaKdy = Date.now();
+  localStorage.setItem(NAVRAT.vyzva, String(navratVyzvaKdy));
+}catch(e){}
+
+addEventListener("storage", ev => {
+  try{
+    if(!ev || ev.key !== NAVRAT.vyzva || !navratCoRazitkovat) return;
+    navratRazitko(navratCoRazitkovat.kod, navratCoRazitkovat.id);   // „jsem tady"
+  }catch(e){}
+});
 
 /* Bylo tohle okno čerstvě otevřené? Zjišťuje se HNED při načtení, ne až
    při připojování – to už si mezitím lobby stihne průkazku vyrobit. */
@@ -11547,11 +11575,13 @@ function navratUloz(kod, m){
   try{ localStorage.setItem(NAVRAT.klic(kod), JSON.stringify(m)); }catch(e){}
 }
 
-/* Vrátí průkazku po záložce, která už neodpovídá – nebo nic. */
+/* Vrátí průkazku po okně, které se na výzvu neozvalo – nebo nic. */
 function navratVolnaPrukazka(kod){
-  const m = navratNacti(kod), ted = Date.now();
+  const m = navratNacti(kod);
+  if(!navratVyzvaKdy) return null;
+  if(Date.now() - navratVyzvaKdy < NAVRAT.odpovedDo) return null;  // ještě mají čas
   for(const id in m){
-    if(ted - (m[id] || 0) >= NAVRAT.ticho) return id;
+    if((m[id] || 0) < navratVyzvaKdy) return id;   // na výzvu mlčelo = není tu
   }
   return null;
 }
@@ -11567,50 +11597,94 @@ function navratRazitko(kod, id){
 /* ---- samotné převzetí ----
    Sahá se do toho jen jednou za načtení stránky a jen když UŽ VÍME KÓD
    hry. Hostitel kód v tu chvíli ještě nemá, takže se ho to netýká. */
+function navratKod(){
+  const k = (typeof G !== "undefined") ? G.kod : null;
+  return (k && k !== "---" && k !== "???") ? k : null;
+}
+
 const stabilniIdPredNavratem = stabilniId;
 stabilniId = function(){
+  let id = null;
   try{
-    const kod = (typeof G !== "undefined" && G.kod && G.kod !== "---" && G.kod !== "???") ? G.kod : null;
+    const kod = navratKod();
     if(cerstveOkno && kod){
       cerstveOkno = false;                       // zkoušíme to jen jednou
       const stara = navratVolnaPrukazka(kod);
       if(stara){
         sessionStorage.setItem("nunisci-id", stara);
-        /* Hned si ji orazítkujeme, ať ji nesebere ještě někdo další. */
-        navratRazitko(kod, stara);
-        return stara;
+        id = stara;
       }
     }
   }catch(e){}
-  return stabilniIdPredNavratem();
+  if(!id) id = stabilniIdPredNavratem();
+
+  /* Průkazku odkládáme HNED TEĎ, ne až časovačem.
+     Tudy totiž vede přihláška do hry (část 57 tady id dosazuje do zprávy
+     „join"), takže je jisté, že se to stane. Spoléhat jen na časovač se
+     neosvědčilo: v ostrém testu se průkazka neuložila vůbec a vracející se
+     hráč pak neměl co převzít, protože časovač se v té cestě nerozběhl. */
+  try{
+    const kod = navratKod();
+    if(kod && id){
+      navratRazitko(kod, id);
+      navratCoRazitkovat = {kod, id};
+      spustRazitko();
+    }
+  }catch(e){}
+  return id;
 };
 
+/* ============================================================
+   DÍRA, KTEROU TOHLE VŠECHNO STÁLO A NIKDO SI JÍ NEVŠIML
+
+   Část 57 dala hráči stálou průkazku a hlídá si, aby se dostala do
+   přihlášky do hry. Hlídá ale jen dvoje dveře – `NET.posli` a `P2P.posli`.
+   Kamarád přitom přihlášku posílá TŘETÍMI: `P2P.posliHostovi` (p8).
+
+   Takže se stálá průkazka na připojujícího se hráče nikdy nepoužila.
+   `P2P.pripojKodem` mu na začátku vylosuje nové číslo a to se pak i
+   odešle. Hostitel proto vracejícího se hráče nepoznal NIKDY – ani po
+   obyčejném F5, na které byla celá část 57 dělaná.
+
+   Ověřeno měřením: klient, který normálně hraje, hlásí
+   „prukazka v localStorage: NIC", protože se odkládá právě při vydání
+   průkazky – a to se nikdy nestalo.
+   ============================================================ */
+if(typeof P2P !== "undefined" && P2P.posliHostovi){
+  const posliHostoviPredNavratem = P2P.posliHostovi.bind(P2P);
+  P2P.posliHostovi = function(m){
+    try{
+      if(m && m.typ === "join" && m.hrac){
+        mojeId = stabilniId();
+        m.hrac.id = mojeId;
+      }
+    }catch(e){}
+    return posliHostoviPredNavratem(m);
+  };
+}
+
 /* ---- razítkování ----
-   Časovač se zakládá až s multiplayerem, ze stejného důvodu jako tep
-   v části 59: opakované časovače ujídají virtuální čas testům. */
+   Časovač se zakládá až v okamžiku, kdy je průkazka vydaná – dřív nemá co
+   razítkovat, a hlavně: opakované časovače ujídají virtuální čas testům
+   (viz část 59). Razítkuje se to, co si zapamatujeme při vydání průkazky,
+   ne to, co je zrovna v `G` – na stavu hry to tím pádem vůbec nezávisí.
+
+   Proč vůbec razítkovat, když se průkazka uloží hned při přihlášení:
+   jeden jediný zápis do `localStorage` si prohlížeč nechá chvíli v paměti
+   a na disk ho uloží, až se mu to hodí. Když ho v tu chvíli někdo zabije,
+   zápis je pryč. Opakování ho na disk dostane – a navíc je to přesně to,
+   podle čeho se pozná, jestli záložka ještě žije. */
+let navratCoRazitkovat = null;
 let razitkoBezi = false;
 function spustRazitko(){
   if(razitkoBezi) return;
   razitkoBezi = true;
   setInterval(() => {
     try{
-      if(typeof G === "undefined" || G.rezim !== "multi") return;
-      if(!G.kod || G.kod === "---" || G.kod === "???") return;
-      if(typeof mojeId === "undefined" || !mojeId) return;
-      navratRazitko(G.kod, mojeId);
+      if(!navratCoRazitkovat) return;
+      navratRazitko(navratCoRazitkovat.kod, navratCoRazitkovat.id);
     }catch(e){}
   }, NAVRAT.razitkoPo);
-}
-
-const otevriLobbyPredRazitkem = otevriLobby;
-otevriLobby = function(rezim){
-  const v = otevriLobbyPredRazitkem.apply(this, arguments);
-  if(rezim === "multi") spustRazitko();
-  return v;
-};
-if(typeof P2P !== "undefined" && P2P.pripojKodem){
-  const pripojPredRazitkem = P2P.pripojKodem.bind(P2P);
-  P2P.pripojKodem = function(kod){ spustRazitko(); return pripojPredRazitkem(kod); };
 }
 
 /* ---- a ať se vrátivší hráč nezasekne na „čekám na start" ----
@@ -11679,7 +11753,7 @@ if(typeof P2P !== "undefined" && P2P.odpojen){
   };
 }
 
-VERZE = "v41";
+VERZE = "v42";
 if(typeof napisVerzi === "function") napisVerzi();
 
 </script>
