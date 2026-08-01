@@ -11494,6 +11494,194 @@ if(typeof konecProDivaka === "function"){
   };
 }
 
+
+/* ============================================================
+   61) NÁVRAT DO HRY, I KDYŽ SPADNE CELÝ PROHLÍŽEČ
+
+   Část 57 zařídila, že hráč přežije obnovení stránky: jeho průkazka
+   (`mojeId`) je v `sessionStorage`, což je paměť JEDNÉ ZÁLOŽKY, která
+   F5 přežije. To funguje.
+
+   Jenže záložka umí zmizet i jinak než klávesou F5 – prohlížeč spadne,
+   dítě omylem zavře okno, tablet vyhodí kartu z paměti. Pak je
+   `sessionStorage` prázdný, hráč se hostiteli představí jako někdo úplně
+   jiný a do rozjeté hry se nedostane. Změřeno (testy/mp-navrat.py, tři
+   hráči, okno zabito ve 25. vteřině):
+
+       hostitel do 3 s pozná výpadek a převezme civilizaci   ✓
+       vrátivší se hráč se dostane zpátky                    ✗ dvakrát ze dvou
+       (poprvé „spojení se nepodařilo navázat", podruhé
+        „nedostal start" – a v obou případech zůstal
+        u hostitele v seznamu jako počítač)
+
+   Průkazku si proto navíc odkládáme do `localStorage`, který přežije
+   všechno. POZOR ale na to, proč tam nebyla rovnou: `localStorage` se
+   sdílí mezi VŠEMI záložkami prohlížeče, takže dvě okna na jednom
+   počítači by se hostiteli tvářila jako jeden hráč – a přesně takhle si
+   to děti pouštějí vedle sebe a takhle se to i testuje.
+
+   Řešení: uložená průkazka se smí převzít, jen když je po ní TICHO.
+   Každá záložka svoji průkazku každé dvě vteřiny „orazítkuje" časem.
+   Nová záložka smí sáhnout jen po takové, která se osm vteřin neozvala –
+   tedy po mrtvé. Když vedle běží živé okno, jeho průkazku nedostane
+   a vylosuje si vlastní, přesně jako dosud.
+   ============================================================ */
+
+const NAVRAT = {
+  ticho: 8000,       // po jak dlouhém tichu bereme záložku za mrtvou
+  razitkoPo: 2000,
+  zapomenPo: 600000, // po deseti minutách se stará průkazka zahodí
+  klic: kod => "nunisci-navrat-" + kod
+};
+
+/* Bylo tohle okno čerstvě otevřené? Zjišťuje se HNED při načtení, ne až
+   při připojování – to už si mezitím lobby stihne průkazku vyrobit. */
+let cerstveOkno = false;
+try{ cerstveOkno = !sessionStorage.getItem("nunisci-id"); }catch(e){}
+
+function navratNacti(kod){
+  try{ return JSON.parse(localStorage.getItem(NAVRAT.klic(kod)) || "{}") || {}; }
+  catch(e){ return {}; }
+}
+function navratUloz(kod, m){
+  try{ localStorage.setItem(NAVRAT.klic(kod), JSON.stringify(m)); }catch(e){}
+}
+
+/* Vrátí průkazku po záložce, která už neodpovídá – nebo nic. */
+function navratVolnaPrukazka(kod){
+  const m = navratNacti(kod), ted = Date.now();
+  for(const id in m){
+    if(ted - (m[id] || 0) >= NAVRAT.ticho) return id;
+  }
+  return null;
+}
+
+function navratRazitko(kod, id){
+  if(!kod || !id) return;
+  const m = navratNacti(kod), ted = Date.now();
+  m[id] = ted;
+  for(const j in m) if(ted - (m[j] || 0) > NAVRAT.zapomenPo) delete m[j];
+  navratUloz(kod, m);
+}
+
+/* ---- samotné převzetí ----
+   Sahá se do toho jen jednou za načtení stránky a jen když UŽ VÍME KÓD
+   hry. Hostitel kód v tu chvíli ještě nemá, takže se ho to netýká. */
+const stabilniIdPredNavratem = stabilniId;
+stabilniId = function(){
+  try{
+    const kod = (typeof G !== "undefined" && G.kod && G.kod !== "---" && G.kod !== "???") ? G.kod : null;
+    if(cerstveOkno && kod){
+      cerstveOkno = false;                       // zkoušíme to jen jednou
+      const stara = navratVolnaPrukazka(kod);
+      if(stara){
+        sessionStorage.setItem("nunisci-id", stara);
+        /* Hned si ji orazítkujeme, ať ji nesebere ještě někdo další. */
+        navratRazitko(kod, stara);
+        return stara;
+      }
+    }
+  }catch(e){}
+  return stabilniIdPredNavratem();
+};
+
+/* ---- razítkování ----
+   Časovač se zakládá až s multiplayerem, ze stejného důvodu jako tep
+   v části 59: opakované časovače ujídají virtuální čas testům. */
+let razitkoBezi = false;
+function spustRazitko(){
+  if(razitkoBezi) return;
+  razitkoBezi = true;
+  setInterval(() => {
+    try{
+      if(typeof G === "undefined" || G.rezim !== "multi") return;
+      if(!G.kod || G.kod === "---" || G.kod === "???") return;
+      if(typeof mojeId === "undefined" || !mojeId) return;
+      navratRazitko(G.kod, mojeId);
+    }catch(e){}
+  }, NAVRAT.razitkoPo);
+}
+
+const otevriLobbyPredRazitkem = otevriLobby;
+otevriLobby = function(rezim){
+  const v = otevriLobbyPredRazitkem.apply(this, arguments);
+  if(rezim === "multi") spustRazitko();
+  return v;
+};
+if(typeof P2P !== "undefined" && P2P.pripojKodem){
+  const pripojPredRazitkem = P2P.pripojKodem.bind(P2P);
+  P2P.pripojKodem = function(kod){ spustRazitko(); return pripojPredRazitkem(kod); };
+}
+
+/* ---- a ať se vrátivší hráč nezasekne na „čekám na start" ----
+   Kdo se připojí do UŽ BĚŽÍCÍ hry pod známou průkazkou, tomu hostitel
+   vrátí civilizaci (část 39) – jenže kamarád pořád čeká na zprávu
+   „start", která proběhla dávno před tím, než spadl. Tak mu ji hostitel
+   pošle znovu.
+
+   POZOR na to, KUDY se posílá. `NET.posli` u hostitele znamená VŠEM –
+   tou by se restartovala hra i těm, kdo si v klidu hrají dál. Musí to
+   jít jedním konkrétním spojením, a proto se to věší na `P2P.zprava`,
+   která jediná ví, od koho zpráva přišla. */
+if(typeof P2P !== "undefined" && P2P.zprava){
+  const zpravaPredStartemZnovu = P2P.zprava.bind(P2P);
+  P2P.zprava = function(spoj, data){
+    const v = zpravaPredStartemZnovu(spoj, data);   // nejdřív ať se vezme bot zpátky
+    try{
+      if(typeof data === "string" && P2P.jeHost && G.bezi && spoj && !spoj.startZnovu){
+        const m = JSON.parse(data);
+        const id = m && m.typ === "join" && m.hrac && m.hrac.id;
+        if(id && lobbyHraci.some(h => h.id === id)
+           && spoj.kanal && spoj.kanal.readyState === "open"){
+          spoj.startZnovu = true;                   // ať se to nepošle dvakrát
+          spoj.kanal.send(JSON.stringify({typ:"start", hraci:lobbyHraci,
+            mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost,
+            limit:G.limit, v:VERZE}));
+        }
+      }
+    }catch(e){}
+    return v;
+  };
+}
+
+/* ---- a hlavně: nenechat počítač převzít hráče, který UŽ JE ZPÁTKY ----
+
+   Tohle byl ten pravý důvod, proč se návrat nepovedl, i když se kamarád
+   normálně připojil. Časy z testu (testy/mp-navrat.py):
+
+       25 s  kamarádovi spadne prohlížeč
+       30 s  otevře hru znovu a je připojený     ← je zpátky!
+       36 s  hostiteli teprve dojde, že staré spojení umřelo
+       45 s  „za kamaráda teď hraje počítač"     ← převzal ho, i když je tu
+
+   Hostitel dává po výpadku osm vteřin na návrat a pak pošle počítač.
+   Jenže se přitom dívá jen na to STARÉ spojení („pořád je odpojené?"),
+   a to samozřejmě odpojené zůstane napořád. Že mezitím týž hráč sedí na
+   NOVÉM spojení, nikoho nezajímalo.
+
+   Část 39 sice ruší čekání na počítač, když se hráč vrátí – ale jen ty
+   časovače, které v tu chvíli UŽ BĚŽÍ. Tady se celý ten závod odehraje
+   naopak: nejdřív se vrátí, a časovač se založí až potom.
+
+   Tak se ptáme na to podstatné: má ten hráč jinde živé spojení? */
+if(typeof P2P !== "undefined" && P2P.odpojen){
+  const odpojenPredNavratem = P2P.odpojen.bind(P2P);
+  P2P.odpojen = function(spoj){
+    try{
+      if(P2P.jeHost && spoj && spoj.hracId && P2P.spoje
+         && P2P.spoje.some(s => s !== spoj && s.hracId === spoj.hracId
+                                && s.stav === "spojeno")){
+        if(spoj.botTimer){ clearTimeout(spoj.botTimer); spoj.botTimer = null; }
+        return;                       // je zpátky, jen jinými dveřmi
+      }
+    }catch(e){}
+    return odpojenPredNavratem(spoj);
+  };
+}
+
+VERZE = "v41";
+if(typeof napisVerzi === "function") napisVerzi();
+
 </script>
 </body>
 </html>
