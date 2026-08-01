@@ -4554,9 +4554,10 @@ SYNC.zabalSnimek = function(){
   /* příznaky: 1 = kouká doleva, 2 = zrovna těží/staví, 4 = bojuje
      (aby si kamarád mohl dokreslit mávání sekerou a jiskry) */
   /* bity jednotky: 1 = kouká doleva, 2 = těží/staví, 4 = bojuje,
-     8 = sedí na palubě převozní lodi (kamarád ji pak nekreslí) */
+     8 = sedí na palubě převozní lodi (kamarád ji pak nekreslí),
+     16 = průzkumník právě zkoumá (ať mu kamarád vidí správně tlačítko) */
   for(const u of G.jednotky) if(!u.mrtvy) pridej(u, 0, u.hp,
-    (u.smer<0?1:0) | (u.kotva?2:0) | (u.stav==="utok"?4:0) | (u.naPalube?8:0));
+    (u.smer<0?1:0) | (u.kotva?2:0) | (u.stav==="utok"?4:0) | (u.naPalube?8:0) | (u.zkouma?16:0));
   /* bity budovy: 0 = hotová, 1..7 = postup stavby (0-100), 8 = otevřená brána */
   for(const b of G.budovy)   if(!b.mrtvy) pridej(b, 1, b.hp,
     (b.hotova?1:0) | (klam(Math.round(b.postup*100),0,100)<<1) | (b.otevrena?256:0));
@@ -4658,6 +4659,11 @@ SYNC.prijmiBin = function(u8){
       e.smer = (prapor&1)? -1 : 1;
       // kdo sedí na palubě, se u kamaráda nekreslí (polohuj() to zařídí)
       e.naPalube = !!(prapor&8);
+      /* POZOR: bit 2 se posílal odjakživa (viz zabalSnimek), ale nikdo ho
+         tady nečetl – u kamaráda tak vesničan při těžbě/stavbě jen stál,
+         beze švihu sekerou i jisker. `u.tezi` čte SYNC.dokresli() (p15). */
+      e.tezi = !!(prapor&2);
+      e.zkouma = !!(prapor&16);
     }
     if(druh===1){
       const bylo = e.hotova;
@@ -11755,6 +11761,47 @@ if(typeof P2P !== "undefined" && P2P.odpojen){
 
 VERZE = "v42";
 if(typeof napisVerzi === "function") napisVerzi();
+
+
+/* ============================================================
+   66) v43 — MULTIPLAYER: STATISTIKY SE ZAČNOU SYNCHRONIZOVAT
+
+   H.zabil/H.zboril/H.ztracenoJednotek/H.ztracenoBudov se počítaly jen
+   TAM, kde běží simulace – tedy jen na hostiteli (a boti jsou taky jen
+   na hostiteli). Klientova vlastní kopie G.hraci se to nikdy nedozvěděla,
+   protože binární snímek nese jen pozice/hp/vlajky, ne tahle čísla.
+   Skóre a suroviny fungovaly správně, protože se počítají ZE SYNCOVANÝCH
+   dat (počty budov/jednotek, H.res) – tohle je totéž, jen malým JSON
+   balíčkem přes stávající spolehlivý kanál (stejně jako `cmd`).
+   ============================================================ */
+VERZE = "v43";
+if(typeof napisVerzi === "function") napisVerzi();
+
+let statyCas = 0;
+const updAIPredStaty = updAI;
+updAI = function(dt){
+  const r = updAIPredStaty(dt);
+  if(!(SYNC.jsemHost && SYNC.jsemHost())) return r;
+  statyCas += dt;
+  if(statyCas < 2) return r;
+  statyCas = 0;
+  NET.posli({typ:"staty", d: G.hraci.map(h => [
+    h.zabil||0, h.zboril||0, h.ztracenoJednotek||0, h.ztracenoBudov||0
+  ])});
+  return r;
+};
+
+const prijmiPredStaty = NET.prijmi.bind(NET);
+NET.prijmi = function(m){
+  if(m && m.typ === "staty" && SYNC.jsemKlient && SYNC.jsemKlient()){
+    (m.d || []).forEach((z, i) => {
+      const H = G.hraci[i]; if(!H) return;
+      H.zabil = z[0]; H.zboril = z[1]; H.ztracenoJednotek = z[2]; H.ztracenoBudov = z[3];
+    });
+    return;
+  }
+  return prijmiPredStaty(m);
+};
 
 </script>
 </body>
