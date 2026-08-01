@@ -5598,7 +5598,14 @@ obnovStavSite = function(){
 const posliSnimekPred = SYNC.posli.bind(SYNC);
 SYNC.posli = function(dt){
   this.cas += dt;
-  if(this.cas < 0.1) return;
+  /* v43: s víc kamarády roste cena KAŽDÉHO odeslání (jde zvlášť každému
+     spojení), ne cena SESTAVENÍ balíčku (ta je jen jednou). Při 5 kamarádech
+     tak posílání 10x/s = 50 skutečných přenosů za vteřinu. Mírně to zpomalíme
+     podle počtu spojených, ať to zůstane plynulé pro všechny – pohyb kamaráda
+     se dál dokresluje plynule (viz dokresli), takže to nebude vidět. */
+  const spoju = (typeof P2P !== "undefined" && P2P.zivychSpoju) ? P2P.zivychSpoju() : 0;
+  const prah = spoju > 3 ? 0.16 : (spoju > 1 ? 0.13 : 0.1);
+  if(this.cas < prah) return;
   this.cas = 0;
   if(!P2P.zivychSpoju() && !NET.kanal) return;
   try{
@@ -7829,7 +7836,12 @@ updAI = function(dt){
     /* --- VÝPRAVA: mám dost vojska → vyrazím. Znám-li nepřítele, jdu na něj;
            když ne, vyrazím ho NAJÍT k nejbližší základně (objevím ho cestou). --- */
     const prah = Math.round(5 + O.sila*6);
-    if(!H.tahnou && armada.length >= prah){
+    /* POZOR: klidové období (p31) resetuje H.tahnou na false KAŽDÝ SNÍMEK,
+       dokud klid trvá – jinak to spouštělo tenhle spouštěč pořád dokola
+       (H.tahnou nikdy nezůstalo true dost dlouho, aby se zapsal cooldown
+       níž) a hláška "vyráží do útoku!" se sypala stokrát za minutu. */
+    if(!H.tahnou && armada.length >= prah && G.cas >= (H.dalsiVypravaCas||0)
+       && (typeof klidDoKdy !== "function" || G.cas >= klidDoKdy())){
       const znamy = nejblizObjevenaZakl(si, H);
       const cil = znamy || nejblizZakl(si, H, false);
       if(cil){
@@ -7849,8 +7861,18 @@ updAI = function(dt){
         }
       }
     }
-    // výprava skončila, když vojáci padli nebo se rozprchli → smí se sbírat nová
-    if(H.tahnou && armada.filter(u=>u.vytazeni).length === 0){ H.tahnou = false; H.pochodCil = null; }
+    /* výprava skončila, když vojáci padli nebo se rozprchli → smí se sbírat nová.
+       POZOR na past, co dělala z bota „cvoka": trénink neběží podle H.tahnou,
+       takže zatímco jedna parta bojovala, čekala u shromaždiště už DALŠÍ
+       (vytazeni=false, do armada.length se ale počítá). Jakmile poslední
+       bojovník z první party padl, `armada.length` byl hned zase nad prahem
+       a nová výprava vystřelila OKAMŽITĚ – vypadalo to jako nekonečné dokola
+       se opakující „vyráží do útoku!" a bot posílal jen drobné dávky místo
+       jedné pořádné síly. Teď musí mezi výpravami uplynout aspoň kus času. */
+    if(H.tahnou && armada.filter(u=>u.vytazeni).length === 0){
+      H.tahnou = false; H.pochodCil = null;
+      H.dalsiVypravaCas = G.cas + O.mezera * nah(0.8, 1.3);
+    }
 
     /* --- CHOVÁNÍ JEDNOTLIVÝCH JEDNOTEK --- */
     for(const j of G.jednotky){
@@ -11831,6 +11853,46 @@ pryDoMapy = function(){
   pryDoMapyPredZamkem();
   vyber([]);
   if(typeof obnovPanel === "function") obnovPanel();
+};
+
+/* ------------------------------------------------------------
+   68) STEJNÁ HLÁŠKA SE UŽ NEHROMADÍ NA HROMADU
+   Pojistka navíc k opravě výprav výše – kdyby se něco jiného rozhodlo
+   poslat tutéž hlášku vícekrát rychle po sobě, ať se to jen tiše přeskočí
+   místo aby se zprávy kupily přes celou obrazovku.
+   ------------------------------------------------------------ */
+let posledniZprava = "", posledniZpravaCas = -99;
+const zpravaPredOpakovanim = zprava;
+zprava = function(txt, typ){
+  if(txt === posledniZprava && G.cas - posledniZpravaCas < 2.5) return;
+  posledniZprava = txt; posledniZpravaCas = G.cas;
+  return zpravaPredOpakovanim(txt, typ);
+};
+
+/* ------------------------------------------------------------
+   69) PO PROHŘE OPRAVDU – TENTOKRÁT NAOSTRO – NEJDE NIC DĚLAT
+
+   Minulá oprava hlídala jen rozkaz/postav/cvic/klikVyber/ramecekVyber, ale
+   cest, jak zadat příkaz, je v téhle hře víc (Všichni vojáci/těžit,
+   Zkoumat, Bránit krále, a další, co třeba ještě přibudou). Honit každou
+   zvlášť je křehké – stačí jednu zapomenout a je to rozbité znovu, přesně
+   jak se stalo. Proto DVĚ centrální místa, kterými musí projít úplně
+   všechno:
+
+   A) `vyber()` – úplně cokoli, co by chtělo něco vybrat (i to tlačítko
+      „Všichni vojáci", které na výběru NEZÁVISÍ), po G.konec vybere
+      prázdno. Bez výběru se skoro celý panel akcí ani nevykreslí.
+   B) `NET.posli` – klient v multiplayeru VŽDY posílá příkaz hostiteli
+      přes tohle, ať už to je rozkaz, cvičení, zkoumání nebo cokoli
+      budoucího. Po G.konec se „cmd" zprávy prostě neodešlou.
+   ------------------------------------------------------------ */
+const vyberPredZamkemV2 = vyber;
+vyber = function(pole){ return vyberPredZamkemV2(G.konec ? [] : pole); };
+
+const posliPredZamkem = NET.posli;
+NET.posli = function(m){
+  if(m && m.typ === "cmd" && G.konec) return;
+  return posliPredZamkem(m);
 };
 
 </script>
