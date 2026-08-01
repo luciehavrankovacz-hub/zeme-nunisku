@@ -11129,6 +11129,84 @@ spustHru = function(){
   setTimeout(uravnejRozmazani, 900);
 };
 
+
+/* ============================================================
+   62) v38 — PŘEVOZNÍ LOĎ SI NEHRAJE NA VÁLEČNOU LOĎ
+
+   Bug: `utok:0, dostrel:0` (p3) sice znamená, že převozní loď nikomu nic
+   neubere, ale obecná auto-obrana v p4a („e.stav==='stoj' → hledej
+   nepřítele") se nedívá na útok, jen na to, jestli je kind vyjmenovaný jako
+   `nebojuje`. Loď tedy pokaždé, když viděla nepřítele, přepnula na „utok" –
+   vypadalo to, že útočí, ale nikdy nic neubrala.
+
+   Řešení stejné jako u průzkumníka (p20): přidat `nebojuje:1`. Nastavuje se
+   tady místo v p3, aby se to nepotkávalo s tátovými úpravami té tabulky.
+
+   Druhá půlka bugu: když loď někdo OPRAVDU zasáhl, `ubliz` v p4a ji přes
+   ODVETU poslal do protiútoku (`stav="utok"`) – zase zbytečně, útok=0.
+   Teď místo toho udělá krok pryč od střelce (přesně jak chtěla Lucie).
+   ============================================================ */
+VERZE = "v38";
+if(typeof napisVerzi === "function") napisVerzi();
+
+if(typeof JED !== "undefined" && JED.prevoz) JED.prevoz.nebojuje = 1;
+
+/* Kdyby ji něco přesto navedlo na útok (třeba starý uložený stav), hned to
+   zrušíme – stejná pojistka jako u průzkumníka. */
+const updJednotkuPredKlidnouLodi = updJednotku;
+updJednotku = function(e, dt){
+  if(e.kind === "prevoz" && e.stav === "utok"){ e.stav = "stoj"; e.cilE = null; }
+  return updJednotkuPredKlidnouLodi(e, dt);
+};
+
+/* Když ji někdo opravdu zasáhne, ať uhne o kousek stranou místo aby stála
+   a nechala se dál mlátit (nebo se – dřív – marně snažila „útočit"). */
+const ublizPredKlidnouLodi = ubliz;
+ubliz = function(cil, dmg, utocnik){
+  const r = ublizPredKlidnouLodi(cil, dmg, utocnik);
+  if(cil && cil.kind === "prevoz" && !cil.mrtvy && utocnik){
+    const dx = cil.x - utocnik.x, dy = cil.y - utocnik.y;
+    const d = Math.hypot(dx, dy) || 1;
+    cil.stav = "jdi"; cil.cilE = null;
+      cil.cil = { x: cil.x + (dx/d)*110, y: cil.y + (dy/d)*110 };
+  }
+  return r;
+};
+
+/* ------------------------------------------------------------
+   63) VELKÉ BITVY: STROP NA POČET ČÁSTIC
+
+   Profiler (testprof.js, ?jed=200) ukázal, že s velkou armádou (400+
+   panáčků) žere skoro všechen čas `updJednotku` – a v něm je schované
+   i `castice()`/`zabij()`, které se volají při KAŽDÉM zásahu a úmrtí.
+   `castice()` neměla žádný strop: velká bitva = desítky úmrtí za vteřinu
+   × 8–16 nových <div>ů s CSS animací pokaždé = stovky nových DOM uzlů
+   najednou. To se v profileru neukáže jako svoje vlastní položka (utopí
+   se v `updJednotku`), ale je to přesně ten typ nárazové zátěže, co je
+   cítit jako „seká to, když je jednotek víc" – hlavně ve velkých bitvách.
+
+   Řešení: strop na počet živých částic. Nad stropem se nová exploze jen
+   zmenší (ať bitva pořád vypadá živě), ne úplně zmizí.
+   ------------------------------------------------------------ */
+let casticZivych = 0;
+const CASTIC_STROP = 260;
+castice = function(x, y, barva, n){
+  n = n || 6;
+  if(casticZivych >= CASTIC_STROP) return;             // plno – tahle exploze počká
+  if(casticZivych > CASTIC_STROP * 0.7) n = Math.ceil(n / 2);
+  n = Math.min(n, CASTIC_STROP - casticZivych);         // ani teď strop nepřekročíme
+  casticZivych += n;
+  for(let i = 0; i < n; i++){
+    const d = document.createElement("div");
+    d.className = "cast"; d.style.background = barva;
+    d.style.left = x + "px"; d.style.top = y + "px";
+    d.style.setProperty("--dx", nah(-30, 30) + "px");
+    d.style.setProperty("--dy", nah(-34, -4) + "px");
+    SVET.appendChild(d);
+    setTimeout(() => { d.remove(); casticZivych--; }, 650);
+  }
+};
+
 </script>
 </body>
 </html>
