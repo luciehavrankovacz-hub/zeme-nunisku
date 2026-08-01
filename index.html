@@ -11245,7 +11245,9 @@ updJednotku = function(e, dt){
       const kral = najdiKraleStrazce(e.side);
       if(kral){
         if(e.stav === "stoj"){
-          if(dist2(e.x, e.y, kral.x, kral.y) > LEASH * LEASH){
+          /* POZOR: dist2() v téhle hře vrací SKUTEČNOU vzdálenost (Math.hypot),
+             ne druhou mocninu – přes jméno se nesmí porovnávat s LEASH*LEASH. */
+          if(dist2(e.x, e.y, kral.x, kral.y) > LEASH){
             e.stav = "jdi"; e.cil = { x: kral.x + nah(-50, 50), y: kral.y + nah(-50, 50) };
           }else{
             const c = nejbliz(G.jednotky, kral.x, kral.y, o => jeNepritel(e.side, o.side) && !o.mrtvy, DOSAH_HLIDKY)
@@ -11253,7 +11255,7 @@ updJednotku = function(e, dt){
             if(c){ e.stav = "utok"; e.cilE = c; }
           }
         }else if(e.stav === "utok" && e.cilE && !e.cilE.mrtvy
-                 && dist2(e.x, e.y, kral.x, kral.y) > ZTRACENA_HONICKA * ZTRACENA_HONICKA){
+                 && dist2(e.x, e.y, kral.x, kral.y) > ZTRACENA_HONICKA){
           e.stav = "jdi"; e.cilE = null; e.cil = { x: kral.x, y: kral.y };
         }
       }
@@ -11279,6 +11281,50 @@ updAI = function(dt){
     pridejJednotku("hrdina", si, zakl.x + nah(-80, 80), zakl.y + nah(70, 150));
   });
   return r;
+};
+
+/* ---------- ruční tlačítko „Bránit krále" ----------
+   Automatika (výše) drží strážce u krále sama, ale dítě chce vidět
+   tlačítko a hned výsledek – navíc se hodí, když strážce něco odlákalo
+   daleko a nechce se čekat, až se sám vzdá honičky. */
+function branKrale(){
+  const moji = G.sel.filter(u => jeMuj(u.side) && u.kind === "hrdina" && !u.mrtvy);
+  if(!moji.length) return;
+  if(SYNC.jsemKlient()){
+    NET.posli({typ:"cmd", cmd:"branKrale", side:G.ja, ids:moji.map(u => u.id)});
+  }else{
+    posliKKrali(moji, G.ja);
+  }
+  zvuk("klik");
+}
+function posliKKrali(jednotky, side){
+  const kral = najdiKraleStrazce(side);
+  if(!kral) return;
+  jednotky.forEach(u => {
+    u.stav = "jdi"; u.cilE = null; u.hlidka = null; u.strazCd = 0;
+    u.cil = { x: kral.x + nah(-40, 40), y: kral.y + nah(-40, 40) };
+  });
+}
+const provedCiziPredStrazcem = SYNC.provedCizi.bind(SYNC);
+SYNC.provedCizi = function(m){
+  if(m.cmd === "branKrale"){
+    const jednotky = (m.ids || []).map(id => G.ents.find(o => o.id === id))
+      .filter(o => o && !o.mrtvy && o.side === m.side && o.kind === "hrdina");
+    posliKKrali(jednotky, m.side);
+    return;
+  }
+  return provedCiziPredStrazcem(m);
+};
+const obnovPanelPredStrazcem = obnovPanel;
+obnovPanel = function(){
+  obnovPanelPredStrazcem();
+  const A = document.getElementById("akce");
+  if(!A || G.konec) return;
+  const moji = G.sel.filter(u => jeMuj(u.side) && u.kind === "hrdina" && !u.mrtvy);
+  if(!moji.length) return;
+  A.appendChild(tlacitko("🛡️", "Bránit krále", "", true, branKrale,
+    "<b>Bránit krále</b><br>Strážce se rozeběhne rovnou ke králi a bude "
+    + "ho hlídat – to samo dělá i bez klikání, tímhle ho jen hned zavoláš zpátky."));
 };
 
 
