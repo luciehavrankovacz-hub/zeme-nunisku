@@ -11281,6 +11281,154 @@ updAI = function(dt){
   return r;
 };
 
+
+/* ============================================================
+   65) v40 — KONEC HRY: ODHALENÁ MAPA A STATISTIKY BITVY
+   ============================================================ */
+VERZE = "v40";
+if(typeof napisVerzi === "function") napisVerzi();
+
+/* ---------- nová čísla do statistik: co jsi ztratil ---------- */
+const zabijPredStatistikami = zabij;
+zabij = function(e, kdo){
+  const r = zabijPredStatistikami(e, kdo);
+  if(e.side >= 0 && G.hraci[e.side]){
+    const H = G.hraci[e.side];
+    if(e.druh === "jednotka") H.ztracenoJednotek = (H.ztracenoJednotek || 0) + 1;
+    else if(e.druh === "budova") H.ztracenoBudov = (H.ztracenoBudov || 0) + 1;
+  }
+  return r;
+};
+
+/* ---------- po konci hry: odhalit celou mapu, ať se dá jen dívat ---------- */
+function odhalCelouMapu(){
+  if(typeof MLHA === "undefined" || !MLHA.znam) return;
+  MLHA.zap = false;
+  MLHA.znam.fill(1);
+  if(MLHA.vidim) MLHA.vidim.fill(1);
+  MLHA.uplatni();
+  MLHA.vykresli();
+  MLHA.konec();                       // zastaví přepočet, ať to nikdo nezatáhne zpátky
+  if(typeof kresliMinimapu === "function") kresliMinimapu();
+}
+
+function pryDoMapy(){
+  document.getElementById("konec").classList.remove("zap");
+  odhalCelouMapu();
+  let b = document.getElementById("bZpetNaVysledky");
+  if(!b){
+    b = document.createElement("button");
+    b.id = "bZpetNaVysledky";
+    b.className = "papirBtn";
+    b.style.cssText = "position:fixed;top:8px;left:50%;transform:translateX(-50%);"
+      + "z-index:650;padding:7px 18px;font-size:13px";
+    document.body.appendChild(b);
+  }
+  b.textContent = "🏆 Výsledky";
+  b.style.display = "";
+  b.onclick = () => { document.getElementById("konec").classList.add("zap"); b.style.display = "none"; };
+}
+
+/* ---------- tabulka statistik ---------- */
+function ukazStatistiky(){
+  let ov = document.getElementById("statistiky");
+  if(!ov){
+    ov = document.createElement("div");
+    ov.id = "statistiky";
+    ov.style.cssText = "position:fixed;inset:0;z-index:700;display:flex;align-items:center;"
+      + "justify-content:center;background:rgba(20,14,6,.72);padding:16px";
+    document.body.appendChild(ov);
+  }
+  const vitTymy = G.vitezneTymy || new Set();
+  const radky = G.hraci.map((h, i) => ({
+    h, i,
+    skore: (typeof skoreHrace === "function") ? skoreHrace(i) : 0,
+    zabil: h.zabil || 0, ztrJed: h.ztracenoJednotek || 0,
+    zboril: h.zboril || 0, ztrBud: h.ztracenoBudov || 0,
+    nasb: Math.round(h.nasbirano || 0)
+  }));
+  const nej = pole => Math.max(0, ...radky.map(r => r[pole]));
+  const nejSkore = nej("skore"), nZabil = nej("zabil"), nZboril = nej("zboril"), nNasb = nej("nasb");
+  const hv = (v, n) => (v > 0 && v === n) ? " ⭐" : "";
+
+  const radek = r => {
+    const h = r.h, b = BARVY[h.barva];
+    const koruna = vitTymy.has(h.tym) ? " 👑" : "";
+    const medaile = (r.skore === nejSkore && nejSkore > 0) ? " 🏅" : "";
+    return `<tr style="border-bottom:1px solid rgba(120,90,40,.25)${h.porazen ? ";opacity:.55" : ""}">
+      <td style="padding:6px 8px;white-space:nowrap">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${b.h};margin-right:5px"></span>
+        <b>${bezpecnyText(h.jm)}</b>${koruna}<span style="opacity:.55;font-size:11px"> T${h.tym}</span></td>
+      <td style="padding:6px 8px"><b>${r.skore}</b>${medaile}</td>
+      <td style="padding:6px 8px">${r.zabil}${hv(r.zabil, nZabil)}</td>
+      <td style="padding:6px 8px">${r.ztrJed}</td>
+      <td style="padding:6px 8px">${r.zboril}${hv(r.zboril, nZboril)}</td>
+      <td style="padding:6px 8px">${r.ztrBud}</td>
+      <td style="padding:6px 8px">${r.nasb}${hv(r.nasb, nNasb)}</td>
+    </tr>`;
+  };
+
+  ov.innerHTML = `<div style="background:#f4e6c8;border-radius:14px;max-width:840px;width:100%;max-height:88vh;
+      overflow:auto;padding:20px 22px;box-shadow:0 10px 40px rgba(0,0,0,.5);
+      font-family:'Trebuchet MS',sans-serif;color:#3a2a12">
+    <h2 style="margin:0 0 4px;text-align:center">📊 Statistiky bitvy</h2>
+    <p style="text-align:center;opacity:.7;margin:0 0 14px;font-size:13px">
+      Trvalo to ${Math.floor(G.cas / 60)} min ${Math.floor(G.cas % 60)} s</p>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+      <thead><tr style="border-bottom:2px solid #a97;text-align:left">
+        <th style="padding:6px 8px">Hráč</th><th style="padding:6px 8px">🏆 Skóre</th>
+        <th style="padding:6px 8px">⚔️ Zabito</th><th style="padding:6px 8px">💔 Ztraceno</th>
+        <th style="padding:6px 8px">💥 Zbořeno</th><th style="padding:6px 8px">🏚️ Přišel o</th>
+        <th style="padding:6px 8px">📦 Natěženo</th>
+      </tr></thead>
+      <tbody>${radky.sort((a, b) => b.skore - a.skore).map(radek).join("")}</tbody>
+    </table>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button id="bStatZpet" class="papirBtn zeleny">ZPĚT</button>
+    </div>
+  </div>`;
+  ov.style.display = "flex";
+  document.getElementById("bStatZpet").onclick = () => { ov.style.display = "none"; };
+}
+
+/* ---------- dvě nová tlačítka pod VICTORY/LOST ---------- */
+function pripravKonecovyPanel(vitTymy){
+  G.vitezneTymy = vitTymy;
+  const box = document.querySelector("#konec > div");
+  if(!box || document.getElementById("bMapa")) return;
+  const bM = document.createElement("button");
+  bM.id = "bMapa"; bM.className = "papirBtn velky";
+  bM.textContent = "ZPĚT NA MAPU"; bM.onclick = pryDoMapy;
+  const bS = document.createElement("button");
+  bS.id = "bStatistiky"; bS.className = "papirBtn zeleny velky";
+  bS.textContent = "📊 STATISTIKY"; bS.onclick = ukazStatistiky;
+  box.appendChild(bM); box.appendChild(bS);
+}
+
+const vyhraPredStatistikami = vyhra;
+vyhra = function(){
+  const r = vyhraPredStatistikami();
+  pripravKonecovyPanel(new Set([MY().tym]));
+  return r;
+};
+const prohraPredStatistikami = prohra;
+prohra = function(){
+  const r = prohraPredStatistikami();
+  const zive = new Set(G.hraci.filter(h => !h.porazen).map(h => h.tym));
+  pripravKonecovyPanel(zive);
+  return r;
+};
+if(typeof konecProDivaka === "function"){
+  const konecProDivakaPredStatistikami = konecProDivaka;
+  konecProDivaka = function(tym){
+    const r = konecProDivakaPredStatistikami(tym);
+    pripravKonecovyPanel(new Set([tym]));
+    return r;
+  };
+}
+
 </script>
 </body>
 </html>
