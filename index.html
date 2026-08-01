@@ -7276,33 +7276,32 @@ zautoc = function(e, cil, dt){
   return zautocPredPruzkumem(e, cil, dt);
 };
 
-/* ---- kam se má jet podívat: nejbližší neprozkoumané místo, kam se dá dojít ---- */
+/* ---- kam se má jet podívat: nejbližší místo, kde ještě nebyl ----
+   POZOR (v43 oprava): dřív se ptalo sdílené mlhy MLHA.znam – ta ale patří
+   TOMU, KDO ZROVNA SIMULUJE (na hostiteli je to hostitelova vlastní mlha),
+   ne majiteli průzkumníka! V multiplayeru tak hostitel počítal kamarádova
+   skauta podle SVÉ mlhy – když měl hostitel už prozkoumáno všude, skaut
+   se hned „vzdal", i když ho kamarád sám ještě nikam neposlal. Teď si
+   každý skaut vede VLASTNÍ seznam navštívených políček (na jednotce),
+   nezávisle na tom, kdo ho zrovna počítá. */
 function nejblizsiNeznamo(e){
-  if(typeof MLHA === "undefined" || !MLHA.znam || !MLHA.zap) return null;
-  const sl = MLHA.sl, ra = MLHA.ra, krok = MLHA.krok;
-  const start = (Math.floor(e.y/krok))*sl + Math.floor(e.x/krok);
-  if(start < 0 || start >= sl*ra) return null;
-  const byl = new Uint8Array(sl*ra);
-  const fronta = new Int32Array(sl*ra);
-  let hlava = 0, konec = 0;
-  fronta[konec++] = start; byl[start] = 1;
-  while(hlava < konec){
-    const i = fronta[hlava++];
-    const cx = i % sl, cy = (i / sl) | 0;
-    const sx = cx*krok + krok/2, sy = cy*krok + krok/2;
-    if(!MLHA.znam[i] && (typeof TEREN === "undefined" || !TEREN.pripraven || TEREN.sucho(sx, sy)))
-      return {x:sx, y:sy};
-    for(const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-      const nx = cx+dx, ny = cy+dy;
-      if(nx < 0 || ny < 0 || nx >= sl || ny >= ra) continue;
-      const j = ny*sl + nx;
-      if(byl[j]) continue;
-      const wx = nx*krok + krok/2, wy = ny*krok + krok/2;
-      if(typeof TEREN !== "undefined" && TEREN.pripraven && !TEREN.sucho(wx, wy)) continue;
-      byl[j] = 1; fronta[konec++] = j;
+  const krok = 480;
+  if(!e.navstiveno) e.navstiveno = new Set();
+  const sl = Math.max(1, Math.ceil(SVET_W/krok)), ra = Math.max(1, Math.ceil(SVET_H/krok));
+  e.navstiveno.add(Math.floor(e.x/krok) + "," + Math.floor(e.y/krok));
+  let nej = null, nd = Infinity;
+  for(let gy = 0; gy < ra; gy++){
+    for(let gx = 0; gx < sl; gx++){
+      const key = gx + "," + gy;
+      if(e.navstiveno.has(key)) continue;
+      const sx = gx*krok + krok/2, sy = gy*krok + krok/2;
+      if(typeof TEREN !== "undefined" && TEREN.pripraven && !TEREN.sucho(sx, sy)) continue;
+      const d = dist2(e.x, e.y, sx, sy);
+      if(d < nd){ nd = d; nej = {x:sx, y:sy}; }
     }
   }
-  return null;
+  if(!nej) e.navstiveno.clear();   // prošel vše – klidně zase odznova, mapa se nemění
+  return nej;
 }
 
 /* ---- chování průzkumníka ---- */
@@ -11801,6 +11800,37 @@ NET.prijmi = function(m){
     return;
   }
   return prijmiPredStaty(m);
+};
+
+/* ------------------------------------------------------------
+   67) PO PROHŘE OPRAVDU NEJDE NIC DĚLAT
+
+   `G.konec` zastaví jen SIMULACI (viz tik()) – výběr jednotek i panel
+   akcí ale zůstaly klikatelné. Vypadalo to, že se dá pokračovat v hraní
+   (přesně tohle Lucie nahlásila po „Zpět na mapu"), i když ve skutečnosti
+   žádný rozkaz nikam nedošel. Teď to i VYPADÁ zamčené, ne jen JE.
+   ------------------------------------------------------------ */
+function zamcenoPoKonci(){
+  if(G.konec){ vyber([]); return true; }
+  return false;
+}
+const rozkazPredZamkem = rozkaz;
+rozkaz = function(x, y){ if(zamcenoPoKonci()) return; return rozkazPredZamkem(x, y); };
+const postavPredZamkem = postav;
+postav = function(x, y){ if(zamcenoPoKonci()) return; return postavPredZamkem(x, y); };
+const cvicPredZamkem = cvic;
+cvic = function(b, kind){ if(zamcenoPoKonci()) return; return cvicPredZamkem(b, kind); };
+const klikVyberPredZamkem = klikVyber;
+klikVyber = function(wx, wy){ if(zamcenoPoKonci()) return; return klikVyberPredZamkem(wx, wy); };
+const ramecekVyberPredZamkem = ramecekVyber;
+ramecekVyber = function(ax, ay, bx, by){ if(zamcenoPoKonci()) return; return ramecekVyberPredZamkem(ax, ay, bx, by); };
+
+/* i to, co po „Zpět na mapu" zůstane vybrané ze hry PŘED koncem, zmizí hned */
+const pryDoMapyPredZamkem = pryDoMapy;
+pryDoMapy = function(){
+  pryDoMapyPredZamkem();
+  vyber([]);
+  if(typeof obnovPanel === "function") obnovPanel();
 };
 
 </script>
