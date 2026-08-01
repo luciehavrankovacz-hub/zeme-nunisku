@@ -11407,15 +11407,21 @@ function pripravKonecovyPanel(vitTymy){
   box.appendChild(bM); box.appendChild(bS);
 }
 
+/* Lucie chtěla přesně slova VICTORY / LOST (jako zbytek velkých nápisů
+   v menu – MULTIPLAYER, START GAME – je i tohle schválně anglicky). */
 const vyhraPredStatistikami = vyhra;
 vyhra = function(){
   const r = vyhraPredStatistikami();
+  const n = document.getElementById("konecNadpis");
+  if(n) n.innerHTML = '<span class="duha">🏆 VICTORY!</span>';
   pripravKonecovyPanel(new Set([MY().tym]));
   return r;
 };
 const prohraPredStatistikami = prohra;
 prohra = function(){
   const r = prohraPredStatistikami();
+  const n = document.getElementById("konecNadpis");
+  if(n) n.innerHTML = '<span style="color:#ff8a7a">💀 LOST</span>';
   const zive = new Set(G.hraci.filter(h => !h.porazen).map(h => h.tym));
   pripravKonecovyPanel(zive);
   return r;
