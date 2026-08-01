@@ -4394,6 +4394,11 @@ const P2P = {
   async odpoved(slot, kod){
     const spoj = this.spoje.find(s=>s.slot===slot);
     if(!spoj) throw new Error("Tenhle slot neexistuje.");
+    /* Dvojklik na „PŘIPOJIT KAMARÁDA" (nebo druhé vložení stejné odpovědi):
+       spojení už poprvé proběhlo, signalingState je "stable", a druhé
+       setRemoteDescription na to spadne s "Called in wrong state: stable".
+       Když je to už spojené, nic se nekazí – jen to potichu přeskočíme. */
+    if(spoj.pc.signalingState === "stable") return true;
     const d = await rozbal(kod);
     if(d.t!=="o") throw new Error("Tohle není odpověď od kamaráda.");
     await spoj.pc.setRemoteDescription({type:"answer", sdp:d.s});
