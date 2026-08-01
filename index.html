@@ -6195,20 +6195,10 @@ function opevniZakladnu(){
   obnovPanel();
 }
 
-/* tlačítko k vesničanům */
-const obnovPanelPredOpevnenim = obnovPanel;
-obnovPanel = function(){
-  obnovPanelPredOpevnenim();
-  const A = document.getElementById("akce");
-  if(!A) return;
-  const mamVesnicana = G.sel.some(u => jeMuj(u.side) && u.kind === "vesnican" && !u.mrtvy);
-  if(!mamVesnicana || G.konec) return;
-  const c = cenaBudovy("hradba", G.ja);
-  A.appendChild(tlacitko("🏰", "Opevnit základnu", "", true, opevniZakladnu,
-    "<b>Opevnit základnu</b><br>Obežene všechny tvoje budovy hradbou, v rozích postaví věže "
-    + "a na každou stranu bránu.<br>Cena podle velikosti základny – postaví se, na co máš "
-    + "(jeden kus zdi " + cenaHtml(c) + ")."));
-};
+/* Tlačítko „Opevnit základnu" (v38: pryč – Lucie hlásila, že víc kazí,
+   než pomáhá). `opevniZakladnu()` a vše kolem (síťové příkazy v p22,
+   obléhací AI v p27/p28) v kódu zůstává, jen se k tomu hráč bez tlačítka
+   už nedostane – hradba se tak nikdy nezaloží. */
 
 /* ---------- NOVÉ VOLBY V LOBBY ---------- */
 function kresliVelikosti(){
@@ -7845,12 +7835,9 @@ updAI = function(dt){
           if(znamy){ u.stav="utok"; u.cilE=znamy; }
           else { u.stav="jdi"; u.cil={x:cil.x, y:cil.y}; }
         });
-        if(G.obt>=2 && Math.random()<0.4 && maJednotku(si,"hrdina")
-           && !G.jednotky.some(j=>j.side===si && j.kind==="hrdina" && !j.mrtvy)){
-          const her = pridejJednotku("hrdina", si, zakl.x+nah(-80,80), zakl.y+nah(70,150));
-          her.armadni = true; her.vytazeni = true;
-          if(znamy){ her.stav="utok"; her.cilE=znamy; } else { her.stav="jdi"; her.cil={x:cil.x,y:cil.y}; }
-        }
+        /* Strážce krále (v38: bývalý „hrdina") se do výpravy NEBERE – hlídá
+           doma. Sem se jen podíváme, jestli bot nějakého má; chybějícího
+           doplní vlastní kód v p38 (stejná četnost jako dřív ta výprava). */
         if(znamy && !jeNepritel(G.ja, cil.side)){
           zvuk("poplach");
           zprava("⚔️ "+bezpecnyText(H.jm)+" ("+CIVS[H.civ].jm+") vyráží do útoku!","zle");
@@ -7862,7 +7849,7 @@ updAI = function(dt){
 
     /* --- CHOVÁNÍ JEDNOTLIVÝCH JEDNOTEK --- */
     for(const j of G.jednotky){
-      if(j.side!==si || j.mrtvy || j.kind==="vesnican" || j.kind==="pruzkumnik") continue;
+      if(j.side!==si || j.mrtvy || j.kind==="vesnican" || j.kind==="pruzkumnik" || j.kind==="hrdina") continue;
       if(j.kind==="kral") continue;                          // král zůstává doma
       if(j.stav==="utok" && j.cilE && !j.cilE.mrtvy) continue;
 
@@ -11205,6 +11192,93 @@ castice = function(x, y, barva, n){
     SVET.appendChild(d);
     setTimeout(() => { d.remove(); casticZivych--; }, 650);
   }
+};
+
+
+/* ============================================================
+   64) v39 — STRÁŽCE KRÁLE MÍSTO HRDINY
+
+   Bývalý „hrdina" se předělává na strážce: silnější než slon, drží se
+   pořád u krále, do útoku jde jen na nepřítele blízko krále a hned po boji
+   se vrací zpátky. Smí jich být víc (dřív šel vycvičit jen jeden).
+
+   Interní `kind` zůstává "hrdina" – přejmenovat by znamenalo přepsat
+   síťovou tabulku KINDY (p8) i všechny "hrdina"===kind porovnání po celé
+   hře, což je zbytečné riziko pro pouhé přejmenování a přeladění chování.
+   Mění se jen zobrazovaný název a čísla.
+   ============================================================ */
+VERZE = "v39";
+if(typeof napisVerzi === "function") napisVerzi();
+
+if(typeof JED !== "undefined" && JED.hrdina){
+  const h = JED.hrdina;
+  h.jm = "Strážce krále";
+  h.ik = "🛡️";
+  h.hp = 760;                 // slon má 640 – strážce je silnější
+  h.utok = 66;                // slon má 58
+  h.popis = "Nejsilnější bojovník civilizace. Drží se u krále, brání ho "
+          + "před nepřáteli poblíž a po boji se hned vrací zpátky.";
+  delete h.limit;             // dřív šel jen jeden, teď jich může být víc
+}
+
+const LEASH = 150;             // jak daleko od krále smí normálně být
+const DOSAH_HLIDKY = 260;      // v jakém okruhu kolem krále hlídá
+const ZTRACENA_HONICKA = 460;  // honí nepřítele příliš daleko → vzdá to
+
+const KRAL_CACHE = {};
+function najdiKraleStrazce(side){
+  const c = KRAL_CACHE[side];
+  if(c && G.cas - c.cas < 1) return c.kral;
+  const kral = G.jednotky.find(k => k.side === side && k.kind === "kral" && !k.mrtvy);
+  KRAL_CACHE[side] = { kral, cas: G.cas };
+  return kral;
+}
+
+/* ---------- chování strážce (funguje stejně pro hráče i boty) ---------- */
+const updJednotkuPredStrazcem = updJednotku;
+updJednotku = function(e, dt){
+  if(e.kind === "hrdina" && !e.mrtvy){
+    e.strazCd = (e.strazCd || 0) - dt;
+    if(e.strazCd <= 0){
+      e.strazCd = 0.45 + Math.random() * 0.2;   // rozloží zátěž mezi jednotlivé strážce
+      e.hlidka = null;                          // ať se po boji nevrací jinam než ke králi
+      const kral = najdiKraleStrazce(e.side);
+      if(kral){
+        if(e.stav === "stoj"){
+          if(dist2(e.x, e.y, kral.x, kral.y) > LEASH * LEASH){
+            e.stav = "jdi"; e.cil = { x: kral.x + nah(-50, 50), y: kral.y + nah(-50, 50) };
+          }else{
+            const c = nejbliz(G.jednotky, kral.x, kral.y, o => jeNepritel(e.side, o.side) && !o.mrtvy, DOSAH_HLIDKY)
+                   || nejbliz(G.budovy,   kral.x, kral.y, o => jeNepritel(e.side, o.side) && !o.mrtvy, DOSAH_HLIDKY * 0.7);
+            if(c){ e.stav = "utok"; e.cilE = c; }
+          }
+        }else if(e.stav === "utok" && e.cilE && !e.cilE.mrtvy
+                 && dist2(e.x, e.y, kral.x, kral.y) > ZTRACENA_HONICKA * ZTRACENA_HONICKA){
+          e.stav = "jdi"; e.cilE = null; e.cil = { x: kral.x, y: kral.y };
+        }
+      }
+    }
+  }
+  return updJednotkuPredStrazcem(e, dt);
+};
+
+/* ---------- bot si strážce doplní, i když teď nevede výpravu ---------- */
+const updAIPredStrazcem = updAI;
+let strazceKontrolaCas = 0;
+updAI = function(dt){
+  const r = updAIPredStrazcem(dt);
+  if(SYNC.jsemKlient && SYNC.jsemKlient()) return r;
+  strazceKontrolaCas += dt;
+  if(strazceKontrolaCas < 2) return r;      // stačí jednou za ~2 s
+  strazceKontrolaCas = 0;
+  G.hraci.forEach((H, si) => {
+    if(!H || !H.bot || H.porazen || !maJednotku(si, "hrdina")) return;
+    const ma = G.jednotky.filter(j => j.side === si && j.kind === "hrdina" && !j.mrtvy).length;
+    if(ma >= 2) return;
+    const zakl = ZAKL[si]; if(!zakl) return;
+    pridejJednotku("hrdina", si, zakl.x + nah(-80, 80), zakl.y + nah(70, 150));
+  });
+  return r;
 };
 
 </script>
