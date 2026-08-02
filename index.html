@@ -2214,8 +2214,13 @@ function nejbliz(pole, x, y, filtr, maxD){
 function sklad(side, x, y){
   return nejbliz(G.budovy, x, y, b=>b.side===side && b.hotova && (b.kind==="radnice"||b.kind==="hrad"));
 }
+/* POZOR: dřív se sem počítaly i budovy – nehlídaný panáček tak sám od
+   sebe odešel bourat nepřátelskou budovu, i když poblíž nebyl žádný
+   nepřátelský vojaka/jednotka. Vypadalo to jako samovolné útočení a
+   odlákávalo to jednotky z hlídky. Teď reaguje jen na skutečnou
+   jednotku – budovu ať boří, jen když mu to sám řekneš. */
 function nepritelBlizko(e, dosah){
-  return nejbliz(G.ents, e.x, e.y, o=>(o.druh==="jednotka"||o.druh==="budova") && jeNepritel(e.side,o.side) && !o.mrtvy, dosah);
+  return nejbliz(G.ents, e.x, e.y, o=>o.druh==="jednotka" && jeNepritel(e.side,o.side) && !o.mrtvy, dosah);
 }
 /* ---- BRÁNY ----
    Brána se sama otevře, když je u ní tvůj panáček nebo panáček spojence.
@@ -3109,7 +3114,14 @@ function tlacitko(ik,jm,cena,lze,fn,tip){
   const b = document.createElement("button");
   b.className = "abtn"+(lze?"":" nelze");
   b.innerHTML = `<div class="ik">${ik}</div><b>${jm}</b>`+(cena?`<div class="cena">${cena}</div>`:"");
-  b.onclick = ()=>fn();
+  /* Vidiny „musím kliknout třikrát": tlačítko klik OKAMŽITĚ neukázalo,
+     takže dítě nevědělo, jestli to vzalo, a ťukalo dál. Teď se stiskne
+     hned, ještě než se stihne cokoli přepočítat (třeba že chybí zlato). */
+  b.onclick = ()=>{
+    b.style.transform = "scale(.86)";
+    setTimeout(()=>{ b.style.transform=""; }, 90);
+    fn();
+  };
   if(!JE_MOBIL){
     b.onmouseenter = ()=>{ const t=document.getElementById("tip"); t.innerHTML=tip; t.style.display="block"; };
     b.onmouseleave = ()=>{ document.getElementById("tip").style.display="none"; };
