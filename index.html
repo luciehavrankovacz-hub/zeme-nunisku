@@ -3104,12 +3104,18 @@ function cvic(b, kind){
 /* ============================================================
    18) PANEL A HUD
    ============================================================ */
+/* Volá se každý snímek (60×/s), ale hodnoty se mění málokdy – přepisovat
+   DOM pokaždé zbytečně zatěžuje prohlížeč. Zapisujeme jen když se číslo
+   opravdu změnilo. */
+const hudPosledni = {drevo:null, zelezo:null, zlato:null, pop:null};
 function obnovHud(){
   const H = MY();
-  document.getElementById("v_drevo").textContent = Math.floor(H.res.drevo);
-  document.getElementById("v_zelezo").textContent = Math.floor(H.res.zelezo);
-  document.getElementById("v_zlato").textContent = Math.floor(H.res.zlato);
-  document.getElementById("v_pop").textContent = H.pop+"/"+H.popMax;
+  const d = Math.floor(H.res.drevo), z = Math.floor(H.res.zelezo), zl = Math.floor(H.res.zlato);
+  const p = H.pop+"/"+H.popMax;
+  if(hudPosledni.drevo !== d){ hudPosledni.drevo = d; document.getElementById("v_drevo").textContent = d; }
+  if(hudPosledni.zelezo !== z){ hudPosledni.zelezo = z; document.getElementById("v_zelezo").textContent = z; }
+  if(hudPosledni.zlato !== zl){ hudPosledni.zlato = zl; document.getElementById("v_zlato").textContent = zl; }
+  if(hudPosledni.pop !== p){ hudPosledni.pop = p; document.getElementById("v_pop").textContent = p; }
 }
 function cenaHtml(c){ return Object.keys(c).map(k=>`<span>${IKmini(k)}${c[k]}</span>`).join(" "); }
 function tlacitko(ik,jm,cena,lze,fn,tip){
@@ -7806,10 +7812,11 @@ updAI = function(dt){
     G.hraci.forEach((h, i)=>{
       if(!jeNepritel(si, i) || h.porazen || H.nalezeno[i]) return;
       // 1) některá moje jednotka došla blízko k jeho základně
-      const moje = nejbliz(G.jednotky, ZAKL[i].x, ZAKL[i].y, o=>o.side===si && !o.mrtvy, 520);
+      // (G.ents místo G.jednotky – projede rychlou mřížku místo celého pole, důležité při velkých bitvách)
+      const moje = nejbliz(G.ents, ZAKL[i].x, ZAKL[i].y, o=>o.druh==="jednotka" && o.side===si && !o.mrtvy, 520);
       if(moje){ H.nalezeno[i] = true; return; }
       // 2) nebo mi jeho jednotka přišla k základně (útok/průzkum) → taky ho poznám
-      const jeho = nejbliz(G.jednotky, zakl.x, zakl.y, o=>o.side===i && !o.mrtvy && o.kind!=="pruzkumnik", 640);
+      const jeho = nejbliz(G.ents, zakl.x, zakl.y, o=>o.druh==="jednotka" && o.side===i && !o.mrtvy && o.kind!=="pruzkumnik", 640);
       if(jeho) H.nalezeno[i] = true;
     });
 
@@ -7914,14 +7921,14 @@ updAI = function(dt){
       }else if(j.armadni && j.vytazeni){
         // VYSLANÝ VOJÁK: bij, co je poblíž; jinak dobývej objevené; jinak pochoduj
         // za soupeřem, dokud ho nenajdeš; teprve když není co dobývat, jdi domů.
-        const c = nejbliz(G.jednotky, j.x, j.y, o=>jeNepritel(si,o.side) && !o.mrtvy && o.kind!=="pruzkumnik", 360)
+        const c = nejbliz(G.ents, j.x, j.y, o=>o.druh==="jednotka" && jeNepritel(si,o.side) && !o.mrtvy && o.kind!=="pruzkumnik", 360)
                || nejblizObjevenaZakl(si, H);
         if(c){ j.stav="utok"; j.cilE=c; }
         else if(H.pochodCil && !H.pochodCil.mrtvy){ j.stav="jdi"; j.cil={x:H.pochodCil.x, y:H.pochodCil.y}; }
         else { j.vytazeni=false; j.stav="jdi"; j.cil={...(j.rally||{x:zakl.x,y:zakl.y})}; }
       }else if(j.armadni){
         // ČEKAJÍCÍ VOJÁK: drží se u shromaždiště, ale brání se, když k němu někdo přijde
-        const c = nejbliz(G.jednotky, j.x, j.y, o=>jeNepritel(si,o.side) && !o.mrtvy && o.kind!=="pruzkumnik", 260);
+        const c = nejbliz(G.ents, j.x, j.y, o=>o.druh==="jednotka" && jeNepritel(si,o.side) && !o.mrtvy && o.kind!=="pruzkumnik", 260);
         if(c){ j.stav="utok"; j.cilE=c; }
         else if(j.stav==="stoj" && j.rally && dist2(j.x,j.y,j.rally.x,j.rally.y)>90){ j.stav="jdi"; j.cil={...j.rally}; }
       }
@@ -11302,8 +11309,8 @@ updJednotku = function(e, dt){
           if(dist2(e.x, e.y, kral.x, kral.y) > LEASH){
             e.stav = "jdi"; e.cil = { x: kral.x + nah(-50, 50), y: kral.y + nah(-50, 50) };
           }else{
-            const c = nejbliz(G.jednotky, kral.x, kral.y, o => jeNepritel(e.side, o.side) && !o.mrtvy, DOSAH_HLIDKY)
-                   || nejbliz(G.budovy,   kral.x, kral.y, o => jeNepritel(e.side, o.side) && !o.mrtvy, DOSAH_HLIDKY * 0.7);
+            const c = nejbliz(G.ents, kral.x, kral.y, o => o.druh==="jednotka" && jeNepritel(e.side, o.side) && !o.mrtvy, DOSAH_HLIDKY)
+                   || nejbliz(G.ents, kral.x, kral.y, o => o.druh==="budova" && jeNepritel(e.side, o.side) && !o.mrtvy, DOSAH_HLIDKY * 0.7);
             if(c){ e.stav = "utok"; e.cilE = c; }
           }
         }else if(e.stav === "utok" && e.cilE && !e.cilE.mrtvy
