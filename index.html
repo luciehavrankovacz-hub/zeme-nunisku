@@ -7393,7 +7393,11 @@ if(typeof TEREN !== "undefined"){
 
   TEREN.projde = function(e, i){
     const cx = i % this.sl, cy = (i / this.sl) | 0;
-    return this.smiTam(e, cx*this.krok + this.krok/2, cy*this.krok + this.krok/2);
+    const x = cx*this.krok + this.krok/2, y = cy*this.krok + this.krok/2;
+    if(!this.smiTam(e, x, y)) return false;
+    // budovy (hradby, brány cizích) – viz p41 „VESNIČAN NEUMÍ NAJÍT BRÁNU"
+    if(typeof budovaBlokujeCestu === "function" && budovaBlokujeCestu(x, y, e)) return false;
+    return true;
   };
 
   /* A* přes políčka terénu. Vrací pole bodů (světové souřadnice) nebo null. */
@@ -7474,7 +7478,7 @@ if(typeof TEREN !== "undefined"){
     let z = {x:x1, y:y1};
     for(let i = 0; i < body.length; i++){
       const dalsi = body[i+1];
-      if(!dalsi || !cestaPoZemi(z.x, z.y, dalsi.x, dalsi.y, e)){
+      if(!dalsi || !cestaVolnaBudov(z.x, z.y, dalsi.x, dalsi.y, e)){
         hladke.push(body[i]); z = body[i];
       }
     }
@@ -7490,8 +7494,10 @@ jdiK = function(e, tx, ty, dt, odstup){
   if(JED[e.kind] && JED[e.kind].lod)      // lodě mají svoje hledání cesty v p18
     return jdiKPredObchazenim(e, tx, ty, dt, odstup);
 
-  /* vidím na cíl přímo? Pak žádnou cestu nepotřebuju. */
-  if(cestaPoZemi(e.x, e.y, tx, ty, e)){
+  /* vidím na cíl přímo? Pak žádnou cestu nepotřebuju.
+     (cestaVolnaBudov = terén + budovy; viz p41 „VESNIČAN NEUMÍ NAJÍT BRÁNU" –
+     cestaPoZemi samotné zdi/budovy nezná, tak by šel narovinu do zdi.) */
+  if(cestaVolnaBudov(e.x, e.y, tx, ty, e)){
     e.cesta = null;
     return jdiKPredObchazenim(e, tx, ty, dt, odstup);
   }
@@ -7515,7 +7521,7 @@ jdiK = function(e, tx, ty, dt, odstup){
     /* přeskoč body, které už máme za sebou nebo na které vidíme */
     while(b && (dist2(e.x, e.y, b.x, b.y) < 26 ||
                (e.cesta[(e.cestaKrok||0)+1] &&
-                cestaPoZemi(e.x, e.y, e.cesta[(e.cestaKrok||0)+1].x, e.cesta[(e.cestaKrok||0)+1].y, e)))){
+                cestaVolnaBudov(e.x, e.y, e.cesta[(e.cestaKrok||0)+1].x, e.cesta[(e.cestaKrok||0)+1].y, e)))){
       e.cestaKrok = (e.cestaKrok || 0) + 1;
       b = e.cesta[e.cestaKrok];
     }
@@ -11913,6 +11919,133 @@ const posliPredZamkem = NET.posli;
 NET.posli = function(m){
   if(m && m.typ === "cmd" && (G.konec || G.divak)) return;
   return posliPredZamkem(m);
+};
+
+/* ============================================================
+   70) VESNIČAN NEUMÍ NAJÍT BRÁNU DO VESNICE ZA HRADBAMI
+       (a proto taky nešlo pořádně bořit budovy za zdí)
+
+   Lucie nahlásila dvě věci se stejnou příčinou:
+   1) Vesničan, co těží za vlastní hradbou, se nikdy nevrátí domů –
+      jen stojí u zdi.
+   2) Nejde bořit budovy.
+
+   Hledání cesty (45b v p20) zná JEN terén (moře/skálu) přes
+   TEREN.smiTam – o budovách vůbec neví. Rovné vidění (cestaPoZemi)
+   je na zdi taky slepé, takže jdiK() jde na cíl narovinu a hned za
+   rohem ho ODSTRKÁVÁNÍ (rozestup(), viz výš u BOJE) donekonečna
+   tlačí zpátky od zdi, na kterou zrovna netrefil branou.
+
+   A) Nová mřížka CESTM (stejný trik jako OPEVM u opevnění – budovy
+      se otisknou do mřížky stejnou elipsou, jakou je odstrkuje
+      rozestup()). VLASTNÍ/spojenecké brány se do ní vůbec neotisknou
+      – ty se panáčkovi stejně otevřou, jakmile k nim dojde (viz
+      updBrany výš). Cizí brány tak vycházejí jako plná zeď, což je
+      v pořádku – nepříteli se stejně nikdy neotevřou. Mřížka se
+      obnovuje nejdýl jednou za 1,5 s (víc není potřeba – na chůzi
+      panáčků to nikdo nepozná, a šetří to výkon).
+      POZOR: úmyslně NENAPOJENO na OPEVM – ta se osvěžuje jen ručně
+      při kliknutí na „Opevnit základnu" a mezitím rychle zastará.
+      p20 (TEREN.projde, hledání cesty i rovné vidění při chůzi)
+      teď volá cestaVolnaBudov()/budovaBlokujeCestu() místo holého
+      cestaPoZemi() – ale JEN tam. Zůstává netknuté novyZdroj() (p18),
+      která cestaPoZemi() používá na schování zdrojů ZA MOŘEM – kdyby
+      i tam začaly budovy blokovat, vesničan by přestal považovat
+      za dosažitelný úplně každý strom za vlastní hradbou (ten je
+      přece dostupný, jen ne narovinu) a nikdy by ho k těžbě nevybral.
+
+   B) Prorazit zeď: prorazZdi() (výš) čeká na e.zasekloSe, ale to se
+      nastavuje JEN kvůli moři/skále (jdiKPredMorem v p20) – ne kvůli
+      zdi, protože rozestup() vrátí jednotku zpátky AŽ PO jdiK(), takže
+      příští snímek jdiK() zase vidí "plný postup vpřed" a nikdy si
+      nevšimne, že se vlastně nikam nedostala. Vlastní, nezávislé
+      měření postupu (jednotkaUvizla, jednou za sekundu, přes reálnou
+      vzdálenost k cíli) tohle pozná bez ohledu na to, PROČ se nehne –
+      funguje i tady. Jednotka v efektivním dosahu útoku (opravdu
+      bojuje, jen třeba se soupeřem málo hýbe) se počítat nezačne,
+      jinak by to plané poplachy hlásilo furt.
+      Navíc: PŮVODNÍ cíl (budova za zdí) se teď pamatuje do
+      e.hlavniCil (stejný trik jako u „nejdřív vyřídit panáčky
+      v cestě" – case "utok" výš), takže po zboření zdi jednotka
+      pokračuje tam, kam jsi ji poslala. Dřív jen zůstala stát.
+   ============================================================ */
+VERZE = "v44";
+if(typeof napisVerzi === "function") napisVerzi();
+
+const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
+function cestMrizku(){
+  const k = CESTM.krok;
+  const sl = Math.ceil(SVET_W / k), ra = Math.ceil(SVET_H / k);
+  const blok = new Uint8Array(sl*ra);
+  const otisk = (x, y, rx, ry) => {
+    const c0 = Math.max(0, Math.floor((x-rx)/k)), c1 = Math.min(sl-1, Math.floor((x+rx)/k));
+    const r0 = Math.max(0, Math.floor((y-ry)/k)), r1 = Math.min(ra-1, Math.floor((y+ry)/k));
+    for(let cy = r0; cy <= r1; cy++)
+      for(let cx = c0; cx <= c1; cx++){
+        const dx = ((cx+0.5)*k - x)/rx, dy = ((cy+0.5)*k - y)/ry;
+        if(dx*dx + dy*dy < 1) blok[cy*sl+cx] = 1;
+      }
+  };
+  for(const b of G.budovy){
+    if(b.mrtvy) continue;
+    if(BUD[b.kind] && BUD[b.kind].brana) continue;   // brány neblokují, viz komentář výš
+    const r = 14 + b.r*0.8;
+    otisk(b.x, b.y, r, r/1.5);
+  }
+  CESTM.sl = sl; CESTM.ra = ra; CESTM.blok = blok; CESTM.platna = true; CESTM.cas = G.cas;
+}
+function budovaBlokujeCestu(x, y){
+  if(!CESTM.platna || G.cas - CESTM.cas > 1.5) cestMrizku();
+  const cx = Math.floor(x/CESTM.krok), cy = Math.floor(y/CESTM.krok);
+  if(cx<0||cy<0||cx>=CESTM.sl||cy>=CESTM.ra) return false;
+  return !!CESTM.blok[cy*CESTM.sl+cx];
+}
+function cestaVolnaBudov(x1, y1, x2, y2, e){
+  if(!cestaPoZemi(x1, y1, x2, y2, e)) return false;
+  const d = Math.hypot(x2-x1, y2-y1), kroku = Math.max(1, Math.ceil(d/(CESTM.krok/2)));
+  for(let i = 0; i <= kroku; i++){
+    const t = i/kroku;
+    if(budovaBlokujeCestu(x1+(x2-x1)*t, y1+(y2-y1)*t)) return false;
+  }
+  return true;
+}
+
+function jednotkaUvizla(j, dtOkna){
+  const cil = j.cilE || j.cil;
+  if(!cil){ j._uD = undefined; j._uCas = 0; return false; }
+  if(j.cilE && dist(j, j.cilE) <= dosahUtoku(j, j.cilE)){ j._uD = undefined; j._uCas = 0; return false; }
+  j._uCas = (j._uCas||0) + dtOkna;
+  if(j._uCas < 1){ if(j._uD===undefined) j._uD = dist(j, cil); return false; }
+  const d = dist(j, cil);
+  const uvizla = j._uD !== undefined && Math.abs(j._uD - d) < 14;
+  j._uD = d; j._uCas = 0;
+  return uvizla;
+}
+let uvizlCas = 0;
+function prorazZdiUvizle(dt){
+  uvizlCas -= dt;
+  if(uvizlCas > 0) return;
+  uvizlCas = 0.4;
+  for(const j of G.jednotky){
+    if(j.mrtvy || j.naPalube) continue;
+    if(!j.armadni && !j.vytazeni) continue;          // vesničané a lodě ne (stejně jako prorazZdi)
+    if(JED[j.kind] && JED[j.kind].lod) continue;
+    if(j.stav !== "jdi" && j.stav !== "utok"){ j._uD = undefined; j._uCas = 0; continue; }
+    if(!jednotkaUvizla(j, 0.4)) continue;
+    const zed = nejbliz(G.budovy, j.x, j.y,
+      b => jeNepritel(j.side, b.side) && jeStavbaVCeste(b), PRORAZ.dosah);
+    if(zed){
+      if(j.cilE && j.cilE !== zed && !j.hlavniCil) j.hlavniCil = j.cilE;
+      j.stav = "utok"; j.cilE = zed; j._uD = undefined; j._uCas = 0;
+    }
+  }
+}
+const updAIPredUvizlymi = updAI;
+updAI = function(dt){
+  const r = updAIPredUvizlymi(dt);
+  if(SYNC.jsemKlient && SYNC.jsemKlient()) return r;   // jen ten, kdo počítá svět
+  prorazZdiUvizle(dt);
+  return r;
 };
 
 </script>
