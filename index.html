@@ -1765,7 +1765,7 @@ const IKONY = CIVKEYS.slice();
    4) STAV HRY
    ============================================================ */
 const G = {
-  hraci:[], ja:0, mapa:0, obt:2, velikost:0, limit:1, rezim:"single", kod:"---",
+  hraci:[], ja:0, mapa:0, obt:2, velikost:0, limit:2, rezim:"single", kod:"---",
   bezi:false, pauza:false, konec:false,
   ents:[], jednotky:[], budovy:[], zdroje:[], strely:[],
   sel:[], nextId:1, cas:0, cam:{x:0,y:0}, zoom:1, stavim:null, ghost:null
@@ -2020,9 +2020,11 @@ const VELIKOSTI = [
   {jm:"Huge",      cz:"obří – je kam růst",   n:2.2},
   {jm:"Ludicrous", cz:"ohromná – fakt velká", n:3.3}
 ];
-/* Nejvíc panáčků na hráče (populační strop). */
+/* Nejvíc panáčků na hráče (populační strop). „50" přidáno na přání – s víc
+   hráči přes internet je to nejjistější způsob, jak hru udržet plynulou,
+   protože míň jednotek = míň co počítat, kreslit i posílat po síti. */
 const LIMITY = [
-  {jm:"100", n:100}, {jm:"150", n:150}, {jm:"200", n:200}, {jm:"300", n:300}
+  {jm:"50", n:50}, {jm:"100", n:100}, {jm:"150", n:150}, {jm:"200", n:200}, {jm:"300", n:300}
 ];
 
 function postavSvet(){
