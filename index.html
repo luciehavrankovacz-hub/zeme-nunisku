@@ -8823,12 +8823,15 @@ function rozestupOdBudov(){
           if(b.otevrena && !jeNepritel(a.side, b.side)) continue;
           const dx = a.x - b.x, dy = (a.y - b.y) * 1.5;
           const d = Math.hypot(dx, dy);
-          /* hradba/brána (BUD[].zed): kusy zdi jsou od sebe 30–60 px (viz
-             ZED_KROK_X/Y), takže s původním 0.8 zůstávala v místě švu mezi
-             dvěma kusy mezera – malý/rychlý panáček tudy dokázal projít
-             skrz zeď. Vyšší násobek u zdi kruhy sousedních kusů spolehlivě
-             překryje, žádnou jinou budovu to nemění. */
-          const jeZed = BUD[b.kind] && BUD[b.kind].zed;
+          /* hradba (BUD[].zed, BEZ brány): kusy zdi jsou od sebe 30–60 px
+             (viz ZED_KROK_X/Y), takže s původním 0.8 zůstávala v místě švu
+             mezi dvěma kusy mezera – malý/rychlý panáček tudy dokázal projít
+             skrz zeď. Vyšší násobek kruhy sousedních kusů spolehlivě
+             překryje. Brána (BUD[].brana) je z tohohle ÚMYSLNĚ vyňatá – ta
+             má vlastní logiku otvírání (updBrany) a přidávat jí přísnější
+             kolizi by jen zvětšilo riziko, že se v ní panáček zasekne dřív,
+             než stihne projít. */
+          const jeZed = BUD[b.kind] && BUD[b.kind].zed && !BUD[b.kind].brana;
           const mult = jeZed ? 1.05 : 0.8;
           const min = a.r + b.r * mult;
           if(d > 0 && d < min){
@@ -12154,7 +12157,14 @@ function prorazZdiUvizle(dt){
   uvizlCas = 0.4;
   for(const j of G.jednotky){
     if(j.mrtvy || j.naPalube) continue;
-    if(!j.armadni && !j.vytazeni) continue;          // vesničané a lodě ne (stejně jako prorazZdi)
+    /* POZOR (v27): dřív tu bylo `if(!j.armadni && !j.vytazeni) continue;` –
+       záměr byl vyloučit jen vesničany a lodě (viz komentář dole), ale
+       armadni/vytazeni si nastavují JEN boti pro svoje výpravy (updAI) –
+       hráčovy ručně poslané jednotky ty příznaky nikdy nemají, takže
+       hráčova armáda zaseknutá u zdi nikdy nedostala šanci si ji sama
+       prorazit. Teď se vylučují vesničané přímo podle druhu, funguje to
+       pro hráče i boty stejně. */
+    if(j.kind === "vesnican") continue;
     if(JED[j.kind] && JED[j.kind].lod) continue;
     if(j.stav !== "jdi" && j.stav !== "utok"){ j._uD = undefined; j._uCas = 0; continue; }
     if(!jednotkaUvizla(j, 0.4)) continue;
