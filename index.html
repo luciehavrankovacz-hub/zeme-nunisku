@@ -1630,9 +1630,9 @@ const JED = {
      Silný jako dva sloni (2×640) a umí se prát, takže se dá i použít v bitvě –
      ale je to sázka, protože jiného už nedostaneš. Nedá se cvičit, každý ho
      má jednoho od začátku hry. */
-  kral:{jm:"Král", ik:"👑", hp:1280, r:22, vel:74, rychlost:76, utok:82, dostrel:38, rychUtoku:1.0,
+  kral:{jm:"Král", ik:"👑", hp:1280, r:22, vel:74, rychlost:76, utok:246, dostrel:38, rychUtoku:1.0,
     cena:{}, cas:0, limit:1, kral:1,
-    popis:"O něj se hraje! Když padne, prohrál jsi. Je silný jako dva sloni a umí bojovat – ale opatruj si ho."},
+    popis:"O něj se hraje! Když padne, prohrál jsi. Bije třikrát silněji než dřív – ale opatruj si ho."},
 
   /* ---- obléhací stroje (stroj:1) ----
      Boří budovy, ale samy jsou skoro bezbranné. Šípy, věže a hrady jim skoro neublíží
@@ -7394,39 +7394,45 @@ function nejblizsiNeznamo(e){
   return nej;
 }
 
-/* ---- chování průzkumníka ---- */
+/* ---- kdo umí "Zkoumat": zdarma daný průzkumník (nikdy nebojuje) i obyčejný
+   vycvičený jezdec na koni (ten dál normálně bojuje, zkoumání je jen navíc) ---- */
+function umiZkoumat(kind){ return kind === "pruzkumnik" || kind === "jezdec"; }
+
+/* ---- chování průzkumníka a jezdce v roli zvěda ---- */
 const updJednotkuPredPruzkumem = updJednotku;
 updJednotku = function(e, dt){
-  if(e.kind === "pruzkumnik"){
+  if(e.kind === "pruzkumnik" && e.stav === "utok"){
     /* nikdy nebojuje – kdyby ho něco navedlo na útok (třeba odveta), zruš to */
-    if(e.stav === "utok"){ e.stav = "stoj"; e.cilE = null; }
-    if(e.zkouma){
-      e.zkoumCas = (e.zkoumCas || 0) - dt;
-      const dosel = e.stav !== "jdi" || !e.cil;
-      if(dosel || e.zkoumCas <= 0){
-        const c = nejblizsiNeznamo(e);
-        if(c){ e.stav = "jdi"; e.cil = c; e.cilE = null; e.zkoumCas = 12; }
-        else if(dosel){
-          e.zkouma = false;
-          if(jeMuj(e.side)) zprava("🔭 Průzkumník obhlédl, co se dalo.","dobre");
-        }
+    e.stav = "stoj"; e.cilE = null;
+  }
+  /* jezdec smí zkoumat, ale když se do něčeho strefí (stav="utok"), ať to
+     nejdřív dobojuje – teprve pak si najde další neprozkoumané místo */
+  if(umiZkoumat(e.kind) && e.zkouma && e.stav !== "utok"){
+    e.zkoumCas = (e.zkoumCas || 0) - dt;
+    const dosel = e.stav !== "jdi" || !e.cil;
+    if(dosel || e.zkoumCas <= 0){
+      const c = nejblizsiNeznamo(e);
+      if(c){ e.stav = "jdi"; e.cil = c; e.cilE = null; e.zkoumCas = 12; }
+      else if(dosel){
+        e.zkouma = false;
+        if(jeMuj(e.side)) zprava("🔭 Zvěd obhlédl, co se dalo.","dobre");
       }
     }
   }
   return updJednotkuPredPruzkumem(e, dt);
 };
 
-/* ---- rozkaz na nepřítele = pro průzkumníka jen „běž tam“ ---- */
+/* ---- rozkaz na nepřítele = pro zkoumajícího zvěda jen „běž tam“ ---- */
 const rozkazPredPruzkumem = rozkaz;
 rozkaz = function(x, y){
-  const zvedavci = G.sel.filter(u => jeMuj(u.side) && u.kind === "pruzkumnik" && !u.mrtvy);
+  const zvedavci = G.sel.filter(u => jeMuj(u.side) && umiZkoumat(u.kind) && !u.mrtvy);
   zvedavci.forEach(u => { u.zkouma = false; });      // ruční rozkaz zkoumání ruší
   return rozkazPredPruzkumem(x, y);
 };
 
 /* ---- tlačítko ZKOUMAT ---- */
 function prepniZkoumani(){
-  const moji = G.sel.filter(u => jeMuj(u.side) && u.kind === "pruzkumnik" && !u.mrtvy);
+  const moji = G.sel.filter(u => jeMuj(u.side) && umiZkoumat(u.kind) && !u.mrtvy);
   if(!moji.length) return;
   const zapnout = !moji[0].zkouma;
   if(SYNC.jsemKlient()){
@@ -7435,7 +7441,7 @@ function prepniZkoumani(){
     moji.forEach(u => { u.zkouma = zapnout; if(!zapnout){ u.stav = "stoj"; u.cil = null; } });
   }
   zvuk("klik");
-  zprava(zapnout ? "🔭 Průzkumník se rozjel objevovat mapu!" : "🔭 Průzkumník se zastavil.",
+  zprava(zapnout ? "🔭 Zvěd se rozjel objevovat mapu!" : "🔭 Zvěd se zastavil.",
          zapnout ? "dobre" : null);
   obnovPanel();
 }
@@ -7443,7 +7449,7 @@ const provedCiziPredPruzkumem = SYNC.provedCizi.bind(SYNC);
 SYNC.provedCizi = function(m){
   if(m.cmd === "zkoumat"){
     (m.ids || []).map(id => G.ents.find(o => o.id === id))
-      .filter(o => o && !o.mrtvy && o.side === m.side && o.kind === "pruzkumnik")
+      .filter(o => o && !o.mrtvy && o.side === m.side && umiZkoumat(o.kind))
       .forEach(u => { u.zkouma = !!m.zap; if(!m.zap){ u.stav = "stoj"; u.cil = null; } });
     return;
   }
@@ -7454,12 +7460,14 @@ obnovPanel = function(){
   obnovPanelPredPruzkumem();
   const A = document.getElementById("akce");
   if(!A || G.konec) return;
-  const moji = G.sel.filter(u => jeMuj(u.side) && u.kind === "pruzkumnik" && !u.mrtvy);
+  const moji = G.sel.filter(u => jeMuj(u.side) && umiZkoumat(u.kind) && !u.mrtvy);
   if(!moji.length) return;
   const bezi = moji[0].zkouma;
+  const jePruzkumnik = moji[0].kind === "pruzkumnik";
   A.appendChild(tlacitko(bezi ? "🛑" : "🔭", bezi ? "Dost zkoumání" : "Zkoumat", "", true, prepniZkoumani,
-    "<b>Zkoumat</b><br>Průzkumník se sám rozjede po mapě a bude odkrývat tmu. "
-    + "Nemusíš s ním nikam klikat.<br>Nikdy nebojuje – když ho někdo napadne, jen to schytá."));
+    "<b>Zkoumat</b><br>Sám se rozjede po mapě a bude odkrývat tmu. Nemusíš s ním nikam klikat.<br>"
+    + (jePruzkumnik ? "Nikdy nebojuje – když ho někdo napadne, jen to schytá."
+                    : "Když narazí na nepřítele, normálně se ubrání – pak zase pokračuje ve zkoumání.")));
 };
 
 /* ============================================================
