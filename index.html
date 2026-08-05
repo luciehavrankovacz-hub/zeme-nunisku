@@ -225,6 +225,9 @@ select.pole:disabled,input.pole:disabled{opacity:.55}
 .stavba{opacity:.55;filter:saturate(.4)}
 .prubeh{position:absolute;left:50%;transform:translateX(-50%);height:7px;width:56px;background:#111;border-radius:4px;overflow:hidden;border:1px solid #000}
 .prubeh i{display:block;height:100%;background:linear-gradient(180deg,#ffe08a,#f0a63c)}
+.trenink{position:absolute;left:50%;transform:translateX(-50%);width:18px;height:18px;border-radius:50%;
+  pointer-events:none;border:2px solid rgba(0,0,0,.55);box-shadow:0 2px 4px rgba(0,0,0,.4);
+  background:conic-gradient(#9dfbb0 calc(var(--p,0)*1%),rgba(20,14,8,.62) 0)}
 .strela{position:absolute;width:14px;height:5px;border-radius:3px;background:linear-gradient(90deg,#fff,#c9a15a);pointer-events:none;z-index:9000}
 .jiskra{position:absolute;pointer-events:none;font-size:15px;font-weight:bold;z-index:9500;
   text-shadow:0 2px 3px #000;animation:let 1s forwards}
@@ -1605,9 +1608,9 @@ const JED = {
   jezdec:{jm:"Jezdec na koni", ik:"🐴", hp:240, r:19, vel:78, rychlost:124, utok:27, dostrel:34, rychUtoku:1.0,
     cena:{drevo:40,zelezo:55,zlato:85}, cas:16, popis:"Uhání přes mapu a rozpráší lučištníky. Drahý!"},
   slon:{jm:"Jezdec na slonu", ik:"🐘", hp:640, r:24, vel:102, rychlost:50, utok:58, dostrel:42, rychUtoku:1.5,
-    cena:{zelezo:150,zlato:200}, cas:30, popis:"Chodící pevnost. Boří budovy jako nic, ale je pomalý a hodně drahý."},
+    cena:{zelezo:200,zlato:260}, cas:30, popis:"Chodící pevnost. Boří budovy jako nic, ale je pomalý a hodně drahý."},
   hrdina:{jm:"Hrdina", ik:"👑", hp:480, r:20, vel:64, rychlost:84, utok:42, dostrel:34, rychUtoku:0.9,
-    cena:{zelezo:130,zlato:210}, cas:24, popis:"Legenda tvé civilizace. Nezastavitelný!", limit:1},
+    cena:{zelezo:170,zlato:270}, cas:24, popis:"Legenda tvé civilizace. Nezastavitelný!", limit:1},
 
   /* PŘEVOZNÍ LOĎ – veze panáčky přes moře. Neumí střílet vůbec, zato je
      rychlejší než galeona. Naloď: vyber panáčky a klikni na loď. Vylož:
@@ -1903,6 +1906,15 @@ function vytvorEl(e){
     hp.firstChild.style.background = `linear-gradient(180deg,${svetlej(bar.h,0.35)},${bar.h} 60%,${bar.t})`;
     d.appendChild(hp); e.hpEl = hp.firstChild; e.hpBox = hp;
     hp.style.display = "none";
+  }
+  if(e.druh==="budova"){
+    /* kolečko, co se plní, dokud se ve frontě cvičí jednotka – vidí ho
+       hostitel i kamarád (viz updBudovu a SYNC.prijmiBin) */
+    const tr = document.createElement("div");
+    tr.className = "trenink";
+    tr.style.top = (-e.vel*0.16)+"px";
+    tr.style.display = "none";
+    d.appendChild(tr); e.treninkEl = tr;
   }
   e.el = d;
   SVET.appendChild(d);
@@ -2379,7 +2391,7 @@ function odeber(e){
   for(const j of G.jednotky){ if(j.cilE===e){ j.cilE=null; j.stav="stoj"; } }
 }
 
-function vystrel(od, cil, dmg){
+function vystrel(od, cil, dmg, kosmet){
   const d = document.createElement("div");
   d.className="strela";
   const x0 = od.x, y0 = od.y - od.vel*(od.druh==="budova"?0.62:0.45);
@@ -2388,7 +2400,7 @@ function vystrel(od, cil, dmg){
   d.style.zIndex = 9000;
   if(od.druh==="budova") d.style.background="linear-gradient(90deg,#fff,#8ecaff)";
   SVET.appendChild(d);
-  G.strely.push({x:x0,y:y0,x0,y0,cil,dmg,el:d,t:0,dur:Math.max(0.18,dist2(x0,y0,cil.x,cil.y)/620),od});
+  G.strely.push({x:x0,y:y0,x0,y0,cil,dmg,el:d,t:0,dur:Math.max(0.18,dist2(x0,y0,cil.x,cil.y)/620),od,kosmet:!!kosmet});
   zvuk("luk");
 }
 function updStrely(dt){
@@ -2402,7 +2414,9 @@ function updStrely(dt){
     s.el.style.transform = `translate(${x}px,${y}px) rotate(${uh}deg)`;
     s.el.style.zIndex = 9000;
     if(s.t>=1){
-      if(!s.cil.mrtvy){ ubliz(s.cil, s.dmg, s.od); castice(tx,ty,"#ffd76e",5); }
+      /* kosmet = jen u kamaráda: šíp letí naoko, škodu počítá jen hostitel */
+      if(s.kosmet) castice(tx,ty,"#ffd76e",3);
+      else if(!s.cil.mrtvy){ ubliz(s.cil, s.dmg, s.od); castice(tx,ty,"#ffd76e",5); }
       s.el.remove(); G.strely.splice(i,1);
     }
   }
@@ -2761,6 +2775,14 @@ function updBudovu(b, dt){
     const pom = b.hp/b.maxHp;
     if(pom<0.999) b.hpBox.style.display="block"; else b.hpBox.style.display="none";
     b.hpEl.style.width = Math.max(0,pom*100)+"%";
+  }
+  if(b.treninkEl){
+    if(b.hotova && b.fronta.length){
+      const cas = JED[b.fronta[0]].cas;
+      const pct = klam(Math.round((1 - b.vyrobaCas/cas)*100), 0, 100);
+      b.treninkEl.style.display = "block";
+      b.treninkEl.style.setProperty("--p", pct);
+    }else b.treninkEl.style.display = "none";
   }
 }
 
@@ -4310,6 +4332,7 @@ tik = function(t){
 
   if(SYNC.jsemKlient()){
     SYNC.dokresli(dt);
+    SYNC.strilejBudovy(dt);
     updStrely(dt);
     obnovHud();
     mmCas += dt; if(mmCas>0.12){ mmCas=0; kresliMinimapu(); }
@@ -4583,9 +4606,18 @@ SYNC.zabalSnimek = function(){
      16 = průzkumník právě zkoumá (ať mu kamarád vidí správně tlačítko) */
   for(const u of G.jednotky) if(!u.mrtvy) pridej(u, 0, u.hp,
     (u.smer<0?1:0) | (u.kotva?2:0) | (u.stav==="utok"?4:0) | (u.naPalube?8:0) | (u.zkouma?16:0));
-  /* bity budovy: 0 = hotová, 1..7 = postup stavby (0-100), 8 = otevřená brána */
-  for(const b of G.budovy)   if(!b.mrtvy) pridej(b, 1, b.hp,
-    (b.hotova?1:0) | (klam(Math.round(b.postup*100),0,100)<<1) | (b.otevrena?256:0));
+  /* bity budovy: 0 = hotová, 1..7 = postup stavby (0-100), 8 = otevřená brána,
+     9..15 = postup cvičení právě vyráběné jednotky (0-100) – ať kamarád vidí
+     kolečko, jak se mu ve věži/kasárnách plní panáček (viz p3 .trenink) */
+  for(const b of G.budovy)   if(!b.mrtvy){
+    let trenink = 0;
+    if(b.hotova && b.fronta && b.fronta.length){
+      const cas = JED[b.fronta[0]].cas;
+      trenink = klam(Math.round((1 - b.vyrobaCas/cas)*100), 0, 100);
+    }
+    pridej(b, 1, b.hp,
+      (b.hotova?1:0) | (klam(Math.round(b.postup*100),0,100)<<1) | (b.otevrena?256:0) | (trenink<<9));
+  }
   for(const z of G.zdroje)   if(!z.mrtvy && z.zasoba<z.maxZasoba) pridej(z, 2, z.zasoba, 0);
 
   const zivi = [];
@@ -4698,6 +4730,13 @@ SYNC.prijmiBin = function(u8){
       // brány otevírá hostitel, kamarád je jen překreslí
       const otv = !!(prapor&256);
       if(BUD[e.kind] && BUD[e.kind].brana && !!e.otevrena !== otv) nastavBranu(e, otv);
+      if(e.treninkEl){
+        const trPct = (prapor>>9)&127;
+        if(e.hotova && trPct>0){
+          e.treninkEl.style.display = "block";
+          e.treninkEl.style.setProperty("--p", trPct);
+        }else e.treninkEl.style.display = "none";
+      }
     }
     if(e.hpBox){
       const pom = e.hp/e.maxHp;
@@ -4730,6 +4769,25 @@ SYNC.prijmiBin = function(u8){
   G.cas = cas;
   const ziviHraci = G.hraci.filter(h=>!h.porazen);
   if(!G.konec && ziviHraci.length && [...new Set(ziviHraci.map(h=>h.tym))].length<=1 && !MY().porazen) vyhra();
+};
+
+/* Kamarád (klient) nikdy nespouští updBudovu, takže věže a hrady mu naostro
+   nikdy nevystřelí – posílat přesný cíl po síti by znamenalo měnit binární
+   formát a riskovat další "všem zamrzl svět" bug (viz historie výš). Místo
+   toho si klient sám přes existující rychlou mřížku (G.ents) najde nejbližšího
+   nepřítele – stejná pravidla jako hostitel – a vystřelí NAOKO. Škodu počítá
+   jen hostitel (životy chodí ze snímku), tenhle šíp je čistě pro oči. */
+SYNC.strilejBudovy = function(dt){
+  for(const b of G.budovy){
+    if(b.mrtvy || !b.hotova) continue;
+    const def = BUD[b.kind];
+    if(!def.dostrel) continue;
+    b.klientCd = (b.klientCd||0) - dt;
+    if(b.klientCd > 0) continue;
+    b.klientCd = def.rychUtoku;
+    const cil = nejbliz(G.ents, b.x, b.y, o=>o.druh==="jednotka" && jeNepritel(b.side,o.side) && !o.mrtvy, def.dostrel);
+    if(cil) vystrel(b, cil, 0, true);
+  }
 };
 
 /* ============================================================
