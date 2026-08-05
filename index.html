@@ -1569,6 +1569,11 @@ function zdrojSVG(kind, va){
    ============================================================ */
 let SVET_W = 3600, SVET_H = 2600;
 
+/* Jak rychle jde celá hra – pohyb, boj, výroba (viz p7b, hostitelova smyčka).
+   1 = původní tempo. Síť dostává furt STEJNÝ počet zpráv za vteřinu (nezávisí
+   na tomhle), takže rychlejší hra sama o sobě sekání nepřidává. */
+const RYCHLOST_HRY = 1.25;
+
 const BUD = {
   radnice:{jm:"Radnice", hp:1100, r:56, vel:130, cena:{drevo:280,zlato:130}, cas:26, popPlus:5,
     popis:"Tady cvičíš vesničany. Suroviny se sem nosí.", cvici:["vesnican"]},
@@ -1630,7 +1635,7 @@ const JED = {
      Silný jako dva sloni (2×640) a umí se prát, takže se dá i použít v bitvě –
      ale je to sázka, protože jiného už nedostaneš. Nedá se cvičit, každý ho
      má jednoho od začátku hry. */
-  kral:{jm:"Král", ik:"👑", hp:1280, r:22, vel:74, rychlost:76, utok:246, dostrel:38, rychUtoku:1.0,
+  kral:{jm:"Král", ik:"👑", hp:2560, r:22, vel:74, rychlost:76, utok:246, dostrel:38, rychUtoku:1.0,
     cena:{}, cas:0, limit:1, kral:1,
     popis:"O něj se hraje! Když padne, prohrál jsi. Bije třikrát silněji než dřív – ale opatruj si ho."},
 
@@ -1672,13 +1677,17 @@ const BARVY = [
 ];
 
 /* ---- 6 obtížností ---- */
+/* POZOR (Lucie, v25): "botáci jsou moc silní" – snížila jsem jim sílu úderu (dmg)
+   a jak velké vojsko si drží, než vyrazí (sila), na všech obtížnostech asi o pětinu.
+   Rychlost stavění/těžby a tempo výprav (staviCas, tezba, prvniVlna, mezera)
+   jsem nechala – ať boti pořád něco dělají, jen míň bolí, když udeří. */
 const OBTIZNOSTI = [
-  {jm:"Easiest",  cz:"Úplně v pohodě", prvniVlna:340, mezera:200, sila:0.3,  rust:0.22, dmg:0.35, veze:0, staviCas:150, tezba:0.7},
-  {jm:"Standard", cz:"Klidná",         prvniVlna:260, mezera:155, sila:0.45, rust:0.32, dmg:0.5,  veze:1, staviCas:120, tezba:0.85},
-  {jm:"Moderate", cz:"Normální",       prvniVlna:165, mezera:110, sila:0.75, rust:0.6,  dmg:0.78, veze:3, staviCas:85,  tezba:1},
-  {jm:"Hard",     cz:"Těžká",          prvniVlna:130, mezera:92,  sila:0.95, rust:0.8,  dmg:0.92, veze:4, staviCas:72,  tezba:1.15},
-  {jm:"Hardest",  cz:"Šílená",         prvniVlna:105, mezera:78,  sila:1.15, rust:1.0,  dmg:1.05, veze:5, staviCas:60,  tezba:1.3},
-  {jm:"Extreme",  cz:"Nelidská",       prvniVlna:80,  mezera:62,  sila:1.5,  rust:1.35, dmg:1.25, veze:7, staviCas:48,  tezba:1.6}
+  {jm:"Easiest",  cz:"Úplně v pohodě", prvniVlna:340, mezera:200, sila:0.26, rust:0.22, dmg:0.28, veze:0, staviCas:150, tezba:0.7},
+  {jm:"Standard", cz:"Klidná",         prvniVlna:260, mezera:155, sila:0.38, rust:0.32, dmg:0.4,  veze:1, staviCas:120, tezba:0.85},
+  {jm:"Moderate", cz:"Normální",       prvniVlna:165, mezera:110, sila:0.64, rust:0.6,  dmg:0.62, veze:3, staviCas:85,  tezba:1},
+  {jm:"Hard",     cz:"Těžká",          prvniVlna:130, mezera:92,  sila:0.81, rust:0.8,  dmg:0.74, veze:4, staviCas:72,  tezba:1.15},
+  {jm:"Hardest",  cz:"Šílená",         prvniVlna:105, mezera:78,  sila:0.98, rust:1.0,  dmg:0.84, veze:5, staviCas:60,  tezba:1.3},
+  {jm:"Extreme",  cz:"Nelidská",       prvniVlna:80,  mezera:62,  sila:1.28, rust:1.35, dmg:1.0,  veze:7, staviCas:48,  tezba:1.6}
 ];
 
 /* ---- 10 map ---- */
@@ -3179,7 +3188,14 @@ function obnovPanel(){
   else{
     stav = "❤ "+Math.max(0,Math.ceil(e.hp))+"/"+e.maxHp;
     if(jeJed && e.naklad) stav += " · nese "+e.naklad.ks+IKmini(e.naklad.typ);
-    if(e.druh==="budova" && !e.hotova) stav = "staví se "+Math.round(e.postup*100)+"%";
+    if(e.druh==="budova" && !e.hotova){
+      stav = "staví se "+Math.round(e.postup*100)+"%";
+    /* na přání – ať je vidět i síla (útok) a rychlost, ne jen životy */
+    }else if(jeJed && def.utok>0){
+      stav += " · ⚔"+Math.round(statJ(e.kind,e.side,"utok"))+" · 🏃"+Math.round(statJ(e.kind,e.side,"rychlost"));
+    }else if(e.druh==="budova" && def.utok>0){
+      stav += " · ⚔"+def.utok;
+    }
   }
   P.innerHTML = `<div style="width:60px;height:60px">${art}</div>
     <div class="jm">${def.jm}${pocet>1?" ×"+pocet:""}</div><div class="st">${stav}</div>`;
@@ -4340,14 +4356,19 @@ tik = function(t){
     return;
   }
 
-  G.cas += dt;
-  for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
-  for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
+  /* RYCHLOST_HRY zrychluje jen samotnou hru (pohyb, boj, výcvik) – síťová
+     smyčka (SYNC.posli níž) dostává PŮVODNÍ dt, ať se rychlejší hrou
+     nezvýší i to, jak často po síti něco posíláme (to by zase přidalo
+     sekání, přesně čemu jsme se snažili vyhnout). */
+  const dtHra = dt * RYCHLOST_HRY;
+  G.cas += dtHra;
+  for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dtHra); }
+  for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dtHra); }
   rozestup();
-  updBrany(dt);
-  updOpevneni(dt);
-  updStrely(dt);
-  updAI(dt);
+  updBrany(dtHra);
+  updOpevneni(dtHra);
+  updStrely(dtHra);
+  updAI(dtHra);
   if(SYNC.jsemHost()) SYNC.posli(dt);
 
   obnovHud();
@@ -5550,17 +5571,18 @@ const TIKAC = {
     while(zbyva > 0.001){
       const dt = Math.min(0.05, zbyva);
       zbyva -= dt;
-      G.cas += dt;
-      for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
-      for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
+      const dtHra = dt * RYCHLOST_HRY;              // stejné zrychlení jako v p7b
+      G.cas += dtHra;
+      for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dtHra); }
+      for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dtHra); }
       rozestup();
       /* POZOR: co je v hlavní smyčce (p5/p7b), musí být i tady, jinak se to
          na pozadí přestane dít. Při slučování větví se to už jednou ztratilo
          a brány se v skryté záložce zasekly zavřené. */
-      updBrany(dt);
-      updOpevneni(dt);
-      updStrely(dt);
-      updAI(dt);
+      updBrany(dtHra);
+      updOpevneni(dtHra);
+      updStrely(dtHra);
+      updAI(dtHra);
       if(SYNC.jsemHost()) SYNC.posli(dt);
     }
   }
@@ -8800,8 +8822,25 @@ function rozestupOdBudov(){
           // otevřenou bránou se projde – ale jen tomu, komu patří, a spojencům
           if(b.otevrena && !jeNepritel(a.side, b.side)) continue;
           const dx = a.x - b.x, dy = (a.y - b.y) * 1.5;
-          const d = Math.hypot(dx, dy), min = a.r + b.r * 0.8;
-          if(d > 0 && d < min){ const p = (min - d)/d; a.x += dx*p; a.y += dy*p*0.6; }
+          const d = Math.hypot(dx, dy);
+          /* hradba/brána (BUD[].zed): kusy zdi jsou od sebe 30–60 px (viz
+             ZED_KROK_X/Y), takže s původním 0.8 zůstávala v místě švu mezi
+             dvěma kusy mezera – malý/rychlý panáček tudy dokázal projít
+             skrz zeď. Vyšší násobek u zdi kruhy sousedních kusů spolehlivě
+             překryje, žádnou jinou budovu to nemění. */
+          const jeZed = BUD[b.kind] && BUD[b.kind].zed;
+          const mult = jeZed ? 1.05 : 0.8;
+          const min = a.r + b.r * mult;
+          if(d > 0 && d < min){
+            /* U zdi navíc dáváme SVISLÉMU odstrku plnou sílu (jinak jen 0.6×) –
+               ta slabší verze je fajn pro měkké odstrkávání jednotek od sebe,
+               ale u zdi znamenala, že se panáček blížící se SHORA/ZDOLA
+               (svisle) odstrčil jen z poloviny a dalším krokem chůze o kousek
+               postoupil dál, až prošel skrz. Vodorovné přiblížení už plnou
+               sílu mělo, proto se projít dalo hlavně u vodorovné zdi. */
+            const p = (min - d)/d;
+            a.x += dx*p; a.y += dy*p*(jeZed ? 1 : 0.6);
+          }
         }
     a.x = klam(a.x, 20, SVET_W-20); a.y = klam(a.y, 20, SVET_H-20);
   }
@@ -9451,8 +9490,8 @@ function botNamornictvo(si, H, krok){
   for(const g of galeony){
     if(g.mrtvy) continue;
     if(g.stav === "utok" && g.cilE && !g.cilE.mrtvy) continue;
-    const nepratelskaLod = nejbliz(G.jednotky, g.x, g.y,
-      o => jeNepritel(si, o.side) && !o.mrtvy && JED[o.kind] && JED[o.kind].lod, 640);
+    const nepratelskaLod = nejbliz(G.ents, g.x, g.y,
+      o => o.druh==="jednotka" && jeNepritel(si, o.side) && !o.mrtvy && JED[o.kind] && JED[o.kind].lod, 640);
     if(nepratelskaLod){ g.stav = "utok"; g.cilE = nepratelskaLod; }
     else if(dist2(g.x, g.y, lod.x, lod.y) > 260){ g.stav = "jdi"; g.cil = {x:lod.x, y:lod.y}; }
   }
@@ -9621,8 +9660,8 @@ function prorazZdi(dt){
     if(j.stav !== "stoj") continue;                  // jde si po svém, nech ho
     if(!j.vytazeni && !j.zasekloSe) continue;        // doma stojící hlídač ne
 
-    const zed = nejbliz(G.budovy, j.x, j.y,
-      b => jeNepritel(j.side, b.side) && jeStavbaVCeste(b), PRORAZ.dosah);
+    const zed = nejbliz(G.ents, j.x, j.y,
+      b => b.druh==="budova" && jeNepritel(j.side, b.side) && jeStavbaVCeste(b), PRORAZ.dosah);
     if(zed){ j.stav = "utok"; j.cilE = zed; }
   }
 }
@@ -9686,8 +9725,8 @@ function botObleh(si, H, krok){
   /* Stroje míří přednostně na zdi a věže – na to jsou. */
   for(const s of stroje){
     if(s.mrtvy || (s.stav === "utok" && s.cilE && !s.cilE.mrtvy)) continue;
-    const zed = nejbliz(G.budovy, s.x, s.y,
-      b => jeNepritel(si, b.side) && jeStavbaVCeste(b), 900);
+    const zed = nejbliz(G.ents, s.x, s.y,
+      b => b.druh==="budova" && jeNepritel(si, b.side) && jeStavbaVCeste(b), 900);
     if(zed){ s.stav = "utok"; s.cilE = zed; s.vytazeni = true; }
   }
 }
@@ -12119,8 +12158,8 @@ function prorazZdiUvizle(dt){
     if(JED[j.kind] && JED[j.kind].lod) continue;
     if(j.stav !== "jdi" && j.stav !== "utok"){ j._uD = undefined; j._uCas = 0; continue; }
     if(!jednotkaUvizla(j, 0.4)) continue;
-    const zed = nejbliz(G.budovy, j.x, j.y,
-      b => jeNepritel(j.side, b.side) && jeStavbaVCeste(b), PRORAZ.dosah);
+    const zed = nejbliz(G.ents, j.x, j.y,
+      b => b.druh==="budova" && jeNepritel(j.side, b.side) && jeStavbaVCeste(b), PRORAZ.dosah);
     if(zed){
       if(j.cilE && j.cilE !== zed && !j.hlavniCil) j.hlavniCil = j.cilE;
       j.stav = "utok"; j.cilE = zed; j._uD = undefined; j._uCas = 0;
