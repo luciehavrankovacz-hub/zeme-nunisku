@@ -2129,7 +2129,10 @@ function postavSvet(){
   G.hraci.forEach((h,i)=>{
     const z = ZAKL[i];
     const dovnitrX = z.x < SVET_W/2 ? 1 : -1, dovnitrY = z.y < SVET_H/2 ? 1 : -1;
-    pridejBudovu("radnice", i, z.x, z.y, true);
+    /* .pocatecni = tahle konkrétní radnice se počítá pro cíl "zničit hlavní
+       radnici" (viz p4a zabij() a wizard v p42) – další, později postavené
+       radnice se nepočítají. */
+    pridejBudovu("radnice", i, z.x, z.y, true).pocatecni = true;
     pridejBudovu("domek", i, z.x - dovnitrX*170, z.y - dovnitrY*50, true);
     pridejBudovu("domek", i, z.x + dovnitrX*40,  z.y - dovnitrY*175, true);
     const O = OBTIZNOSTI[G.obt];
@@ -2348,30 +2351,53 @@ function zabij(e, kdo){
     if(e.druh==="budova" && e.hotova && e.popPlus) H.popMax = Math.max(5, H.popMax - e.popPlus);
   }
   odeber(e);
-  /* Vyřazen ze hry? Nově se hraje o KRÁLE, ne o radnici. Můžeš přijít
-     o všechny budovy a pořád hrát – ale když ti padne král, je konec. */
-  if(e.druh==="jednotka" && e.kind==="kral" && H && !H.porazen){
+  /* Cíl hry (G.cil, nastavuje se ve wizardu multiplayeru/singleplayeru,
+     viz p42) – "kral" (výchozí, jako dřív), "radnice" (jen ta úvodní,
+     .pocatecni) nebo "vse" (budovy i JEDNOTKY úplně všechny). */
+  const cil = G.cil || "kral";
+  if(e.druh==="jednotka" && e.kind==="kral" && H && !H.porazen && cil==="kral"){
     H.porazen = true;
     zprava((jeMuj(e.side)? "👑💀 Padl ti KRÁL – prohrál jsi!" : "👑 Král hráče "+bezpecnyText(H.jm)+" padl!"),
            jeMuj(e.side)?"zle":"dobre");
     vyhodnotKonec();
   }
-  // o radnici se sice nehraje, ale je dobré vědět, že padla
-  if(e.druh==="budova" && e.kind==="radnice" && H && !H.porazen && jeMuj(e.side)){
-    const zbyva = G.budovy.filter(b=>b.side===e.side && b.kind==="radnice" && !b.mrtvy).length;
-    if(zbyva===0) zprava("🏛️ Přišel jsi o radnici! Postav novou – hraje se ale o krále.","zle");
+  if(e.druh==="budova" && e.kind==="radnice" && H && !H.porazen){
+    if(cil==="radnice" && e.pocatecni){
+      H.porazen = true;
+      zprava((jeMuj(e.side)? "🏛️💀 Padla ti HLAVNÍ RADNICE – prohrál jsi!"
+                           : "🏛️ Hlavní radnice hráče "+bezpecnyText(H.jm)+" padla!"),
+             jeMuj(e.side)?"zle":"dobre");
+      vyhodnotKonec();
+    }else if(jeMuj(e.side)){
+      const zbyva = G.budovy.filter(b=>b.side===e.side && b.kind==="radnice" && !b.mrtvy).length;
+      if(zbyva===0) zprava("🏛️ Přišel jsi o radnici!"+(cil==="kral"?" Postav novou – hraje se ale o krále.":""),"zle");
+    }
   }
-  /* POJISTKA proti nedohratelné partii. Hraje se o krále, ale na ostrovní mapě
-     se k cizímu králi nikdo nemusí dostat (lodě nevozí pěchotu a AI o nich
-     neví) – hra by pak nikdy neskončila. Proto: kdo přišel o VŠECHNY budovy
-     i o všechny vesničany, už si nic nepostaví a je vyřazený taky. */
-  if(H && !H.porazen && (e.druh==="budova" || e.kind==="vesnican")){
+  /* POJISTKA proti nedohratelné partii (mimo cíl "vse", ten svoje řeší sám
+     níž) – na ostrovní mapě se k cizímu králi/radnici nemusí nikdo dostat
+     (lodě nevozí pěchotu a AI o nich neví), hra by jinak nikdy neskončila.
+     Kdo přišel o VŠECHNY budovy i o všechny vesničany, už si nic nepostaví
+     a je vyřazený taky. */
+  if(cil!=="vse" && H && !H.porazen && (e.druh==="budova" || e.kind==="vesnican")){
     const budov = G.budovy.filter(b=>b.side===e.side && !b.mrtvy).length;
     const vesnicanu = G.jednotky.filter(j=>j.side===e.side && j.kind==="vesnican" && !j.mrtvy).length;
     if(budov===0 && vesnicanu===0){
       H.porazen = true;
       zprava((jeMuj(e.side)? "💀 Nezůstala ti budova ani vesničan – prohrál jsi."
                            : "🏳️ "+bezpecnyText(H.jm)+" přišel o všechno a je ze hry."),
+             jeMuj(e.side)?"zle":"dobre");
+      vyhodnotKonec();
+    }
+  }
+  /* cíl "vse": vyřazen je, kdo nemá VŮBEC NIC – ani budovu, ani jedinou
+     jednotku (ne jen vesničana). Kontrolujeme po každé smrti. */
+  if(cil==="vse" && H && !H.porazen){
+    const budov = G.budovy.filter(b=>b.side===e.side && !b.mrtvy).length;
+    const jednotek = G.jednotky.filter(j=>j.side===e.side && !j.mrtvy).length;
+    if(budov===0 && jednotek===0){
+      H.porazen = true;
+      zprava((jeMuj(e.side)? "💀 Nezůstalo ti nic – prohrál jsi."
+                           : "🏳️ "+bezpecnyText(H.jm)+" přišel o úplně všechno a je ze hry."),
              jeMuj(e.side)?"zle":"dobre");
       vyhodnotKonec();
     }
@@ -4394,9 +4420,23 @@ NET.prijmi = function(m){
    Hostitel počítá hru, ostatní posílají rozkazy a dostávají
    zpátky obrázek světa.
    ============================================================ */
+/* POZOR (v45, 4hráčové spojení): jen STUN servery (jak to bylo doteď) umí
+   pomoct spojit dva počítače, JEN KDYŽ to jejich routery/NAT dovolí – u
+   některých domácích sítí (hlavně přísnější NAT, mobilní data…) to nejde
+   napřímo vůbec, ať zkoušíš, co chceš, protože nikdo neposílá data přes
+   prostředníka. Čím víc lidí hraje najednou, tím větší šance, že aspoň
+   jedna dvojice takhle nešikovných sítí bude – proto se to s víc hráči
+   kazilo víc. TURN server je právě ten prostředník: když se napřímo
+   nespojí, pošlou si data přes něj. Tohle je veřejný bezplatný TURN
+   (openrelay.metered.ca, běžně používaný v ukázkových/neziskových
+   projektech) – nevyžaduje žádný účet ani platbu. */
 const LEDOVCE = {iceServers:[{urls:[
   "stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302",
-  "stun:stun2.l.google.com:19302","stun:stun3.l.google.com:19302"]}]};
+  "stun:stun2.l.google.com:19302","stun:stun3.l.google.com:19302"]},
+  {urls:"turn:openrelay.metered.ca:80", username:"openrelayproject", credential:"openrelayproject"},
+  {urls:"turn:openrelay.metered.ca:443", username:"openrelayproject", credential:"openrelayproject"},
+  {urls:"turn:openrelay.metered.ca:443?transport=tcp", username:"openrelayproject", credential:"openrelayproject"}
+]};
 
 /* ---- zabalení kódu (kratší = líp se posílá) ---- */
 async function zabal(obj){
@@ -11929,6 +11969,177 @@ if(typeof P2P !== "undefined" && P2P.odpojen){
 VERZE = "v42";
 if(typeof napisVerzi === "function") napisVerzi();
 
+
+/* ============================================================
+   71) PRŮVODCE MULTIPLAYEREM
+   Tři krátké kroky, než se otevře běžná obrazovka MULTIPLAYER:
+   1) kolik chceš mít botů (počítačových soupeřů)
+   2) jaký je cíl hry – zničit krále / hlavní radnici / úplně všechno
+   3) zvuk a hudba, pak tlačítko HOTOVO
+   ============================================================ */
+if(G.cil == null) G.cil = "kral";
+if(G.zvukZap == null) G.zvukZap = true;
+if(G.hudbaZap == null) G.hudbaZap = false;
+
+/* zvuk() umí i ticho – vypínač ze 3. kroku */
+const zvukPredVypinacem = zvuk;
+zvuk = function(t){ if(G.zvukZap === false) return; zvukPredVypinacem(t); };
+
+/* ---------- jednoduchá "starodávná" hudba – žádný soubor, jen syntetizér
+   (stejný trik jako u zvukových efektů: pár tónů za sebou dokola) ---------- */
+const HUDBA = {
+  hraje: false, i: 0, casovac: null,
+  noty: [330,392,440,392,330,294,262,0, 294,330,392,330,294,262,0,0],
+  krok(){
+    if(!this.hraje) return;
+    const f = this.noty[this.i % this.noty.length];
+    if(f && G.zvukZap !== false && G.hudbaZap !== false){
+      const a = ac();
+      if(a){
+        const o = a.createOscillator(), g = a.createGain();
+        o.type = "triangle"; o.frequency.setValueAtTime(f, a.currentTime);
+        g.gain.setValueAtTime(0, a.currentTime);
+        g.gain.linearRampToValueAtTime(0.03, a.currentTime + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.55);
+        o.connect(g); g.connect(a.destination);
+        o.start(); o.stop(a.currentTime + 0.58);
+      }
+    }
+    this.i++;
+    this.casovac = setTimeout(() => this.krok(), 440);
+  },
+  start(){ if(this.hraje) return; this.hraje = true; this.i = 0; this.krok(); },
+  stop(){ this.hraje = false; if(this.casovac) clearTimeout(this.casovac); this.casovac = null; }
+};
+
+/* ---------- vlastní posílání "cíl hry" po síti (ať to vidí i kamarád) ----------
+   Nejnižší společné místo, kudy jde ven i zpráva "stav" (nastavení lobby) –
+   NET.posli tady fanuje do BroadcastChannel i do P2P (viz "32) PROPOJENÍ"). */
+const posliPredCilemHry = NET.posli;
+NET.posli = function(m){
+  if(m && m.typ === "stav") m.cil = G.cil;
+  return posliPredCilemHry(m);
+};
+const prijmiPredCilemHry = NET.prijmi;
+NET.prijmi = function(m){
+  if(m && m.typ === "stav" && m.cil != null) G.cil = m.cil;
+  return prijmiPredCilemHry(m);
+};
+
+/* ---------- stavba průvodce ---------- */
+const otevriLobbyPredWizardem = otevriLobby;
+let wizBotu = 1, wizKrok = 1;
+
+function wizPostavDom(){
+  if(document.getElementById("mWizard")) return;
+  const d = document.createElement("div");
+  d.className = "prekryv"; d.id = "mWizard";
+  d.innerHTML = `<div class="papir" style="max-width:560px">
+    <div class="papirHlava"><div><h2>MULTIPLAYER – RYCHLÉ NASTAVENÍ</h2>
+      <div class="podnadpis" id="wizPodnadpis"></div></div></div>
+    <div id="wizObsah"></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="aoeBtn maly" id="wizZpet" style="width:auto;flex:0 0 auto">◀ ZPĚT</button>
+      <button class="aoeBtn maly" id="wizDal" style="width:auto;flex:1">DÁL ▶</button>
+    </div>
+  </div>`;
+  document.body.appendChild(d);
+  document.getElementById("wizZpet").onclick = () => { zvuk("klik"); wizKrok = Math.max(1, wizKrok-1); wizKresli(); };
+  document.getElementById("wizDal").onclick = () => {
+    zvuk("klik");
+    if(wizKrok < 3){ wizKrok++; wizKresli(); }
+    else wizHotovo();
+  };
+}
+
+function wizKresli(){
+  const P = document.getElementById("wizPodnadpis"), O = document.getElementById("wizObsah");
+  document.getElementById("wizZpet").style.visibility = wizKrok===1 ? "hidden" : "visible";
+  document.getElementById("wizDal").textContent = wizKrok===3 ? "✅ HOTOVO" : "DÁL ▶";
+
+  if(wizKrok === 1){
+    P.textContent = "Krok 1 ze 3 · Kolik počítačových soupeřů (botů) chceš mít ve hře?";
+    O.innerHTML = `<div class="sekce"><div class="obtRada" id="wizBotRada"></div>
+      <div style="margin-top:8px;opacity:.75;font-size:13px">Ty + tolik botů. Zbytek míst je pro kamarády,
+      co se připojí přes kód – ty pozveš normálně v dalším okně.</div></div>`;
+    const r = document.getElementById("wizBotRada");
+    for(let n=0; n<=7; n++){
+      const b = document.createElement("button");
+      b.className = "obtBtn" + (wizBotu===n ? " on" : "");
+      b.textContent = n===0 ? "0 (jen kamarádi)" : String(n);
+      b.onclick = () => { wizBotu = n; zvuk("klik"); wizKresli(); };
+      r.appendChild(b);
+    }
+  }else if(wizKrok === 2){
+    P.textContent = "Krok 2 ze 3 · Jak se dá tahle hra vyhrát?";
+    O.innerHTML = `<div class="sekce" id="wizCilRada" style="display:flex;flex-direction:column;gap:8px"></div>`;
+    const R = document.getElementById("wizCilRada");
+    const volby = [
+      {k:"kral",    ik:"👑", jm:"Zničit krále", pop:"Padne král = konec. Jak to hra dělala doteď."},
+      {k:"radnice", ik:"🏛️", jm:"Zničit hlavní radnici", pop:"Přijdeš o tu úplně první radnici, co máš od začátku, = konec."},
+      {k:"vse",     ik:"💥", jm:"Zničit úplně všechno", pop:"Musíš soupeři sebrat každou budovu i každého panáčka."}
+    ];
+    volby.forEach(v=>{
+      const b = document.createElement("button");
+      b.className = "aoeBtn maly" + (G.cil===v.k ? "" : "");
+      b.style.cssText = "text-align:left" + (G.cil===v.k ? ";outline:3px solid #8ef0a0" : "");
+      b.innerHTML = v.ik+" "+v.jm+"<span class='pod'>"+v.pop+"</span>";
+      b.onclick = () => { G.cil = v.k; zvuk("klik"); wizKresli(); };
+      R.appendChild(b);
+    });
+  }else{
+    P.textContent = "Krok 3 ze 3 · Zvuk a hudba";
+    O.innerHTML = `<div class="sekce" style="display:flex;flex-direction:column;gap:8px">
+      <button class="aoeBtn maly" id="wizZvukBtn" style="text-align:left"></button>
+      <button class="aoeBtn maly" id="wizHudbaBtn" style="text-align:left"></button>
+    </div>`;
+    const bz = document.getElementById("wizZvukBtn"), bh = document.getElementById("wizHudbaBtn");
+    const kresli = ()=>{
+      bz.innerHTML = (G.zvukZap ? "🔊 Zvuky: ZAPNUTO" : "🔇 Zvuky: VYPNUTO")
+        + "<span class='pod'>Cvakání, sekery, výbuchy…</span>";
+      bh.innerHTML = (G.hudbaZap ? "🎵 Starodávná hudba: ZAPNUTO" : "🎵 Starodávná hudba: VYPNUTO")
+        + "<span class='pod'>Tichá melodie na pozadí, dá se kdykoliv vypnout.</span>";
+    };
+    kresli();
+    bz.onclick = () => { G.zvukZap = !G.zvukZap; zvukPredVypinacem("klik"); kresli(); };
+    bh.onclick = () => {
+      G.hudbaZap = !G.hudbaZap; zvuk("klik"); kresli();
+      if(G.hudbaZap) HUDBA.start(); else HUDBA.stop();
+    };
+  }
+}
+
+function wizHotovo(){
+  zavri("mWizard");
+  otevriLobbyPredWizardem("multi");
+  // otevriLobby dá vždycky přesně jednoho bota – dorovnáme na to, co si hráč vybral
+  while(lobbyHraci.filter(h=>h.bot).length < wizBotu) pridejBota();
+  while(lobbyHraci.filter(h=>h.bot).length > wizBotu){
+    const posledni = lobbyHraci.filter(h=>h.bot).pop();
+    lobbyHraci = lobbyHraci.filter(h=>h!==posledni);
+  }
+  NET.oznam(); kresliLobby();
+}
+
+/* POZOR: postavMenu() (jinde v kódu) nastavuje bMulti.onclick = ...
+   uvnitř window.addEventListener("DOMContentLoaded", ...) – kdybychom
+   tlačítko přepsali hned tady nahoře (při načítání skriptu, PŘED
+   DOMContentLoaded), postavMenu() by nás vzápětí přemazal zpátky na
+   původní chování. Proto čekáme na DOMContentLoaded taky, a protože se
+   tenhle díl připojuje k HTML jako úplně poslední, náš posluchač se
+   spustí až PO postavMenu() – a náš zápis do onclick tak zůstane platit. */
+window.addEventListener("DOMContentLoaded", () => {
+  const bMultiTlacitko = document.getElementById("bMulti");
+  if(!bMultiTlacitko) return;
+  bMultiTlacitko.onclick = () => {
+    if(!maJmeno()) return;
+    zvuk("klik");
+    wizPostavDom();
+    wizKrok = 1;
+    wizKresli();
+    otevri("mWizard");
+  };
+});
 
 /* ============================================================
    66) v43 — MULTIPLAYER: STATISTIKY SE ZAČNOU SYNCHRONIZOVAT
