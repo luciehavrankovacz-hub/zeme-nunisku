@@ -12057,14 +12057,32 @@ const HUDBA = {
       o.start(); o.stop(a.currentTime + 0.52);
     });
   },
+  /* POZOR (na přání "buben zní jako foukání, ne jako bouchnutí"): čtvercová
+     vlna má hodně vyšších harmonických, takže zněla bzučivě/dechově. Teď je
+     to sinusovka (čistý "bum" s klesající výškou) PLUS krátké "cvaknutí"
+     (hluk na pár milisekund hned na začátku) – to cvaknutí dělá tu ostrou
+     ránu na začátku, bez ní zní i sinusovka jen jako tón, ne jako úder. */
   buben(a, tvrdy){
     const o = a.createOscillator(), g = a.createGain();
-    o.type = "square"; o.frequency.setValueAtTime(tvrdy?115:95, a.currentTime);
-    o.frequency.exponentialRampToValueAtTime(42, a.currentTime + 0.09);
-    g.gain.setValueAtTime(tvrdy?0.09:0.07, a.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.13);
+    o.type = "sine"; o.frequency.setValueAtTime(tvrdy?150:130, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(45, a.currentTime + 0.08);
+    g.gain.setValueAtTime(tvrdy?0.18:0.14, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.17);
     o.connect(g); g.connect(a.destination);
-    o.start(); o.stop(a.currentTime + 0.15);
+    o.start(); o.stop(a.currentTime + 0.19);
+
+    const n = Math.round(a.sampleRate*0.012);
+    if(!this.klik || this.klik.length !== n){
+      this.klik = a.createBuffer(1, n, a.sampleRate);
+      const d = this.klik.getChannelData(0);
+      for(let i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+    }
+    const zdroj = a.createBufferSource(); zdroj.buffer = this.klik;
+    const gk = a.createGain();
+    gk.gain.setValueAtTime(tvrdy?0.12:0.08, a.currentTime);
+    gk.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.012);
+    zdroj.connect(gk); gk.connect(a.destination);
+    zdroj.start();
   },
   // bubínek: krátký bílý šum s rychlým útlumem (klasický trik na snare bez vzorku)
   bubinek(a){
