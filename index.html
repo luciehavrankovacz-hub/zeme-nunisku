@@ -11993,7 +11993,10 @@ const HUDBA = {
   krok(){
     if(!this.hraje) return;
     const f = this.noty[this.i % this.noty.length];
-    if(f && G.zvukZap !== false && G.hudbaZap !== false){
+    /* POZOR: hudba má být NEZÁVISLÁ na vypínači zvukových efektů (G.zvukZap) –
+       dřív se tu kontrolovalo obojí, takže vypnutí "Zvuky" umlčelo i hudbu,
+       i když měla zůstat hrát. Teď rozhoduje jen její vlastní vypínač. */
+    if(f && G.hudbaZap !== false){
       const a = ac();
       if(a){
         const o = a.createOscillator(), g = a.createGain();
@@ -12398,5 +12401,3 @@ updAI = function(dt){
 </script>
 </body>
 </html>
-<!-- redeploy 1786039902 -->
-<!-- redeploy 1786078551 -->
