@@ -12107,27 +12107,37 @@ const HUDBA = {
       hustaCasti: [true, true, true, true],
       bubenKazdych: 1,
       podklad: {index: 24, f: 82, dob: 16},
-      spev: "Brr brr patapim, tralalelo tralala! Brr brr patapim, tralalelo tralala! Brr brr patapim, tralalelo tralala! Balerina capuchina, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
+      spev: "Brr brr patapim, tralalelo tralala! Brr brr patapim, tralalelo tralala! Brr brr patapim, tralalelo tralala! Balerína kapučína, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
       nalada: {pitch:1.1, rate:1.08, volume:1}
     }
   },
 
-  // "zpěvák" – Web Speech API umí jen počítačem PŘEČÍST text (ne zazpívat melodii
-  // ani prožívat city), ale pitch/rate/volume aspoň napodobí smutnou/veselou náladu
+  /* "zpěvák" – Web Speech API umí jen počítačem PŘEČÍST text (ne zazpívat
+     melodii ani prožívat city), ale pitch/rate/volume aspoň napodobí
+     smutnou/veselou náladu.
+     POZOR (na přání "čti tu rockovou" – dřív to bylo potichu, nešlo to
+     slyšet): `cancel()` hned následované `speak()` ve STEJNÉM tiku umí
+     v Chromu řeč tiše "ztratit" (známá chyba prohlížeče) – proto je teď
+     `speak()` o pár milisekund odložený. Taky voláme `resume()`, protože
+     když si prohlížeč myslí, že je řeč "pozastavená" (třeba po přepnutí
+     karty), `speak()` samotné ji nerozjede. */
   zpivej(text, nalada){
     if(!window.speechSynthesis || G.zvukZap === false) return;
-    try{
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "cs-CZ";
-      u.pitch = (nalada && nalada.pitch) || 0.9;
-      u.rate = (nalada && nalada.rate) || 0.95;
-      u.volume = (nalada && nalada.volume) != null ? nalada.volume : 1;
-      const hlasy = speechSynthesis.getVoices();
-      const cesky = hlasy.find(v => v.lang && v.lang.toLowerCase().startsWith("cs"));
-      if(cesky) u.voice = cesky;
-      speechSynthesis.speak(u);
-    }catch(e){}
+    try{ speechSynthesis.cancel(); }catch(e){}
+    setTimeout(() => {
+      try{
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "cs-CZ";
+        u.pitch = (nalada && nalada.pitch) || 0.9;
+        u.rate = (nalada && nalada.rate) || 0.95;
+        u.volume = (nalada && nalada.volume) != null ? nalada.volume : 1;
+        const hlasy = speechSynthesis.getVoices();
+        const cesky = hlasy.find(v => v.lang && v.lang.toLowerCase().startsWith("cs"));
+        if(cesky) u.voice = cesky;
+        speechSynthesis.resume();
+        speechSynthesis.speak(u);
+      }catch(e){}
+    }, 40);
   },
   // přepne skladbu a (pokud zrovna hraje) ji hned znova poskládá a nastartuje
   zvolSkladbu(klic){
