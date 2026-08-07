@@ -12001,32 +12001,41 @@ zvuk = function(t){ if(G.zvukZap === false) return; zvukPredVypinacem(t); };
    Skutečnou hudbu (Age of Empires, "Dr. Coconut" ze Spotify, cokoli cizího)
    nejde stáhnout a použít – je to cizí dílo chráněné autorským právem, a ze
    Spotify navíc nejde nic legálně stáhnout vůbec. Místo toho DVĚ vlastní
-   skladby na výběr (`HUDBA.vyber`, viz krok 3 průvodce):
+   skladby na výběr (`HUDBA.vyber`, viz krok 3 průvodce), teď záměrně hodně
+   odlišné, ať se nepletou:
 
-     "stara" – vážnější pochodová skladba v e moll, 4 části (fanfára, hlavní
-               téma, zpěvná G dur část, vyvrcholení s podkladovým tónem).
-     "nova"  – veselejší v G dur, 4 kratší části, a na začátku každého kola
-               krátký MLUVENÝ bojový pokřik (viz `zpivej`). POZOR: to není
-               "zpěv krásným zpěvákem" – prohlížeč umí jen počítačem
-               PŘEČÍST text (Web Speech API), žádný hlas si nezazpívá
-               melodii. Řekla jsem to Lucii rovnou, tohle je nejbližší, co
-               jde bez cizích nahrávek udělat.
+     "stara" – původní vážná/vítězná skladba v e moll (fanfára, hlavní téma,
+               zpěvná G dur část, vyvrcholení) – beze slov, beze změny.
+     "nova"  – POMALÁ, SMUTNÁ, v e moll, tichý buben (skoro žádný), s
+               mluveným veršem o tom, že by člověk chtěl zůstat pořád mladý
+               (vlastní text, jen první řádek na přání Lucie).
+
+     POZOR na "zpěváka": Web Speech API umí jen počítačem PŘEČÍST text,
+     žádný hlas si nezazpívá melodii ani neumí "prožívat city" jako skutečný
+     člověk. Co jde aspoň napodobit: nižší a pomalejší hlas pro smutnou
+     náladu (`nalada.smutna`), vyšší a svižnější pro veselou
+     (`nalada.vesela`), a hlasitost na maximum, ať je to konečně dost
+     slyšet. Řekla jsem tohle Lucii rovnou, ví, že je to jen čtení, ne
+     opravdový zpěv.
 
    Obě skladby sdílejí stejný "engine" (noty/basa/akordy/husty se poskládají
-   z částí přes `poskladej()`). -1 v notách = drž předchozí notu déle (na
-   přání "ať to nejsou same krátká capnutí"). Obálka tónu drží hlasitost
-   chvíli rovně, ne hned dolů, ať dlouhá nota opravdu zní. `husty[i]` říká,
-   jestli má v tomhle úseku hrát buben na každou dobu, nebo jen na každou
-   druhou. Klavír (rozložený akord) a bicí (buben + bubínek, co se střídají)
-   hrají u obou skladeb stejně, jen s jinými akordy/notami. */
+   z částí přes `poskladej()`). -1 v notách = drž předchozí notu déle. Obálka
+   tónu drží hlasitost chvíli rovně, ne hned dolů, ať dlouhá nota opravdu
+   zní. `husty[i]` říká, jestli má buben hrát na každou dobu; `bubenKazdych`
+   řídí, jak řídce hraje jinde (u smutné skladby hodně řídce, skoro ho není
+   slyšet – tichá skladba nemá pochodovat). Každá skladba má i vlastní tempo
+   (`tempo`, v ms na dobu) – smutná je znatelně pomalejší. */
 const HUDBA = {
   hraje: false, i: 0, casovac: null, bubnu: 0, sr: null, klik: null,
   BEAT: 340,
   vyber: G.hudbaVyber || "stara",
 
   skladby: {
+    // "stara" beze změny – původní vážná/vítězná skladba (fanfára → hlavní
+    // téma → zpěvná G dur část → vyvrcholení s podkladovým tónem), beze
+    // slov. Na výslovné přání "starou nech tak, jak je".
     stara: {
-      // A) fanfára, B) hlavní téma (e moll), C) zpěvná část (G dur), D) vyvrcholení (e moll)
+      tempo: 340,
       castif: [
         [330,392,494,659,-1,587,494,-1],
         [330,-1,392,330,294,262,294,0, 330,-1,440,392,330,294,262,0],
@@ -12041,37 +12050,50 @@ const HUDBA = {
       ],
       akordCasti: [[165,247,196,247], [165,247,196,247], [196,294,247,294], [165,247,196,247]],
       hustaCasti: [true, false, false, true],
+      bubenKazdych: 2,
       podklad: {index: 40, f: 247, dob: 16},
       spev: null
     },
+    // "nova" = SMUTNÁ skladba (na přání "ta nova ma byt ta smutna"): pomalé
+    // tempo, tichý buben (skoro žádný), dlouze držené tóny, a mluvený verš
+    // o tom, že by člověk chtěl zůstat pořád mladý (první řádek zadala
+    // Lucie, zbytek dopsán ve stejném duchu).
     nova: {
-      // A) krátké zavolání, B) veselé hlavní téma, C) most (D dur), D) radostné vyvrcholení – vše v G dur
+      tempo: 460,
+      // A) tichý, tázavý úvod, B) sloka (verš zní tady), C) sestupná,
+      // rezignovaná část, D) dozvuk – všechno drženo dlouze, ať to vyzní
       castif: [
-        [392,494,587,-1,494,392,-1,0],
-        [392,-1,440,494,523,494,440,0, 392,-1,494,440,392,370,392,0],
-        [294,330,370,392,-1,-1,294,0],
-        [392,440,494,523,-1,-1,-1,0]
+        [330,-1,294,-1,262,-1,-1,0],
+        [330,294,262,-1,247,-1,-1,0, 262,294,330,-1,294,-1,262,0],
+        [247,-1,220,-1,196,-1,-1,0, 220,-1,247,-1,165,-1,-1,-1],
+        [330,-1,294,-1,262,-1,247,-1]
       ],
       basaCasti: [
-        [196,0,0,0,0,0,0,0],
-        [196,0,0,0,0,0,0,0, 196,0,0,0,0,0,0,0],
-        [147,0,0,0,0,0,0,0],
-        [196,0,0,0,0,0,0,0]
+        [165,0,0,0,0,0,0,0],
+        [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0],
+        [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0],
+        [165,0,0,0,0,0,0,0]
       ],
-      akordCasti: [[196,294,247,294], [196,294,247,294], [147,220,185,220], [196,294,247,294]],
-      hustaCasti: [true, false, false, true],
-      podklad: {index: 32, f: 147, dob: 8},
-      spev: "Ňuníci, vpřed! Za slávu a čest!"
+      akordCasti: [[165,196,247,196], [165,196,247,196], [165,196,247,196], [165,196,247,196]],
+      hustaCasti: [false, false, false, false],
+      bubenKazdych: 4,
+      podklad: {index: 40, f: 165, dob: 8},
+      spev: "Být stále mladý, to bych si přál… jak dávný sen, co pomalu mizí v dál… čas plyne tiše, nedá se zastavit… být stále mladý, to bych si přál.",
+      nalada: {pitch:0.62, rate:0.76, volume:1}
     }
   },
 
-  // mluvený bojový pokřik – Web Speech API umí jen PŘEČÍST text (ne zazpívat)
-  zpivej(text){
+  // "zpěvák" – Web Speech API umí jen počítačem PŘEČÍST text (ne zazpívat melodii
+  // ani prožívat city), ale pitch/rate/volume aspoň napodobí smutnou/veselou náladu
+  zpivej(text, nalada){
     if(!window.speechSynthesis || G.zvukZap === false) return;
     try{
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = "cs-CZ"; u.pitch = 0.82; u.rate = 0.92; u.volume = 0.85;
+      u.lang = "cs-CZ";
+      u.pitch = (nalada && nalada.pitch) || 0.9;
+      u.rate = (nalada && nalada.rate) || 0.95;
+      u.volume = (nalada && nalada.volume) != null ? nalada.volume : 1;
       const hlasy = speechSynthesis.getVoices();
       const cesky = hlasy.find(v => v.lang && v.lang.toLowerCase().startsWith("cs"));
       if(cesky) u.voice = cesky;
@@ -12181,6 +12203,9 @@ const HUDBA = {
     });
     this.podklad = s.podklad;
     this.spev = s.spev;
+    this.nalada = s.nalada;
+    this.bubenKazdych = s.bubenKazdych || 2;
+    this.BEAT = s.tempo || 340;
   },
   /* kolik dob (i s tou vlastní) drží nota, co začíná na kroku i – dívá se
      dopředu, kolik -1 za ní následuje */
@@ -12199,7 +12224,7 @@ const HUDBA = {
     if(G.hudbaZap !== false){
       const a = ac();
       if(a){
-        const bubnovat = this.husty[ik] ? true : (this.i % 2 === 0);
+        const bubnovat = this.husty[ik] ? true : (this.i % this.bubenKazdych === 0);
         if(bubnovat){
           // bum-pác-bum-pác: střídá se buben a bubínek, ne jedna pořád stejná rána
           if(this.bubnu % 2 === 0) this.buben(a, this.husty[ik]); else this.bubinek(a);
@@ -12214,8 +12239,8 @@ const HUDBA = {
           this.ton(a, this.podklad.f, "triangle", 0.035, (this.BEAT/1000) * this.podklad.dob * 0.96);
         // klavírní doprovod – rozložený akord podle toho, v jaké je zrovna části
         this.klavir(a, this.akordy[ik], 0.03);
-        // bojový pokřik na začátku každého kola (jen u skladby, co ho má)
-        if(ik === 0 && this.spev) this.zpivej(this.spev);
+        // verš/pokřik na začátku každého kola (jen u skladby, co ho má)
+        if(ik === 0 && this.spev) this.zpivej(this.spev, this.nalada);
       }
     }
     this.i++;
@@ -12340,7 +12365,7 @@ function wizKresli(){
       if(G.hudbaZap) HUDBA.start(); else HUDBA.stop();
     };
     const rS = document.getElementById("wizSkladbaRada");
-    [["stara","🎺 Stará (vážná, pochodová)"], ["nova","🎶 Nová (veselá, s pokřikem)"]].forEach(([k,jm])=>{
+    [["stara","🎺 Stará (vážná, pochodová)"], ["nova","😢 Nová (smutná, s veršem)"]].forEach(([k,jm])=>{
       const b = document.createElement("button");
       b.className = "obtBtn" + (G.hudbaVyber===k ? " on" : "");
       b.textContent = jm;
@@ -12562,8 +12587,10 @@ NET.posli = function(m){
    výcviku, král 2× HP/3× útok, rychlejší hra, slabší a pomalejší boti,
    pevnější zeď, hudba s klavírem a bicími…). v47 = buben je konečně slyšet
    i na slabých reproduktorech (notebook/tablet). v48 = druhá, veselejší
-   skladba s mluveným bojovým pokřikem + přepínač skladeb v průvodci. */
-VERZE = "v48";
+   skladba s mluveným bojovým pokřikem + přepínač skladeb v průvodci.
+   v49 = "nová" skladba je teď smutná (pomalé tempo, verš o věčném mládí),
+   "stará" zůstala beze změny. */
+VERZE = "v49";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
