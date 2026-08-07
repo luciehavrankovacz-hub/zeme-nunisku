@@ -12080,6 +12080,35 @@ const HUDBA = {
       podklad: {index: 40, f: 165, dob: 8},
       spev: "Být stále mladý, to bych si přál… jak dávný sen, co pomalu mizí v dál… čas plyne tiše, nedá se zastavit… být stále mladý, to bych si přál.",
       nalada: {pitch:0.62, rate:0.76, volume:1}
+    },
+    // "rock" – třetí, rockovější skladba: rychlé tempo, dvojitá (rozladěná)
+    // pilová vlna v melodii = "silnější" zvuk, kytarové (kvintakordové)
+    // "chugy" akordy místo klavíru, hustý buben pořád. Verš = "brainroty"
+    // (internetové mem fráze), první řádek přesně podle Lucie, zbytek
+    // dopsán ve stejném nesmyslném duchu + sloka o Ňuníkách.
+    rock: {
+      tempo: 250,
+      silna: true,
+      nastroj: "kytara",
+      // A) úvodní rif, B) sloka (verš zní tady), C) refrén o oktávu výš, D) dozvuk riffu
+      castif: [
+        [165,165,196,165,165,165,147,165],
+        [165,165,196,220,165,165,196,0, 165,165,147,165,165,165,196,0],
+        [330,-1,392,330,294,-1,330,0, 330,-1,392,440,392,-1,330,0],
+        [165,165,196,165,165,-1,-1,0]
+      ],
+      basaCasti: [
+        [82,0,82,0,82,0,82,0],
+        [82,0,82,0,82,0,82,0, 82,0,82,0,82,0,82,0],
+        [82,0,82,0,82,0,82,0, 82,0,82,0,82,0,82,0],
+        [82,0,82,0,82,0,82,0]
+      ],
+      akordCasti: [[165], [165,196], [330,392], [165]],
+      hustaCasti: [true, true, true, true],
+      bubenKazdych: 1,
+      podklad: {index: 24, f: 82, dob: 16},
+      spev: "Brr brr patapim, tralalelo tralala! Brr brr patapim, tralalelo tralala! Brr brr patapim, tralalelo tralala! Balerina capuchina, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
+      nalada: {pitch:1.1, rate:1.08, volume:1}
     }
   },
 
@@ -12129,6 +12158,20 @@ const HUDBA = {
       g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.5);
       o.connect(g); g.connect(a.destination);
       o.start(); o.stop(a.currentTime + 0.52);
+    });
+  },
+  // kytara: "power akord" (kořen + čistá kvinta, žádná tercie – přesně jak
+  // to hraje rocková/metalová kytara), pilová vlna, krátký "chuggy" útlum
+  kytara(a, f, hlas){
+    [f, f*1.5].forEach(freq => {
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = "sawtooth"; o.frequency.setValueAtTime(freq, a.currentTime);
+      g.gain.setValueAtTime(0, a.currentTime);
+      g.gain.linearRampToValueAtTime(hlas, a.currentTime + 0.01);
+      g.gain.setValueAtTime(hlas*0.8, a.currentTime + 0.08);
+      g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.22);
+      o.connect(g); g.connect(a.destination);
+      o.start(); o.stop(a.currentTime + 0.24);
     });
   },
   /* POZOR (na přání "buben zní jako foukání" a pak "buben není slyšet"):
@@ -12206,6 +12249,8 @@ const HUDBA = {
     this.nalada = s.nalada;
     this.bubenKazdych = s.bubenKazdych || 2;
     this.BEAT = s.tempo || 340;
+    this.silna = !!s.silna;
+    this.nastroj = s.nastroj || "klavir";
   },
   /* kolik dob (i s tou vlastní) drží nota, co začíná na kroku i – dívá se
      dopředu, kolik -1 za ní následuje */
@@ -12232,13 +12277,21 @@ const HUDBA = {
         }
         if(f > 0){
           const dob = this.drzTolikDob(ik);
-          this.ton(a, f, "sawtooth", 0.05, (this.BEAT/1000) * dob * 0.94);
+          const durMelodie = (this.BEAT/1000) * dob * 0.94;
+          if(this.silna){
+            // "silná" melodie (rock) – dvě lehce rozladěné pilové vlny = hutnější zvuk
+            this.ton(a, f, "sawtooth", 0.042, durMelodie);
+            this.ton(a, f*1.012, "sawtooth", 0.042, durMelodie);
+          }else{
+            this.ton(a, f, "sawtooth", 0.05, durMelodie);
+          }
         }
         if(b) this.ton(a, b, "triangle", 0.05, 0.9);
         if(this.podklad && ik === this.podklad.index)
           this.ton(a, this.podklad.f, "triangle", 0.035, (this.BEAT/1000) * this.podklad.dob * 0.96);
-        // klavírní doprovod – rozložený akord podle toho, v jaké je zrovna části
-        this.klavir(a, this.akordy[ik], 0.03);
+        // doprovod pod melodií – klavír, nebo u rockové skladby kytarové akordy
+        if(this.nastroj === "kytara") this.kytara(a, this.akordy[ik], 0.045);
+        else this.klavir(a, this.akordy[ik], 0.03);
         // verš/pokřik na začátku každého kola (jen u skladby, co ho má)
         if(ik === 0 && this.spev) this.zpivej(this.spev, this.nalada);
       }
@@ -12365,7 +12418,8 @@ function wizKresli(){
       if(G.hudbaZap) HUDBA.start(); else HUDBA.stop();
     };
     const rS = document.getElementById("wizSkladbaRada");
-    [["stara","🎺 Stará (vážná, pochodová)"], ["nova","😢 Nová (smutná, s veršem)"]].forEach(([k,jm])=>{
+    [["stara","🎺 Stará (vážná, pochodová)"], ["nova","😢 Nová (smutná, s veršem)"],
+     ["rock","🎸 Rocková (s pokřikem)"]].forEach(([k,jm])=>{
       const b = document.createElement("button");
       b.className = "obtBtn" + (G.hudbaVyber===k ? " on" : "");
       b.textContent = jm;
@@ -12589,8 +12643,9 @@ NET.posli = function(m){
    i na slabých reproduktorech (notebook/tablet). v48 = druhá, veselejší
    skladba s mluveným bojovým pokřikem + přepínač skladeb v průvodci.
    v49 = "nová" skladba je teď smutná (pomalé tempo, verš o věčném mládí),
-   "stará" zůstala beze změny. */
-VERZE = "v49";
+   "stará" zůstala beze změny. v50 = třetí, rocková skladba (kytarové
+   "power akordy", rychlé tempo, hustý buben, verš s brainroty). */
+VERZE = "v50";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
