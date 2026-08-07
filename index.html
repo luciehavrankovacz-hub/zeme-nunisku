@@ -5749,7 +5749,11 @@ SYNC.posli = function(dt){
      podle počtu spojených, ať to zůstane plynulé pro všechny – pohyb kamaráda
      se dál dokresluje plynule (viz dokresli), takže to nebude vidět. */
   const spoju = (typeof P2P !== "undefined" && P2P.zivychSpoju) ? P2P.zivychSpoju() : 0;
-  const prah = spoju > 3 ? 0.16 : (spoju > 1 ? 0.13 : 0.1);
+  /* v46: ještě o kousek řidší při 2+ kamarádech (na přání "trochu to
+     zrychli") – dokresli() mezi snímky dál plynule domýšlí pohyb, takže
+     na obrazovce to skoro není vidět, ale reálných přenosů za vteřinu je
+     méně, což je přesně to, co "seká" nejvíc, když je víc lidí najednou. */
+  const prah = spoju > 3 ? 0.2 : (spoju > 1 ? 0.15 : 0.1);
   if(this.cas < prah) return;
   this.cas = 0;
   if(!P2P.zivychSpoju() && !NET.kanal) return;
