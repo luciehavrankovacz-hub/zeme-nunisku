@@ -12115,13 +12115,16 @@ const HUDBA = {
   /* "zpěvák" – Web Speech API umí jen počítačem PŘEČÍST text (ne zazpívat
      melodii ani prožívat city), ale pitch/rate/volume aspoň napodobí
      smutnou/veselou náladu.
-     POZOR (na přání "čti tu rockovou" – dřív to bylo potichu, nešlo to
-     slyšet): `cancel()` hned následované `speak()` ve STEJNÉM tiku umí
-     v Chromu řeč tiše "ztratit" (známá chyba prohlížeče) – proto je teď
-     `speak()` o pár milisekund odložený. Taky voláme `resume()`, protože
-     když si prohlížeč myslí, že je řeč "pozastavená" (třeba po přepnutí
-     karty), `speak()` samotné ji nerozjede. */
+     POZOR (Lucie hlásila "furt to tam neni" – ani po opravě "cancel+speak
+     race" to nebylo slyšet): mluvený hlas je na různých počítačích/tabletech
+     hodně nespolehlivý – někde chybí český hlas, někde ho prohlížeč z
+     bezpečnostních důvodů vůbec nepustí, když nejde o přímé kliknutí. Tohle
+     se nedá ze zdrojáku 100% opravit (fakt to závisí na konkrétním
+     zařízení). Proto teď zpěvák VŽDY ukáže i TITULKY na obrazovce
+     (`ukazTitulky`) – ty uvidíš vždycky, i kdyby hlas na tvém zařízení
+     mlčel. Zvuk se pořád zkouší přehrát navrch. */
   zpivej(text, nalada){
+    this.ukazTitulky(text);
     if(!window.speechSynthesis || G.zvukZap === false) return;
     try{ speechSynthesis.cancel(); }catch(e){}
     setTimeout(() => {
@@ -12138,6 +12141,24 @@ const HUDBA = {
         speechSynthesis.speak(u);
       }catch(e){}
     }, 40);
+  },
+  // titulky – velký nápis nahoře na obrazovce, ať verš/pokřik uvidíš i bez zvuku
+  ukazTitulky(text){
+    let el = document.getElementById("hudbaTitulky");
+    if(!el){
+      el = document.createElement("div");
+      el.id = "hudbaTitulky";
+      el.style.cssText = "position:fixed;left:50%;top:12%;transform:translateX(-50%);"
+        + "max-width:min(700px,90vw);padding:10px 20px;background:rgba(20,14,8,.85);"
+        + "color:#ffe9b8;font-size:16px;font-weight:bold;text-align:center;"
+        + "border-radius:12px;border:2px solid #b8934a;z-index:99999;pointer-events:none;"
+        + "opacity:0;transition:opacity .5s;box-shadow:0 6px 18px rgba(0,0,0,.5)";
+      document.body.appendChild(el);
+    }
+    el.textContent = "🎤 " + text;
+    el.style.opacity = "1";
+    clearTimeout(this.titulkyCasovac);
+    this.titulkyCasovac = setTimeout(() => { el.style.opacity = "0"; }, 6500);
   },
   // přepne skladbu a (pokud zrovna hraje) ji hned znova poskládá a nastartuje
   zvolSkladbu(klic){
@@ -12654,8 +12675,10 @@ NET.posli = function(m){
    skladba s mluveným bojovým pokřikem + přepínač skladeb v průvodci.
    v49 = "nová" skladba je teď smutná (pomalé tempo, verš o věčném mládí),
    "stará" zůstala beze změny. v50 = třetí, rocková skladba (kytarové
-   "power akordy", rychlé tempo, hustý buben, verš s brainroty). */
-VERZE = "v50";
+   "power akordy", rychlé tempo, hustý buben, verš s brainroty). v51 =
+   verš/pokřik se teď VŽDY ukáže i jako titulky na obrazovce (mluvený hlas
+   je na různých zařízeních nespolehlivý, titulky uvidíš vždycky). */
+VERZE = "v51";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
