@@ -11994,26 +11994,32 @@ zvuk = function(t){ if(G.zvukZap === false) return; zvukPredVypinacem(t); };
 
 /* ---------- bojová hudba – žádný soubor, jen syntetizér ----------
    Skutečnou hudbu z Age of Empires (nebo odjinud) nejde stáhnout a použít –
-   je to cizí dílo chráněné autorským právem. Místo toho jde udělat vlastní,
-   ale POŘÁDNĚJŠÍ skladbička: delší fráze (32 dob, ne pořád dokola stejných 16),
-   dvě části (hlavní téma + "vzepjatá" druhá půlka o kvintu výš, jak to dělá
-   spousta opravdových vojenských melodií), pilovitá melodie (trumpetovější
-   zvuk), tichý basový tón na silné doby a bubnový tep na každou dobu. */
+   je to cizí dílo chráněné autorským právem. Místo toho vlastní skladbička:
+   delší fráze (32 dob), hlavní téma + "vzepjatá" druhá půlka o kvintu výš.
+
+   POZOR (na přání "ať to není jen tikání, ať jsou noty delší"): -1 v `noty`
+   znamená "drž předchozí notu déle", ne novou notu – melodie tak má opravdu
+   dlouhé, zpívané tóny místo samých stejně krátkých capnutí. Buben navíc hraje
+   jen na KAŽDOU DRUHOU dobu (ne na všechny), ať vynikne melodie a nezní to
+   jako hodiny. Obálka tónu drží hlasitost chvíli rovně (ne hned dolů), takže
+   dlouhá nota opravdu zní, nejen dozní. */
 const HUDBA = {
   hraje: false, i: 0, casovac: null,
+  BEAT: 340,
   // e moll: hlavní téma (E) + vzepjatá odpověď o kvintu výš (H)
-  noty: [330,330,392,330,294,262,294,0, 330,330,440,392,330,294,262,0,
-         392,440,494,440,392,370,392,0, 494,440,392,370,330,294,330,0],
+  noty: [330,-1,392,330,294,262,294,0, 330,-1,440,392,330,294,262,0,
+         392,-1,494,-1,392,370,392,0, 494,-1,392,370,330,-1,330,0],
   basa: [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0,
          196,0,0,0,0,0,0,0, 196,0,0,0,0,0,0,0],
   ton(a, f, typ, hlas, delka){
     const o = a.createOscillator(), g = a.createGain();
     o.type = typ; o.frequency.setValueAtTime(f, a.currentTime);
     g.gain.setValueAtTime(0, a.currentTime);
-    g.gain.linearRampToValueAtTime(hlas, a.currentTime + 0.03);
+    g.gain.linearRampToValueAtTime(hlas, a.currentTime + 0.04);
+    g.gain.setValueAtTime(hlas, a.currentTime + Math.max(0.05, delka*0.55));
     g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + delka);
     o.connect(g); g.connect(a.destination);
-    o.start(); o.stop(a.currentTime + delka + 0.02);
+    o.start(); o.stop(a.currentTime + delka + 0.03);
   },
   buben(a){
     const o = a.createOscillator(), g = a.createGain();
@@ -12023,6 +12029,13 @@ const HUDBA = {
     g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.13);
     o.connect(g); g.connect(a.destination);
     o.start(); o.stop(a.currentTime + 0.15);
+  },
+  /* kolik dob (i s tou vlastní) drží nota, co začíná na kroku i – dívá se
+     dopředu, kolik -1 za ní následuje */
+  drzTolikDob(i){
+    let d = 1, k = i+1;
+    while(this.noty[k % this.noty.length] === -1){ d++; k++; }
+    return d;
   },
   krok(){
     if(!this.hraje) return;
@@ -12034,13 +12047,16 @@ const HUDBA = {
     if(G.hudbaZap !== false){
       const a = ac();
       if(a){
-        this.buben(a);
-        if(f) this.ton(a, f, "sawtooth", 0.045, 0.32);
+        if(this.i % 2 === 0) this.buben(a);
+        if(f > 0){
+          const dob = this.drzTolikDob(this.i);
+          this.ton(a, f, "sawtooth", 0.05, (this.BEAT/1000) * dob * 0.94);
+        }
         if(b) this.ton(a, b, "triangle", 0.05, 0.9);
       }
     }
     this.i++;
-    this.casovac = setTimeout(() => this.krok(), 340);
+    this.casovac = setTimeout(() => this.krok(), this.BEAT);
   },
   start(){ if(this.hraje) return; this.hraje = true; this.i = 0; this.krok(); },
   stop(){ this.hraje = false; if(this.casovac) clearTimeout(this.casovac); this.casovac = null; }
