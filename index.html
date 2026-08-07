@@ -12011,10 +12011,16 @@ zvuk = function(t){ if(G.zvukZap === false) return; zvukPredVypinacem(t); };
    POZOR (na přání "ať to není jen tikání, ať jsou noty delší"): -1 v `noty`
    znamená "drž předchozí notu déle", ne novou notu. Obálka tónu drží
    hlasitost chvíli rovně (ne hned dolů), takže dlouhá nota opravdu zní,
-   nejen dozní. Buben je hustý jen ve fanfáře a ve vyvrcholení (`bubenHusty`),
-   jinde hraje řidčeji, ať vynikne melodie. */
+   nejen dozní. Buben je hustý jen ve fanfáře a ve vyvrcholení (`husty`),
+   jinde hraje řidčeji, ať vynikne melodie.
+
+   NA PŘÁNÍ "ať je slyšet klavír a bicí, ať je to fakt husté": přidán
+   klavírní doprovod (rozložený akord, hraje na každou dobu pod melodií,
+   dva mírně rozladěné tóny = klavírovější zvuk) a druhý buben – bubínek
+   (bílý šum s rychlým útlumem), který se s tím basovým střídá jako
+   pořádná bicí souprava (bum-pác-bum-pác), ne jen jedno bouchnutí. */
 const HUDBA = {
-  hraje: false, i: 0, casovac: null,
+  hraje: false, i: 0, casovac: null, bubnu: 0, sr: null,
   BEAT: 340,
 
   // A) fanfára – E-G-H-e (trojzvuk nahoru), pak D-H drženo
@@ -12025,6 +12031,9 @@ const HUDBA = {
   temaZpevne: [392,-1,-1,494,440,392,-1,330, 294,-1,-1,392,370,330,-1,294],
   // D) vyvrcholení v e moll, doznívá na dlouhé E
   vyvrcholeni: [392,440,494,440,392,370,392,0, 494,440,392,370,330,-1,-1,-1],
+  // klavírní akordy pod melodií: e moll (E-H-G-H) a G dur (G-D-H-D)
+  akordEm: [165,247,196,247],
+  akordG:  [196,294,247,294],
 
   ton(a, f, typ, hlas, delka){
     const o = a.createOscillator(), g = a.createGain();
@@ -12036,6 +12045,18 @@ const HUDBA = {
     o.connect(g); g.connect(a.destination);
     o.start(); o.stop(a.currentTime + delka + 0.03);
   },
+  // klavír: dva jemně rozladěné tóny + rychlý (klavírní) útlum bez "podržení"
+  klavir(a, f, hlas){
+    [1, 1.006].forEach(det => {
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = "triangle"; o.frequency.setValueAtTime(f*det, a.currentTime);
+      g.gain.setValueAtTime(0, a.currentTime);
+      g.gain.linearRampToValueAtTime(hlas, a.currentTime + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.5);
+      o.connect(g); g.connect(a.destination);
+      o.start(); o.stop(a.currentTime + 0.52);
+    });
+  },
   buben(a, tvrdy){
     const o = a.createOscillator(), g = a.createGain();
     o.type = "square"; o.frequency.setValueAtTime(tvrdy?115:95, a.currentTime);
@@ -12044,6 +12065,21 @@ const HUDBA = {
     g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.13);
     o.connect(g); g.connect(a.destination);
     o.start(); o.stop(a.currentTime + 0.15);
+  },
+  // bubínek: krátký bílý šum s rychlým útlumem (klasický trik na snare bez vzorku)
+  bubinek(a){
+    const dur = 0.12, n = Math.round(a.sampleRate*dur);
+    if(!this.sr || this.sr.length !== n){
+      this.sr = a.createBuffer(1, n, a.sampleRate);
+      const d = this.sr.getChannelData(0);
+      for(let i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+    }
+    const zdroj = a.createBufferSource(); zdroj.buffer = this.sr;
+    const g = a.createGain();
+    g.gain.setValueAtTime(0.09, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+    zdroj.connect(g); g.connect(a.destination);
+    zdroj.start();
   },
   /* poskládá dohromady noty (melodie), basu a "je tenhle úsek hustý na buben"
      jen jednou při načtení – ať se to nemusí řešit pokaždé v kroku */
@@ -12077,19 +12113,26 @@ const HUDBA = {
       const a = ac();
       if(a){
         const bubnovat = this.husty[ik] ? true : (this.i % 2 === 0);
-        if(bubnovat) this.buben(a, this.husty[ik]);
+        if(bubnovat){
+          // bum-pác-bum-pác: střídá se buben a bubínek, ne jedna pořád stejná rána
+          if(this.bubnu % 2 === 0) this.buben(a, this.husty[ik]); else this.bubinek(a);
+          this.bubnu++;
+        }
         if(f > 0){
           const dob = this.drzTolikDob(ik);
           this.ton(a, f, "sawtooth", 0.05, (this.BEAT/1000) * dob * 0.94);
         }
         if(b) this.ton(a, b, "triangle", 0.05, 0.9);
         if(ik === this.podklad) this.ton(a, 247, "triangle", 0.035, (this.BEAT/1000) * 16 * 0.96);
+        // klavírní doprovod – rozložený akord podle toho, v jaké je part tónině
+        const akord = (ik >= 24 && ik < 40) ? this.akordG : this.akordEm;
+        this.klavir(a, akord[this.i % akord.length], 0.03);
       }
     }
     this.i++;
     this.casovac = setTimeout(() => this.krok(), this.BEAT);
   },
-  start(){ if(this.hraje) return; if(!this.noty) this.poskladej(); this.hraje = true; this.i = 0; this.krok(); },
+  start(){ if(this.hraje) return; if(!this.noty) this.poskladej(); this.hraje = true; this.i = 0; this.bubnu = 0; this.krok(); },
   stop(){ this.hraje = false; if(this.casovac) clearTimeout(this.casovac); this.casovac = null; }
 };
 
@@ -12414,7 +12457,13 @@ NET.posli = function(m){
       v cestě" – case "utok" výš), takže po zboření zdi jednotka
       pokračuje tam, kam jsi ji poslala. Dřív jen zůstala stát.
    ============================================================ */
-VERZE = "v44";
+/* POZOR: p42.html (průvodce multiplayerem, cíle hry, hudba) se v build.sh
+   vkládá PŘED tenhle soubor, takže kdyby si nastavil VERZE tam, přepsalo by
+   se to tímhle řádkem níž – proto číslo verze bydlí až úplně tady na konci.
+   v46 = shrnuje kupu dnešních změn (průvodce, TURN server, cíle hry, kolečko
+   výcviku, král 2× HP/3× útok, rychlejší hra, slabší a pomalejší boti,
+   pevnější zeď, hudba s klavírem a bicími…). */
+VERZE = "v46";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
