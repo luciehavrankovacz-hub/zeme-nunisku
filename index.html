@@ -11985,31 +11985,46 @@ if(G.hudbaZap == null) G.hudbaZap = false;
 const zvukPredVypinacem = zvuk;
 zvuk = function(t){ if(G.zvukZap === false) return; zvukPredVypinacem(t); };
 
-/* ---------- jednoduchá "starodávná" hudba – žádný soubor, jen syntetizér
-   (stejný trik jako u zvukových efektů: pár tónů za sebou dokola) ---------- */
+/* ---------- bojová hudba – žádný soubor, jen syntetizér
+   (stejný trik jako u zvukových efektů: pár tónů za sebou dokola).
+   Melodie v e moll na "trumpetovější" pilovité vlně + tichý bubnový
+   tep na každou dobu, ať to zní pochodově/válečně, ne jen jako cinkání. */
 const HUDBA = {
   hraje: false, i: 0, casovac: null,
-  noty: [330,392,440,392,330,294,262,0, 294,330,392,330,294,262,0,0],
+  noty: [330,330,392,330,294,262,294,0, 330,330,440,392,330,294,262,0],
+  buben(){
+    const a = ac(); if(!a) return;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = "square"; o.frequency.setValueAtTime(95, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(42, a.currentTime + 0.09);
+    g.gain.setValueAtTime(0.07, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.13);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + 0.15);
+  },
   krok(){
     if(!this.hraje) return;
     const f = this.noty[this.i % this.noty.length];
     /* POZOR: hudba má být NEZÁVISLÁ na vypínači zvukových efektů (G.zvukZap) –
        dřív se tu kontrolovalo obojí, takže vypnutí "Zvuky" umlčelo i hudbu,
        i když měla zůstat hrát. Teď rozhoduje jen její vlastní vypínač. */
-    if(f && G.hudbaZap !== false){
+    if(G.hudbaZap !== false){
       const a = ac();
       if(a){
-        const o = a.createOscillator(), g = a.createGain();
-        o.type = "triangle"; o.frequency.setValueAtTime(f, a.currentTime);
-        g.gain.setValueAtTime(0, a.currentTime);
-        g.gain.linearRampToValueAtTime(0.03, a.currentTime + 0.08);
-        g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.55);
-        o.connect(g); g.connect(a.destination);
-        o.start(); o.stop(a.currentTime + 0.58);
+        this.buben();
+        if(f){
+          const o = a.createOscillator(), g = a.createGain();
+          o.type = "sawtooth"; o.frequency.setValueAtTime(f, a.currentTime);
+          g.gain.setValueAtTime(0, a.currentTime);
+          g.gain.linearRampToValueAtTime(0.045, a.currentTime + 0.03);
+          g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.32);
+          o.connect(g); g.connect(a.destination);
+          o.start(); o.stop(a.currentTime + 0.34);
+        }
       }
     }
     this.i++;
-    this.casovac = setTimeout(() => this.krok(), 440);
+    this.casovac = setTimeout(() => this.krok(), 340);
   },
   start(){ if(this.hraje) return; this.hraje = true; this.i = 0; this.krok(); },
   stop(){ this.hraje = false; if(this.casovac) clearTimeout(this.casovac); this.casovac = null; }
@@ -12031,7 +12046,7 @@ NET.prijmi = function(m){
 
 /* ---------- stavba průvodce ---------- */
 const otevriLobbyPredWizardem = otevriLobby;
-let wizBotu = 1, wizKrok = 1;
+let wizBotu = 1, wizKamaradu = 1, wizKrok = 1;
 
 function wizPostavDom(){
   if(document.getElementById("mWizard")) return;
@@ -12061,18 +12076,37 @@ function wizKresli(){
   document.getElementById("wizDal").textContent = wizKrok===3 ? "✅ HOTOVO" : "DÁL ▶";
 
   if(wizKrok === 1){
-    P.textContent = "Krok 1 ze 3 · Kolik počítačových soupeřů (botů) chceš mít ve hře?";
-    O.innerHTML = `<div class="sekce"><div class="obtRada" id="wizBotRada"></div>
-      <div style="margin-top:8px;opacity:.75;font-size:13px">Ty + tolik botů. Zbytek míst je pro kamarády,
-      co se připojí přes kód – ty pozveš normálně v dalším okně.</div></div>`;
-    const r = document.getElementById("wizBotRada");
+    P.textContent = "Krok 1 ze 3 · Kolik kamarádů a kolik botů chceš mít ve hře?";
+    O.innerHTML = `<div class="sekce">
+        <h3>Kamarádi</h3>
+        <div class="obtRada" id="wizKamaradRada"></div>
+        <div style="margin-top:6px;opacity:.75;font-size:13px">Pro každého hned připravíme
+        pozvánku, ať ji máš rovnou po ruce – jen ji pošleš (WhatsApp, Messenger…) a on se
+        přidá přes JOIN A GAME.</div>
+      </div>
+      <div class="sekce">
+        <h3>Boti (počítačoví soupeři)</h3>
+        <div class="obtRada" id="wizBotRada"></div>
+      </div>
+      <div style="margin-top:8px;opacity:.75;font-size:13px" id="wizCelkem"></div>`;
+    const rK = document.getElementById("wizKamaradRada");
+    for(let n=0; n<=5; n++){
+      const b = document.createElement("button");
+      b.className = "obtBtn" + (wizKamaradu===n ? " on" : "");
+      b.textContent = String(n);
+      b.onclick = () => { wizKamaradu = n; zvuk("klik"); wizKresli(); };
+      rK.appendChild(b);
+    }
+    const rB = document.getElementById("wizBotRada");
     for(let n=0; n<=7; n++){
       const b = document.createElement("button");
       b.className = "obtBtn" + (wizBotu===n ? " on" : "");
-      b.textContent = n===0 ? "0 (jen kamarádi)" : String(n);
+      b.textContent = String(n);
       b.onclick = () => { wizBotu = n; zvuk("klik"); wizKresli(); };
-      r.appendChild(b);
+      rB.appendChild(b);
     }
+    document.getElementById("wizCelkem").textContent =
+      "Celkem ve hře: ty + "+wizKamaradu+" kamarád(ů) + "+wizBotu+" bot(ů) = "+(1+wizKamaradu+wizBotu)+" hráčů.";
   }else if(wizKrok === 2){
     P.textContent = "Krok 2 ze 3 · Jak se dá tahle hra vyhrát?";
     O.innerHTML = `<div class="sekce" id="wizCilRada" style="display:flex;flex-direction:column;gap:8px"></div>`;
@@ -12112,7 +12146,7 @@ function wizKresli(){
   }
 }
 
-function wizHotovo(){
+async function wizHotovo(){
   zavri("mWizard");
   otevriLobbyPredWizardem("multi");
   // otevriLobby dá vždycky přesně jednoho bota – dorovnáme na to, co si hráč vybral
@@ -12122,6 +12156,11 @@ function wizHotovo(){
     lobbyHraci = lobbyHraci.filter(h=>h!==posledni);
   }
   NET.oznam(); kresliLobby();
+  // rovnou připravíme tolik pozvánek, kolik kamarádů hráč zvolil v kroku 1
+  for(let slot=1; slot<=wizKamaradu; slot++){
+    try{ pozvankyKod[slot] = await P2P.pozvanka(slot); }catch(e){}
+    if(typeof kresliP2P==="function") kresliP2P();
+  }
 }
 
 /* POZOR: postavMenu() (jinde v kódu) nastavuje bMulti.onclick = ...
