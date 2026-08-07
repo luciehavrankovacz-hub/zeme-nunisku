@@ -11994,23 +11994,38 @@ zvuk = function(t){ if(G.zvukZap === false) return; zvukPredVypinacem(t); };
 
 /* ---------- bojová hudba – žádný soubor, jen syntetizér ----------
    Skutečnou hudbu z Age of Empires (nebo odjinud) nejde stáhnout a použít –
-   je to cizí dílo chráněné autorským právem. Místo toho vlastní skladbička:
-   delší fráze (32 dob), hlavní téma + "vzepjatá" druhá půlka o kvintu výš.
+   je to cizí dílo chráněné autorským právem. Místo toho vlastní, pořádnější
+   skladba se čtyřmi částmi (56 dob, ne pořád dokola stejná chvilka):
+
+     A) FANFÁRA (dob 0–7)   – stoupající zavolání (e moll trojzvuk nahoru),
+                               hustý buben (na každou dobu), ať to hned zabere.
+     B) HLAVNÍ TÉMA (8–23)  – pochodová melodie v e moll, řidší buben.
+     C) ZPĚVNÁ ČÁST (24–39) – kontrast: přelaďuje se do G dur (paralelní durová
+                               tónina k e moll – zní to o dost "světleji"),
+                               dlouhé, plynoucí tóny, buben skoro mlčí.
+     D) VYVRCHOLENÍ (40–55) – zpátky v e moll, "vzepjatá" melodie ze staré
+                               verze, hustý buben, a pod tím dlouhý PODKLADOVÝ
+                               tón (H, dominanta) až do finálního doznění na E –
+                               klasický trik, jak vyvrcholení "podepřít".
 
    POZOR (na přání "ať to není jen tikání, ať jsou noty delší"): -1 v `noty`
-   znamená "drž předchozí notu déle", ne novou notu – melodie tak má opravdu
-   dlouhé, zpívané tóny místo samých stejně krátkých capnutí. Buben navíc hraje
-   jen na KAŽDOU DRUHOU dobu (ne na všechny), ať vynikne melodie a nezní to
-   jako hodiny. Obálka tónu drží hlasitost chvíli rovně (ne hned dolů), takže
-   dlouhá nota opravdu zní, nejen dozní. */
+   znamená "drž předchozí notu déle", ne novou notu. Obálka tónu drží
+   hlasitost chvíli rovně (ne hned dolů), takže dlouhá nota opravdu zní,
+   nejen dozní. Buben je hustý jen ve fanfáře a ve vyvrcholení (`bubenHusty`),
+   jinde hraje řidčeji, ať vynikne melodie. */
 const HUDBA = {
   hraje: false, i: 0, casovac: null,
   BEAT: 340,
-  // e moll: hlavní téma (E) + vzepjatá odpověď o kvintu výš (H)
-  noty: [330,-1,392,330,294,262,294,0, 330,-1,440,392,330,294,262,0,
-         392,-1,494,-1,392,370,392,0, 494,-1,392,370,330,-1,330,0],
-  basa: [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0,
-         196,0,0,0,0,0,0,0, 196,0,0,0,0,0,0,0],
+
+  // A) fanfára – E-G-H-e (trojzvuk nahoru), pak D-H drženo
+  fanfara: [330,392,494,659,-1,587,494,-1],
+  // B) hlavní téma v e moll
+  temaHlavni: [330,-1,392,330,294,262,294,0, 330,-1,440,392,330,294,262,0],
+  // C) zpěvná část v G dur – dlouhé plynoucí tóny
+  temaZpevne: [392,-1,-1,494,440,392,-1,330, 294,-1,-1,392,370,330,-1,294],
+  // D) vyvrcholení v e moll, doznívá na dlouhé E
+  vyvrcholeni: [392,440,494,440,392,370,392,0, 494,440,392,370,330,-1,-1,-1],
+
   ton(a, f, typ, hlas, delka){
     const o = a.createOscillator(), g = a.createGain();
     o.type = typ; o.frequency.setValueAtTime(f, a.currentTime);
@@ -12021,14 +12036,28 @@ const HUDBA = {
     o.connect(g); g.connect(a.destination);
     o.start(); o.stop(a.currentTime + delka + 0.03);
   },
-  buben(a){
+  buben(a, tvrdy){
     const o = a.createOscillator(), g = a.createGain();
-    o.type = "square"; o.frequency.setValueAtTime(95, a.currentTime);
+    o.type = "square"; o.frequency.setValueAtTime(tvrdy?115:95, a.currentTime);
     o.frequency.exponentialRampToValueAtTime(42, a.currentTime + 0.09);
-    g.gain.setValueAtTime(0.07, a.currentTime);
+    g.gain.setValueAtTime(tvrdy?0.09:0.07, a.currentTime);
     g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.13);
     o.connect(g); g.connect(a.destination);
     o.start(); o.stop(a.currentTime + 0.15);
+  },
+  /* poskládá dohromady noty (melodie), basu a "je tenhle úsek hustý na buben"
+     jen jednou při načtení – ať se to nemusí řešit pokaždé v kroku */
+  poskladej(){
+    this.noty = [].concat(this.fanfara, this.temaHlavni, this.temaZpevne, this.vyvrcholeni);
+    const basaA = [165,0,0,0, 165,0,0,0];
+    const basaB = [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0];
+    const basaC = [196,0,0,0,0,0,0,0, 196,0,0,0,0,0,0,0];
+    const basaD = [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0];
+    this.basa = [].concat(basaA, basaB, basaC, basaD);
+    this.husty = [];
+    for(let i=0;i<this.noty.length;i++) this.husty.push(i<8 || i>=40);
+    // podkladový tón dominanty (H) pod celým vyvrcholením – zní od jeho začátku
+    this.podklad = 40;
   },
   /* kolik dob (i s tou vlastní) drží nota, co začíná na kroku i – dívá se
      dopředu, kolik -1 za ní následuje */
@@ -12039,26 +12068,28 @@ const HUDBA = {
   },
   krok(){
     if(!this.hraje) return;
-    const f = this.noty[this.i % this.noty.length];
-    const b = this.basa[this.i % this.basa.length];
+    const n = this.noty.length, ik = this.i % n;
+    const f = this.noty[ik], b = this.basa[ik];
     /* POZOR: hudba má být NEZÁVISLÁ na vypínači zvukových efektů (G.zvukZap) –
        dřív se tu kontrolovalo obojí, takže vypnutí "Zvuky" umlčelo i hudbu,
        i když měla zůstat hrát. Teď rozhoduje jen její vlastní vypínač. */
     if(G.hudbaZap !== false){
       const a = ac();
       if(a){
-        if(this.i % 2 === 0) this.buben(a);
+        const bubnovat = this.husty[ik] ? true : (this.i % 2 === 0);
+        if(bubnovat) this.buben(a, this.husty[ik]);
         if(f > 0){
-          const dob = this.drzTolikDob(this.i);
+          const dob = this.drzTolikDob(ik);
           this.ton(a, f, "sawtooth", 0.05, (this.BEAT/1000) * dob * 0.94);
         }
         if(b) this.ton(a, b, "triangle", 0.05, 0.9);
+        if(ik === this.podklad) this.ton(a, 247, "triangle", 0.035, (this.BEAT/1000) * 16 * 0.96);
       }
     }
     this.i++;
     this.casovac = setTimeout(() => this.krok(), this.BEAT);
   },
-  start(){ if(this.hraje) return; this.hraje = true; this.i = 0; this.krok(); },
+  start(){ if(this.hraje) return; if(!this.noty) this.poskladej(); this.hraje = true; this.i = 0; this.krok(); },
   stop(){ this.hraje = false; if(this.casovac) clearTimeout(this.casovac); this.casovac = null; }
 };
 
