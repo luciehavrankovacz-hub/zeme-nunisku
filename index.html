@@ -12107,8 +12107,11 @@ const HUDBA = {
       hustaCasti: [true, true, true, true],
       bubenKazdych: 1,
       podklad: {index: 24, f: 82, dob: 16},
-      spev: "Brr brr patapim, tralalelo tralala! Brr brr patapim, tralalelo tralala! Brr brr patapim, tralalelo tralala! Balerína kapučína, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
-      nalada: {pitch:1.1, rate:1.08, volume:1}
+      // POZOR (na přání "at hezky zpiva", TTS mlátil "Brr" na jedno "br"):
+      // "Brrrr" s čárkou po každém slově dá TTS čas to vyslovit celé a
+      // trochu se to i "roztáhne", jako by to zpíval, ne jen odsekal.
+      spev: "Brrrr, brrrr, patapim! Tralalelo, tralala! Brrrr, brrrr, patapim! Tralalelo, tralala! Brrrr, brrrr, patapim! Tralalelo, tralala! Balerína, kapučína, lirili, larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
+      nalada: {pitch:1.1, rate:0.98, volume:1}
     }
   },
 
@@ -12677,8 +12680,11 @@ NET.posli = function(m){
    "stará" zůstala beze změny. v50 = třetí, rocková skladba (kytarové
    "power akordy", rychlé tempo, hustý buben, verš s brainroty). v51 =
    verš/pokřik se teď VŽDY ukáže i jako titulky na obrazovce (mluvený hlas
-   je na různých zařízeních nespolehlivý, titulky uvidíš vždycky). */
-VERZE = "v51";
+   je na různých zařízeních nespolehlivý, titulky uvidíš vždycky). v52 =
+   "Brr brr" se v rockovém verši četlo jako jedno "br" – rozepsáno na
+   "Brrrr, brrrr" s čárkami, ať to TTS stihne celé vyslovit a zní to víc
+   jako zpěv, ne jako odseknutí. */
+VERZE = "v52";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
