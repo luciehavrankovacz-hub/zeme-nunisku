@@ -12061,21 +12061,34 @@ const HUDBA = {
       o.start(); o.stop(a.currentTime + 0.52);
     });
   },
-  /* POZOR (na přání "buben zní jako foukání, ne jako bouchnutí"): čtvercová
-     vlna má hodně vyšších harmonických, takže zněla bzučivě/dechově. Teď je
-     to sinusovka (čistý "bum" s klesající výškou) PLUS krátké "cvaknutí"
-     (hluk na pár milisekund hned na začátku) – to cvaknutí dělá tu ostrou
-     ránu na začátku, bez ní zní i sinusovka jen jako tón, ne jako úder. */
+  /* POZOR (na přání "buben zní jako foukání" a pak "buben není slyšet"):
+     čtvercová vlna zněla bzučivě, tak jsem ji vyměnila za sinusovku – jenže
+     ta hraje hodně nízko (45–150 Hz) a MALÉ reproduktory (notebook, tablet)
+     tak nízké tóny prostě neumí přehrát, takže buben zmizel skoro úplně.
+     Teď má buben TŘI vrstvy najednou:
+       1) nízký "bum" (sinusovka) – slyšet na pořádných reprák/sluchátkách,
+       2) středový "tresk" (trojúhelníková vlna, ~150–320 Hz) – tohle malé
+          reproduktory přehrát UMÍ, takže je na nich buben konečně slyšet,
+       3) krátké "cvaknutí" (hluk) – slyšet úplně všude, dělá ten úder.
+     Hlasitost všech tří navíc zvýšena. */
   buben(a, tvrdy){
     const o = a.createOscillator(), g = a.createGain();
     o.type = "sine"; o.frequency.setValueAtTime(tvrdy?150:130, a.currentTime);
     o.frequency.exponentialRampToValueAtTime(45, a.currentTime + 0.08);
-    g.gain.setValueAtTime(tvrdy?0.18:0.14, a.currentTime);
+    g.gain.setValueAtTime(tvrdy?0.24:0.19, a.currentTime);
     g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.17);
     o.connect(g); g.connect(a.destination);
     o.start(); o.stop(a.currentTime + 0.19);
 
-    const n = Math.round(a.sampleRate*0.012);
+    const o2 = a.createOscillator(), g2 = a.createGain();
+    o2.type = "triangle"; o2.frequency.setValueAtTime(tvrdy?320:260, a.currentTime);
+    o2.frequency.exponentialRampToValueAtTime(120, a.currentTime + 0.05);
+    g2.gain.setValueAtTime(tvrdy?0.16:0.12, a.currentTime);
+    g2.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.09);
+    o2.connect(g2); g2.connect(a.destination);
+    o2.start(); o2.stop(a.currentTime + 0.1);
+
+    const n = Math.round(a.sampleRate*0.014);
     if(!this.klik || this.klik.length !== n){
       this.klik = a.createBuffer(1, n, a.sampleRate);
       const d = this.klik.getChannelData(0);
@@ -12083,8 +12096,8 @@ const HUDBA = {
     }
     const zdroj = a.createBufferSource(); zdroj.buffer = this.klik;
     const gk = a.createGain();
-    gk.gain.setValueAtTime(tvrdy?0.12:0.08, a.currentTime);
-    gk.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.012);
+    gk.gain.setValueAtTime(tvrdy?0.18:0.13, a.currentTime);
+    gk.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.014);
     zdroj.connect(gk); gk.connect(a.destination);
     zdroj.start();
   },
@@ -12484,8 +12497,9 @@ NET.posli = function(m){
    se to tímhle řádkem níž – proto číslo verze bydlí až úplně tady na konci.
    v46 = shrnuje kupu dnešních změn (průvodce, TURN server, cíle hry, kolečko
    výcviku, král 2× HP/3× útok, rychlejší hra, slabší a pomalejší boti,
-   pevnější zeď, hudba s klavírem a bicími…). */
-VERZE = "v46";
+   pevnější zeď, hudba s klavírem a bicími…). v47 = buben je konečně slyšet
+   i na slabých reproduktorech (notebook/tablet). */
+VERZE = "v47";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
