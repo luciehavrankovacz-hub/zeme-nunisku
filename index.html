@@ -7980,13 +7980,20 @@ updAI = function(dt){
     const strop  = Math.round(6 + O.sila*8);            // kolik jich bot drží pohromadě
     H.trenink = (H.trenink||0) - krok;
     if(H.trenink<=0 && armada.length < strop){
-      H.trenink = (2.4 / Math.max(0.4, O.sila)) * nah(0.8,1.2);   // těžší bot cvičí rychleji
       const umi = k => maJednotku(si,k);
       let druh = "vojak";
       const r = Math.random();
       if(r<0.28 && umi("lukostrelec")) druh = "lukostrelec";
       else if(r<0.42 && umi("jezdec")) druh = "jezdec";
       else if(r<0.5 && G.obt>=3 && umi("slon")) druh = "slon";
+      /* POZOR (Lucie, v26): boti neplatí za vojáky suroviny (nemají opravdovou
+         ekonomiku jako hráč) – ale ať je aspoň VYCVIČÍ tak rychle, jak dlouho by
+         to trvalo hráči (JED[druh].cas), ne podle odtrženého vzorečku 2,4 s.
+         Ten byl mnohem kratší než skutečný výcvik (vojak 9 s, jezdec 16 s…),
+         takže boti měli spoustu vojáků rychleji, než na to hráč vůbec mohl
+         stačit. O.sila škáluje podle obtížnosti – těžší bot cvičí rychleji
+         než by to trvalo hráči, lehčí pomaleji. */
+      H.trenink = (JED[druh].cas / Math.max(0.4, O.sila)) * nah(0.9,1.1);
       const u = pridejJednotku(druh, si, zakl.x+nah(-120,120), zakl.y+nah(70,170));
       u.armadni = true;
       u.rally = {x: zakl.x + (zakl.x<SVET_W/2?1:-1)*nah(120,190), y: zakl.y + (zakl.y<SVET_H/2?1:-1)*nah(120,190)};
@@ -11985,15 +11992,30 @@ if(G.hudbaZap == null) G.hudbaZap = false;
 const zvukPredVypinacem = zvuk;
 zvuk = function(t){ if(G.zvukZap === false) return; zvukPredVypinacem(t); };
 
-/* ---------- bojová hudba – žádný soubor, jen syntetizér
-   (stejný trik jako u zvukových efektů: pár tónů za sebou dokola).
-   Melodie v e moll na "trumpetovější" pilovité vlně + tichý bubnový
-   tep na každou dobu, ať to zní pochodově/válečně, ne jen jako cinkání. */
+/* ---------- bojová hudba – žádný soubor, jen syntetizér ----------
+   Skutečnou hudbu z Age of Empires (nebo odjinud) nejde stáhnout a použít –
+   je to cizí dílo chráněné autorským právem. Místo toho jde udělat vlastní,
+   ale POŘÁDNĚJŠÍ skladbička: delší fráze (32 dob, ne pořád dokola stejných 16),
+   dvě části (hlavní téma + "vzepjatá" druhá půlka o kvintu výš, jak to dělá
+   spousta opravdových vojenských melodií), pilovitá melodie (trumpetovější
+   zvuk), tichý basový tón na silné doby a bubnový tep na každou dobu. */
 const HUDBA = {
   hraje: false, i: 0, casovac: null,
-  noty: [330,330,392,330,294,262,294,0, 330,330,440,392,330,294,262,0],
-  buben(){
-    const a = ac(); if(!a) return;
+  // e moll: hlavní téma (E) + vzepjatá odpověď o kvintu výš (H)
+  noty: [330,330,392,330,294,262,294,0, 330,330,440,392,330,294,262,0,
+         392,440,494,440,392,370,392,0, 494,440,392,370,330,294,330,0],
+  basa: [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0,
+         196,0,0,0,0,0,0,0, 196,0,0,0,0,0,0,0],
+  ton(a, f, typ, hlas, delka){
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = typ; o.frequency.setValueAtTime(f, a.currentTime);
+    g.gain.setValueAtTime(0, a.currentTime);
+    g.gain.linearRampToValueAtTime(hlas, a.currentTime + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + delka);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + delka + 0.02);
+  },
+  buben(a){
     const o = a.createOscillator(), g = a.createGain();
     o.type = "square"; o.frequency.setValueAtTime(95, a.currentTime);
     o.frequency.exponentialRampToValueAtTime(42, a.currentTime + 0.09);
@@ -12005,22 +12027,16 @@ const HUDBA = {
   krok(){
     if(!this.hraje) return;
     const f = this.noty[this.i % this.noty.length];
+    const b = this.basa[this.i % this.basa.length];
     /* POZOR: hudba má být NEZÁVISLÁ na vypínači zvukových efektů (G.zvukZap) –
        dřív se tu kontrolovalo obojí, takže vypnutí "Zvuky" umlčelo i hudbu,
        i když měla zůstat hrát. Teď rozhoduje jen její vlastní vypínač. */
     if(G.hudbaZap !== false){
       const a = ac();
       if(a){
-        this.buben();
-        if(f){
-          const o = a.createOscillator(), g = a.createGain();
-          o.type = "sawtooth"; o.frequency.setValueAtTime(f, a.currentTime);
-          g.gain.setValueAtTime(0, a.currentTime);
-          g.gain.linearRampToValueAtTime(0.045, a.currentTime + 0.03);
-          g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.32);
-          o.connect(g); g.connect(a.destination);
-          o.start(); o.stop(a.currentTime + 0.34);
-        }
+        this.buben(a);
+        if(f) this.ton(a, f, "sawtooth", 0.045, 0.32);
+        if(b) this.ton(a, b, "triangle", 0.05, 0.9);
       }
     }
     this.i++;
