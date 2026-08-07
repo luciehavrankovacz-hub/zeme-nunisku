@@ -11991,53 +11991,101 @@ if(typeof napisVerzi === "function") napisVerzi();
 if(G.cil == null) G.cil = "kral";
 if(G.zvukZap == null) G.zvukZap = true;
 if(G.hudbaZap == null) G.hudbaZap = false;
+if(G.hudbaVyber == null) G.hudbaVyber = "stara";
 
 /* zvuk() umí i ticho – vypínač ze 3. kroku */
 const zvukPredVypinacem = zvuk;
 zvuk = function(t){ if(G.zvukZap === false) return; zvukPredVypinacem(t); };
 
 /* ---------- bojová hudba – žádný soubor, jen syntetizér ----------
-   Skutečnou hudbu z Age of Empires (nebo odjinud) nejde stáhnout a použít –
-   je to cizí dílo chráněné autorským právem. Místo toho vlastní, pořádnější
-   skladba se čtyřmi částmi (56 dob, ne pořád dokola stejná chvilka):
+   Skutečnou hudbu (Age of Empires, "Dr. Coconut" ze Spotify, cokoli cizího)
+   nejde stáhnout a použít – je to cizí dílo chráněné autorským právem, a ze
+   Spotify navíc nejde nic legálně stáhnout vůbec. Místo toho DVĚ vlastní
+   skladby na výběr (`HUDBA.vyber`, viz krok 3 průvodce):
 
-     A) FANFÁRA (dob 0–7)   – stoupající zavolání (e moll trojzvuk nahoru),
-                               hustý buben (na každou dobu), ať to hned zabere.
-     B) HLAVNÍ TÉMA (8–23)  – pochodová melodie v e moll, řidší buben.
-     C) ZPĚVNÁ ČÁST (24–39) – kontrast: přelaďuje se do G dur (paralelní durová
-                               tónina k e moll – zní to o dost "světleji"),
-                               dlouhé, plynoucí tóny, buben skoro mlčí.
-     D) VYVRCHOLENÍ (40–55) – zpátky v e moll, "vzepjatá" melodie ze staré
-                               verze, hustý buben, a pod tím dlouhý PODKLADOVÝ
-                               tón (H, dominanta) až do finálního doznění na E –
-                               klasický trik, jak vyvrcholení "podepřít".
+     "stara" – vážnější pochodová skladba v e moll, 4 části (fanfára, hlavní
+               téma, zpěvná G dur část, vyvrcholení s podkladovým tónem).
+     "nova"  – veselejší v G dur, 4 kratší části, a na začátku každého kola
+               krátký MLUVENÝ bojový pokřik (viz `zpivej`). POZOR: to není
+               "zpěv krásným zpěvákem" – prohlížeč umí jen počítačem
+               PŘEČÍST text (Web Speech API), žádný hlas si nezazpívá
+               melodii. Řekla jsem to Lucii rovnou, tohle je nejbližší, co
+               jde bez cizích nahrávek udělat.
 
-   POZOR (na přání "ať to není jen tikání, ať jsou noty delší"): -1 v `noty`
-   znamená "drž předchozí notu déle", ne novou notu. Obálka tónu drží
-   hlasitost chvíli rovně (ne hned dolů), takže dlouhá nota opravdu zní,
-   nejen dozní. Buben je hustý jen ve fanfáře a ve vyvrcholení (`husty`),
-   jinde hraje řidčeji, ať vynikne melodie.
-
-   NA PŘÁNÍ "ať je slyšet klavír a bicí, ať je to fakt husté": přidán
-   klavírní doprovod (rozložený akord, hraje na každou dobu pod melodií,
-   dva mírně rozladěné tóny = klavírovější zvuk) a druhý buben – bubínek
-   (bílý šum s rychlým útlumem), který se s tím basovým střídá jako
-   pořádná bicí souprava (bum-pác-bum-pác), ne jen jedno bouchnutí. */
+   Obě skladby sdílejí stejný "engine" (noty/basa/akordy/husty se poskládají
+   z částí přes `poskladej()`). -1 v notách = drž předchozí notu déle (na
+   přání "ať to nejsou same krátká capnutí"). Obálka tónu drží hlasitost
+   chvíli rovně, ne hned dolů, ať dlouhá nota opravdu zní. `husty[i]` říká,
+   jestli má v tomhle úseku hrát buben na každou dobu, nebo jen na každou
+   druhou. Klavír (rozložený akord) a bicí (buben + bubínek, co se střídají)
+   hrají u obou skladeb stejně, jen s jinými akordy/notami. */
 const HUDBA = {
-  hraje: false, i: 0, casovac: null, bubnu: 0, sr: null,
+  hraje: false, i: 0, casovac: null, bubnu: 0, sr: null, klik: null,
   BEAT: 340,
+  vyber: G.hudbaVyber || "stara",
 
-  // A) fanfára – E-G-H-e (trojzvuk nahoru), pak D-H drženo
-  fanfara: [330,392,494,659,-1,587,494,-1],
-  // B) hlavní téma v e moll
-  temaHlavni: [330,-1,392,330,294,262,294,0, 330,-1,440,392,330,294,262,0],
-  // C) zpěvná část v G dur – dlouhé plynoucí tóny
-  temaZpevne: [392,-1,-1,494,440,392,-1,330, 294,-1,-1,392,370,330,-1,294],
-  // D) vyvrcholení v e moll, doznívá na dlouhé E
-  vyvrcholeni: [392,440,494,440,392,370,392,0, 494,440,392,370,330,-1,-1,-1],
-  // klavírní akordy pod melodií: e moll (E-H-G-H) a G dur (G-D-H-D)
-  akordEm: [165,247,196,247],
-  akordG:  [196,294,247,294],
+  skladby: {
+    stara: {
+      // A) fanfára, B) hlavní téma (e moll), C) zpěvná část (G dur), D) vyvrcholení (e moll)
+      castif: [
+        [330,392,494,659,-1,587,494,-1],
+        [330,-1,392,330,294,262,294,0, 330,-1,440,392,330,294,262,0],
+        [392,-1,-1,494,440,392,-1,330, 294,-1,-1,392,370,330,-1,294],
+        [392,440,494,440,392,370,392,0, 494,440,392,370,330,-1,-1,-1]
+      ],
+      basaCasti: [
+        [165,0,0,0, 165,0,0,0],
+        [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0],
+        [196,0,0,0,0,0,0,0, 196,0,0,0,0,0,0,0],
+        [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0]
+      ],
+      akordCasti: [[165,247,196,247], [165,247,196,247], [196,294,247,294], [165,247,196,247]],
+      hustaCasti: [true, false, false, true],
+      podklad: {index: 40, f: 247, dob: 16},
+      spev: null
+    },
+    nova: {
+      // A) krátké zavolání, B) veselé hlavní téma, C) most (D dur), D) radostné vyvrcholení – vše v G dur
+      castif: [
+        [392,494,587,-1,494,392,-1,0],
+        [392,-1,440,494,523,494,440,0, 392,-1,494,440,392,370,392,0],
+        [294,330,370,392,-1,-1,294,0],
+        [392,440,494,523,-1,-1,-1,0]
+      ],
+      basaCasti: [
+        [196,0,0,0,0,0,0,0],
+        [196,0,0,0,0,0,0,0, 196,0,0,0,0,0,0,0],
+        [147,0,0,0,0,0,0,0],
+        [196,0,0,0,0,0,0,0]
+      ],
+      akordCasti: [[196,294,247,294], [196,294,247,294], [147,220,185,220], [196,294,247,294]],
+      hustaCasti: [true, false, false, true],
+      podklad: {index: 32, f: 147, dob: 8},
+      spev: "Ňuníci, vpřed! Za slávu a čest!"
+    }
+  },
+
+  // mluvený bojový pokřik – Web Speech API umí jen PŘEČÍST text (ne zazpívat)
+  zpivej(text){
+    if(!window.speechSynthesis || G.zvukZap === false) return;
+    try{
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "cs-CZ"; u.pitch = 0.82; u.rate = 0.92; u.volume = 0.85;
+      const hlasy = speechSynthesis.getVoices();
+      const cesky = hlasy.find(v => v.lang && v.lang.toLowerCase().startsWith("cs"));
+      if(cesky) u.voice = cesky;
+      speechSynthesis.speak(u);
+    }catch(e){}
+  },
+  // přepne skladbu a (pokud zrovna hraje) ji hned znova poskládá a nastartuje
+  zvolSkladbu(klic){
+    this.vyber = this.skladby[klic] ? klic : "stara";
+    const bezelo = this.hraje;
+    this.stop();
+    this.noty = null;
+    if(bezelo) this.start();
+  },
 
   ton(a, f, typ, hlas, delka){
     const o = a.createOscillator(), g = a.createGain();
@@ -12116,19 +12164,23 @@ const HUDBA = {
     zdroj.connect(g); g.connect(a.destination);
     zdroj.start();
   },
-  /* poskládá dohromady noty (melodie), basu a "je tenhle úsek hustý na buben"
-     jen jednou při načtení – ať se to nemusí řešit pokaždé v kroku */
+  /* poskládá dohromady noty, basu, akordy a "je tenhle úsek hustý na buben"
+     z částí VYBRANÉ skladby (`this.vyber`) – jen jednou při startu/přepnutí,
+     ať se to nemusí řešit pokaždé v kroku. */
   poskladej(){
-    this.noty = [].concat(this.fanfara, this.temaHlavni, this.temaZpevne, this.vyvrcholeni);
-    const basaA = [165,0,0,0, 165,0,0,0];
-    const basaB = [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0];
-    const basaC = [196,0,0,0,0,0,0,0, 196,0,0,0,0,0,0,0];
-    const basaD = [165,0,0,0,0,0,0,0, 165,0,0,0,0,0,0,0];
-    this.basa = [].concat(basaA, basaB, basaC, basaD);
+    const s = this.skladby[this.vyber] || this.skladby.stara;
+    this.noty = [].concat(...s.castif);
+    this.basa = [].concat(...s.basaCasti);
     this.husty = [];
-    for(let i=0;i<this.noty.length;i++) this.husty.push(i<8 || i>=40);
-    // podkladový tón dominanty (H) pod celým vyvrcholením – zní od jeho začátku
-    this.podklad = 40;
+    this.akordy = [];
+    s.castif.forEach((cast, ci) => {
+      for(let k=0; k<cast.length; k++){
+        this.husty.push(s.hustaCasti[ci]);
+        this.akordy.push(s.akordCasti[ci][k % s.akordCasti[ci].length]);
+      }
+    });
+    this.podklad = s.podklad;
+    this.spev = s.spev;
   },
   /* kolik dob (i s tou vlastní) drží nota, co začíná na kroku i – dívá se
      dopředu, kolik -1 za ní následuje */
@@ -12158,10 +12210,12 @@ const HUDBA = {
           this.ton(a, f, "sawtooth", 0.05, (this.BEAT/1000) * dob * 0.94);
         }
         if(b) this.ton(a, b, "triangle", 0.05, 0.9);
-        if(ik === this.podklad) this.ton(a, 247, "triangle", 0.035, (this.BEAT/1000) * 16 * 0.96);
-        // klavírní doprovod – rozložený akord podle toho, v jaké je part tónině
-        const akord = (ik >= 24 && ik < 40) ? this.akordG : this.akordEm;
-        this.klavir(a, akord[this.i % akord.length], 0.03);
+        if(this.podklad && ik === this.podklad.index)
+          this.ton(a, this.podklad.f, "triangle", 0.035, (this.BEAT/1000) * this.podklad.dob * 0.96);
+        // klavírní doprovod – rozložený akord podle toho, v jaké je zrovna části
+        this.klavir(a, this.akordy[ik], 0.03);
+        // bojový pokřik na začátku každého kola (jen u skladby, co ho má)
+        if(ik === 0 && this.spev) this.zpivej(this.spev);
       }
     }
     this.i++;
@@ -12270,13 +12324,14 @@ function wizKresli(){
     O.innerHTML = `<div class="sekce" style="display:flex;flex-direction:column;gap:8px">
       <button class="aoeBtn maly" id="wizZvukBtn" style="text-align:left"></button>
       <button class="aoeBtn maly" id="wizHudbaBtn" style="text-align:left"></button>
+      <div id="wizSkladbaRada" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:2px"></div>
     </div>`;
     const bz = document.getElementById("wizZvukBtn"), bh = document.getElementById("wizHudbaBtn");
     const kresli = ()=>{
       bz.innerHTML = (G.zvukZap ? "🔊 Zvuky: ZAPNUTO" : "🔇 Zvuky: VYPNUTO")
         + "<span class='pod'>Cvakání, sekery, výbuchy…</span>";
-      bh.innerHTML = (G.hudbaZap ? "🎵 Starodávná hudba: ZAPNUTO" : "🎵 Starodávná hudba: VYPNUTO")
-        + "<span class='pod'>Tichá melodie na pozadí, dá se kdykoliv vypnout.</span>";
+      bh.innerHTML = (G.hudbaZap ? "🎵 Hudba: ZAPNUTO" : "🎵 Hudba: VYPNUTO")
+        + "<span class='pod'>Melodie na pozadí, dá se kdykoliv vypnout.</span>";
     };
     kresli();
     bz.onclick = () => { G.zvukZap = !G.zvukZap; zvukPredVypinacem("klik"); kresli(); };
@@ -12284,6 +12339,14 @@ function wizKresli(){
       G.hudbaZap = !G.hudbaZap; zvuk("klik"); kresli();
       if(G.hudbaZap) HUDBA.start(); else HUDBA.stop();
     };
+    const rS = document.getElementById("wizSkladbaRada");
+    [["stara","🎺 Stará (vážná, pochodová)"], ["nova","🎶 Nová (veselá, s pokřikem)"]].forEach(([k,jm])=>{
+      const b = document.createElement("button");
+      b.className = "obtBtn" + (G.hudbaVyber===k ? " on" : "");
+      b.textContent = jm;
+      b.onclick = () => { G.hudbaVyber = k; HUDBA.zvolSkladbu(k); zvuk("klik"); wizKresli(); };
+      rS.appendChild(b);
+    });
   }
 }
 
@@ -12498,8 +12561,9 @@ NET.posli = function(m){
    v46 = shrnuje kupu dnešních změn (průvodce, TURN server, cíle hry, kolečko
    výcviku, král 2× HP/3× útok, rychlejší hra, slabší a pomalejší boti,
    pevnější zeď, hudba s klavírem a bicími…). v47 = buben je konečně slyšet
-   i na slabých reproduktorech (notebook/tablet). */
-VERZE = "v47";
+   i na slabých reproduktorech (notebook/tablet). v48 = druhá, veselejší
+   skladba s mluveným bojovým pokřikem + přepínač skladeb v průvodci. */
+VERZE = "v48";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
