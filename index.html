@@ -12107,11 +12107,11 @@ const HUDBA = {
       hustaCasti: [true, true, true, true],
       bubenKazdych: 1,
       podklad: {index: 24, f: 82, dob: 16},
-      // POZOR: čárka po KAŽDÉM slově dělala řeč trhanou, "jako robot"
-      // (TTS mezi čárkami vždycky zarazí) – vráceno na plynulejší text.
-      // "Br br" bylo navíc potichu a nesrozumitelně – vykřičník místo čárky
-      // dá TTS důvod to říct hlasitěji a s důrazem, ne jen tiše prohodit.
-      spev: "Brr! Brr! Patapim! Tralalelo tralala! Brr! Brr! Patapim! Tralalelo tralala! Brr! Brr! Patapim! Tralalelo tralala! Balerína kapučína, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
+      // POZOR: interpunkce MEZI "Brrrrrr" slovy (čárka i vykřičník) dělala
+      // pauzu, a ta na rychlou písničku neseděla ("dělá velkou mezeru").
+      // Teď jsou obě "Brrrrrr" v jedné frázi bez rozdělení – TTS je
+      // přečte plynule za sebou. Víc "r" pořád drží delší, "vrčivé" r.
+      spev: "Brrrrrr brrrrrr patapim! Tralalelo tralala! Brrrrrr brrrrrr patapim! Tralalelo tralala! Brrrrrr brrrrrr patapim! Tralalelo tralala! Balerína kapučína, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
       nalada: {pitch:1.1, rate:1.03, volume:1}
     },
     // "anglicka" – čtvrtá skladba, pop/tanečnější, verš v ANGLIČTINĚ (na
@@ -12138,9 +12138,15 @@ const HUDBA = {
       akordCasti: [[220,277,247,277], [220,277,247,277], [185,220,247,220], [220,277,247,277]],
       hustaCasti: [false, true, false, true],
       bubenKazdych: 2,
+      // POZOR (na přání "dramatičtější rytmus u toho verše"): podkladový
+      // tón nastupuje přesně na `spevOd`, spolu s hustým bubnem – "drop"
+      // hned jak začne zpívat, ne plynulý nájezd.
+      podklad: {index: 4, f: 110, dob: 16},
       spevOd: 4,
       spev: "Farex, pull my pearl! Get me out of here! Farex, pull my pearl, farex pull my pearl. The Ňuníci dance around, having so much fun, marching to a happy sound, till the battle's won!",
-      nalada: {pitch:1.05, rate:1.0, volume:1}
+      // POZOR (na přání "zpiva to nesrozumitelne"): pomalejší tempo řeči,
+      // ať jde text líp rozeznat.
+      nalada: {pitch:1.02, rate:0.86, volume:1}
     }
   },
 
@@ -12722,8 +12728,12 @@ NET.posli = function(m){
    ("jako robot") – vráceno na "Br br" a plynulejší text s méně pauzami.
    v54 = "Brr" bylo ještě potichu – vykřičníky místo čárek pro důraz
    ("Brr! Brr!"). Čtvrtá, anglická/tanečnější skladba (~1 s čistý rytmus,
-   pak anglický verš, BEZ titulků na výslovné přání). */
-VERZE = "v54";
+   pak anglický verš, BEZ titulků na výslovné přání). v55 = "Brr" má teď
+   víc "r" (dlouhé, vrčivé r); anglický verš pomalejší (srozumitelnější)
+   + dramatický "drop" (podkladový tón + hustý buben) přesně na nástupu
+   zpěvu. Interpunkce MEZI "Brr" slovy dělala na rychlou písničku moc
+   velkou mezeru – odstraněna, obě "Brrrrrr" teď jedou plynule za sebou. */
+VERZE = "v55";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
