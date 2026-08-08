@@ -12323,6 +12323,14 @@ const HUDBA = {
     this.lang = s.lang || "cs-CZ";
     this.titulky = s.titulky !== false;
     this.spevOd = s.spevOd || 0;
+    /* POZOR (na přání "furt tam píše ten text", šlo o anglickou skladbu,
+       co titulky mít nemá): když se přepnulo z jiné skladby, co titulky
+       ukazovala, zůstal starý titulek na obrazovce viset (mizí až po
+       6,5 s) – teď se při přepnutí na skladbu bez titulků hned schová. */
+    if(!this.titulky){
+      const el = document.getElementById("hudbaTitulky");
+      if(el) el.style.opacity = "0";
+    }
   },
   /* kolik dob (i s tou vlastní) drží nota, co začíná na kroku i – dívá se
      dopředu, kolik -1 za ní následuje */
@@ -12364,9 +12372,16 @@ const HUDBA = {
         // doprovod pod melodií – klavír, nebo u rockové skladby kytarové akordy
         if(this.nastroj === "kytara") this.kytara(a, this.akordy[ik], 0.045);
         else this.klavir(a, this.akordy[ik], 0.03);
-        // verš/pokřik (u skladby, co ho má) – od `spevOd` doby, ne vždycky
-        // hned na 0 (anglická skladba má nejdřív ~1 s čistý rytmus)
-        if(ik === this.spevOd && this.spev){
+        /* verš/pokřik (u skladby, co ho má) – od `spevOd` doby, ne vždycky
+           hned na 0 (anglická skladba má nejdřív ~1 s čistý rytmus).
+           POZOR (na přání "nikdy neřekne to, co sis vymyslel"): celý verš
+           je delší, než trvá jedno kolo skladby – takže se `zpivej()`
+           spustilo znovu (a `cancel()` uvnitř přerušilo to předchozí)
+           dřív, než se dostalo až na konec textu, pořád dokola od začátku.
+           Teď se znovu spustí, jen když už předchozí verš doopravdy
+           doříkal (`!speechSynthesis.speaking`). */
+        const jestePovida = window.speechSynthesis && speechSynthesis.speaking;
+        if(ik === this.spevOd && this.spev && !jestePovida){
           if(this.titulky) this.ukazTitulky(this.spev);
           this.zpivej(this.spev, this.nalada, this.lang);
         }
@@ -12739,8 +12754,12 @@ NET.posli = function(m){
    frází + pomalejší, nižší hlas, ať je líp rozumět. v57 = rockový verš
    "Brr brr patapim" → "Čau čau patapime" (obyčejné české slovo, TTS ho
    umí přečíst pořádně). Anglický verš "Farex pull my pearl" odstraněn a
-   nahrazen jednodušším textem. */
-VERZE = "v57";
+   nahrazen jednodušším textem. v58 = verš byl delší, než trvá jedno kolo
+   skladby, takže se přerušil a spustil znovu od začátku – nikdy se
+   nedostal k vlastnímu dopsanému konci. Teď se znovu spustí, jen když už
+   doopravdy doříkal. Titulky se navíc hned schovají při přepnutí na
+   skladbu, co je mít nemá (starý titulek zůstával viset). */
+VERZE = "v58";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
