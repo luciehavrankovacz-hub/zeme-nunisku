@@ -12108,10 +12108,39 @@ const HUDBA = {
       bubenKazdych: 1,
       podklad: {index: 24, f: 82, dob: 16},
       // POZOR: čárka po KAŽDÉM slově dělala řeč trhanou, "jako robot"
-      // (TTS mezi čárkami vždycky zarazí) – vráceno na plynulejší text,
-      // jen s čárkou tam, kde má být přirozená pauza mezi frázemi.
-      spev: "Br br patapim, tralalelo tralala! Br br patapim, tralalelo tralala! Br br patapim, tralalelo tralala! Balerína kapučína, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
+      // (TTS mezi čárkami vždycky zarazí) – vráceno na plynulejší text.
+      // "Br br" bylo navíc potichu a nesrozumitelně – vykřičník místo čárky
+      // dá TTS důvod to říct hlasitěji a s důrazem, ne jen tiše prohodit.
+      spev: "Brr! Brr! Patapim! Tralalelo tralala! Brr! Brr! Patapim! Tralalelo tralala! Brr! Brr! Patapim! Tralalelo tralala! Balerína kapučína, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
       nalada: {pitch:1.1, rate:1.03, volume:1}
+    },
+    // "anglicka" – čtvrtá skladba, pop/tanečnější, verš v ANGLIČTINĚ (na
+    // přání), první část je jen rytmus BEZ zpěvu (~1 s), pak teprve verš.
+    // Na výslovné přání se u týhle skladby titulky NEUKAZUJÍ (`titulky:false`).
+    anglicka: {
+      tempo: 300,
+      lang: "en-US",
+      titulky: false,
+      // A) čistý rytmus, žádná melodie (~1 s), B) hlavní hook (verš zní tady),
+      // C) most (dolů do příbuzné mollové nálady), D) závěrečný hook
+      castif: [
+        [0,0,0,0],
+        [440,-1,554,494,440,-1,330,0, 440,-1,554,587,554,-1,440,0],
+        [370,-1,330,-1,294,-1,277,0],
+        [440,554,659,-1,-1,-1,-1,0]
+      ],
+      basaCasti: [
+        [110,0,110,0],
+        [110,0,110,0,110,0,110,0, 110,0,110,0,110,0,110,0],
+        [185,0,185,0,185,0,185,0],
+        [110,0,110,0,110,0,110,0]
+      ],
+      akordCasti: [[220,277,247,277], [220,277,247,277], [185,220,247,220], [220,277,247,277]],
+      hustaCasti: [false, true, false, true],
+      bubenKazdych: 2,
+      spevOd: 4,
+      spev: "Farex, pull my pearl! Get me out of here! Farex, pull my pearl, farex pull my pearl. The Ňuníci dance around, having so much fun, marching to a happy sound, till the battle's won!",
+      nalada: {pitch:1.05, rate:1.0, volume:1}
     }
   },
 
@@ -12123,23 +12152,22 @@ const HUDBA = {
      hodně nespolehlivý – někde chybí český hlas, někde ho prohlížeč z
      bezpečnostních důvodů vůbec nepustí, když nejde o přímé kliknutí. Tohle
      se nedá ze zdrojáku 100% opravit (fakt to závisí na konkrétním
-     zařízení). Proto teď zpěvák VŽDY ukáže i TITULKY na obrazovce
-     (`ukazTitulky`) – ty uvidíš vždycky, i kdyby hlas na tvém zařízení
-     mlčel. Zvuk se pořád zkouší přehrát navrch. */
-  zpivej(text, nalada){
-    this.ukazTitulky(text);
+     zařízení). Titulky (`ukazTitulky`) se volají zvlášť z `krok()`, ne
+     odsud – u anglické skladby je na výslovné přání NECHCE ukazovat. */
+  zpivej(text, nalada, lang){
     if(!window.speechSynthesis || G.zvukZap === false) return;
     try{ speechSynthesis.cancel(); }catch(e){}
     setTimeout(() => {
       try{
         const u = new SpeechSynthesisUtterance(text);
-        u.lang = "cs-CZ";
+        u.lang = lang || "cs-CZ";
         u.pitch = (nalada && nalada.pitch) || 0.9;
         u.rate = (nalada && nalada.rate) || 0.95;
         u.volume = (nalada && nalada.volume) != null ? nalada.volume : 1;
         const hlasy = speechSynthesis.getVoices();
-        const cesky = hlasy.find(v => v.lang && v.lang.toLowerCase().startsWith("cs"));
-        if(cesky) u.voice = cesky;
+        const predpona = u.lang.slice(0,2).toLowerCase();
+        const vhodny = hlasy.find(v => v.lang && v.lang.toLowerCase().startsWith(predpona));
+        if(vhodny) u.voice = vhodny;
         speechSynthesis.resume();
         speechSynthesis.speak(u);
       }catch(e){}
@@ -12285,6 +12313,9 @@ const HUDBA = {
     this.BEAT = s.tempo || 340;
     this.silna = !!s.silna;
     this.nastroj = s.nastroj || "klavir";
+    this.lang = s.lang || "cs-CZ";
+    this.titulky = s.titulky !== false;
+    this.spevOd = s.spevOd || 0;
   },
   /* kolik dob (i s tou vlastní) drží nota, co začíná na kroku i – dívá se
      dopředu, kolik -1 za ní následuje */
@@ -12326,8 +12357,12 @@ const HUDBA = {
         // doprovod pod melodií – klavír, nebo u rockové skladby kytarové akordy
         if(this.nastroj === "kytara") this.kytara(a, this.akordy[ik], 0.045);
         else this.klavir(a, this.akordy[ik], 0.03);
-        // verš/pokřik na začátku každého kola (jen u skladby, co ho má)
-        if(ik === 0 && this.spev) this.zpivej(this.spev, this.nalada);
+        // verš/pokřik (u skladby, co ho má) – od `spevOd` doby, ne vždycky
+        // hned na 0 (anglická skladba má nejdřív ~1 s čistý rytmus)
+        if(ik === this.spevOd && this.spev){
+          if(this.titulky) this.ukazTitulky(this.spev);
+          this.zpivej(this.spev, this.nalada, this.lang);
+        }
       }
     }
     this.i++;
@@ -12453,7 +12488,7 @@ function wizKresli(){
     };
     const rS = document.getElementById("wizSkladbaRada");
     [["stara","🎺 Stará (vážná, pochodová)"], ["nova","😢 Nová (smutná, s veršem)"],
-     ["rock","🎸 Rocková (s pokřikem)"]].forEach(([k,jm])=>{
+     ["rock","🎸 Rocková (s pokřikem)"], ["anglicka","🎵 Anglická (tanečnější)"]].forEach(([k,jm])=>{
       const b = document.createElement("button");
       b.className = "obtBtn" + (G.hudbaVyber===k ? " on" : "");
       b.textContent = jm;
@@ -12684,8 +12719,11 @@ NET.posli = function(m){
    "Brr brr" se v rockovém verši četlo jako jedno "br" – rozepsáno na
    "Brrrr, brrrr" s čárkami, ať to TTS stihne celé vyslovit a zní to víc
    jako zpěv, ne jako odseknutí. v53 = tolik čárek dělalo řeč trhanou
-   ("jako robot") – vráceno na "Br br" a plynulejší text s méně pauzami. */
-VERZE = "v53";
+   ("jako robot") – vráceno na "Br br" a plynulejší text s méně pauzami.
+   v54 = "Brr" bylo ještě potichu – vykřičníky místo čárek pro důraz
+   ("Brr! Brr!"). Čtvrtá, anglická/tanečnější skladba (~1 s čistý rytmus,
+   pak anglický verš, BEZ titulků na výslovné přání). */
+VERZE = "v54";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
