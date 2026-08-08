@@ -12107,11 +12107,10 @@ const HUDBA = {
       hustaCasti: [true, true, true, true],
       bubenKazdych: 1,
       podklad: {index: 24, f: 82, dob: 16},
-      // POZOR: interpunkce MEZI "Brrrrrr" slovy (čárka i vykřičník) dělala
-      // pauzu, a ta na rychlou písničku neseděla ("dělá velkou mezeru").
-      // Teď jsou obě "Brrrrrr" v jedné frázi bez rozdělení – TTS je
-      // přečte plynule za sebou. Víc "r" pořád drží delší, "vrčivé" r.
-      spev: "Brrrrrr brrrrrr patapim! Tralalelo tralala! Brrrrrr brrrrrr patapim! Tralalelo tralala! Brrrrrr brrrrrr patapim! Tralalelo tralala! Balerína kapučína, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
+      // POZOR (na přání "zmen to na Čau čau patapime"): "Brr" se pořád
+      // četlo jako krátké "br" bez ohledu na pravopis – "Čau čau" je
+      // normální české slovo, tak ho TTS přečte pěkně a zřetelně.
+      spev: "Čau čau patapime! Tralalelo tralala! Čau čau patapime! Tralalelo tralala! Čau čau patapime! Tralalelo tralala! Balerína kapučína, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
       nalada: {pitch:1.1, rate:1.03, volume:1}
     },
     // "anglicka" – čtvrtá skladba, pop/tanečnější, verš v ANGLIČTINĚ (na
@@ -12143,11 +12142,11 @@ const HUDBA = {
       // hned jak začne zpívat, ne plynulý nájezd.
       podklad: {index: 4, f: 110, dob: 16},
       spevOd: 4,
-      // POZOR (na přání "nejde tomu rozumet, at je to vic duraznejsi"):
-      // vykřičník za KAŽDOU frází (ne za každým slovem jako u rocku – tahle
-      // skladba není tak rychlá, pauzy mezi frázemi jí naopak sluší a znějí
-      // důrazněji), plus znatelně pomalejší a nižší (pevnější) hlas.
-      spev: "Farex! Pull my pearl! Get me out of here! Farex, pull my pearl! Farex, pull my pearl! The Ňuníci dance around, having so much fun! Marching to a happy sound, till the battle's won!",
+      // POZOR (na přání "smaz farex pull my pearl"): ten verš odstraněn,
+      // nahrazen jednodušším textem s běžnými anglickými slovy (líp se
+      // vyslovuje). Vykřičník za každou frází + pomalejší, nižší hlas
+      // pro důraz (z minula, zůstává).
+      spev: "Let's go, Ňuníci! Let's go, Ňuníci! Dancing all around, having so much fun! Marching to a happy sound, till the battle's won!",
       nalada: {pitch:0.95, rate:0.76, volume:1}
     }
   },
@@ -12737,8 +12736,11 @@ NET.posli = function(m){
    velkou mezeru – odstraněna, obě "Brrrrrr" teď jedou plynule za sebou.
    v56 = TTS stejně "Brrrrrr" čte jako "br br" (nedá se to obejít, Lucie
    to akceptovala). Anglický verš mnohem důraznější – vykřičník za každou
-   frází + pomalejší, nižší hlas, ať je líp rozumět. */
-VERZE = "v56";
+   frází + pomalejší, nižší hlas, ať je líp rozumět. v57 = rockový verš
+   "Brr brr patapim" → "Čau čau patapime" (obyčejné české slovo, TTS ho
+   umí přečíst pořádně). Anglický verš "Farex pull my pearl" odstraněn a
+   nahrazen jednodušším textem. */
+VERZE = "v57";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
