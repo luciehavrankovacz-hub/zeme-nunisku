@@ -11992,6 +11992,8 @@ if(G.cil == null) G.cil = "kral";
 if(G.zvukZap == null) G.zvukZap = true;
 if(G.hudbaZap == null) G.hudbaZap = false;
 if(G.hudbaVyber == null) G.hudbaVyber = "stara";
+// anglická skladba smazaná – kdo ji měl dřív vybranou, přepneme na starou
+if(G.hudbaVyber === "anglicka") G.hudbaVyber = "stara";
 
 /* zvuk() umí i ticho – vypínač ze 3. kroku */
 const zvukPredVypinacem = zvuk;
@@ -12112,43 +12114,10 @@ const HUDBA = {
       // normální české slovo, tak ho TTS přečte pěkně a zřetelně.
       spev: "Čau čau patapime! Tralalelo tralala! Čau čau patapime! Tralalelo tralala! Čau čau patapime! Tralalelo tralala! Balerína kapučína, lirili larila! Ňuníci jedou naplno, rocková kapela hraje z plna, do bitvy s úsměvem a silou, sláva naší veselou show!",
       nalada: {pitch:1.1, rate:1.03, volume:1}
-    },
-    // "anglicka" – čtvrtá skladba, pop/tanečnější, verš v ANGLIČTINĚ (na
-    // přání), první část je jen rytmus BEZ zpěvu (~1 s), pak teprve verš.
-    // Na výslovné přání se u týhle skladby titulky NEUKAZUJÍ (`titulky:false`).
-    anglicka: {
-      tempo: 300,
-      lang: "en-US",
-      titulky: false,
-      // A) čistý rytmus, žádná melodie (~1 s), B) hlavní hook (verš zní tady),
-      // C) most (dolů do příbuzné mollové nálady), D) závěrečný hook
-      castif: [
-        [0,0,0,0],
-        [440,-1,554,494,440,-1,330,0, 440,-1,554,587,554,-1,440,0],
-        [370,-1,330,-1,294,-1,277,0],
-        [440,554,659,-1,-1,-1,-1,0]
-      ],
-      basaCasti: [
-        [110,0,110,0],
-        [110,0,110,0,110,0,110,0, 110,0,110,0,110,0,110,0],
-        [185,0,185,0,185,0,185,0],
-        [110,0,110,0,110,0,110,0]
-      ],
-      akordCasti: [[220,277,247,277], [220,277,247,277], [185,220,247,220], [220,277,247,277]],
-      hustaCasti: [false, true, false, true],
-      bubenKazdych: 2,
-      // POZOR (na přání "dramatičtější rytmus u toho verše"): podkladový
-      // tón nastupuje přesně na `spevOd`, spolu s hustým bubnem – "drop"
-      // hned jak začne zpívat, ne plynulý nájezd.
-      podklad: {index: 4, f: 110, dob: 16},
-      spevOd: 4,
-      // POZOR (na přání "smaz farex pull my pearl"): ten verš odstraněn,
-      // nahrazen jednodušším textem s běžnými anglickými slovy (líp se
-      // vyslovuje). Vykřičník za každou frází + pomalejší, nižší hlas
-      // pro důraz (z minula, zůstává).
-      spev: "Let's go, Ňuníci! Let's go, Ňuníci! Dancing all around, having so much fun! Marching to a happy sound, till the battle's won!",
-      nalada: {pitch:0.95, rate:0.76, volume:1}
     }
+    // POZOR (na přání "tu anglickou úplně vymaž"): čtvrtá, anglická skladba
+    // byla smazaná – zůstávají jen tři: stará (bez zpěváka), nová a
+    // rocková (obě se zpěvákem).
   },
 
   /* "zpěvák" – Web Speech API umí jen počítačem PŘEČÍST text (ne zazpívat
@@ -12159,8 +12128,10 @@ const HUDBA = {
      hodně nespolehlivý – někde chybí český hlas, někde ho prohlížeč z
      bezpečnostních důvodů vůbec nepustí, když nejde o přímé kliknutí. Tohle
      se nedá ze zdrojáku 100% opravit (fakt to závisí na konkrétním
-     zařízení). Titulky (`ukazTitulky`) se volají zvlášť z `krok()`, ne
-     odsud – u anglické skladby je na výslovné přání NECHCE ukazovat. */
+     zařízení).
+     POZOR (na přání "ať se neukazuje text, když zpívají, ne že nebudou
+     zpívat"): zpěv/pokřik dál zní přes tenhle `zpivej()`, jen se k němu
+     už NEUKAZUJE žádný titulek na obrazovce (`ukazTitulky` smazáno). */
   zpivej(text, nalada, lang){
     if(!window.speechSynthesis || G.zvukZap === false) return;
     try{ speechSynthesis.cancel(); }catch(e){}
@@ -12179,24 +12150,6 @@ const HUDBA = {
         speechSynthesis.speak(u);
       }catch(e){}
     }, 40);
-  },
-  // titulky – velký nápis nahoře na obrazovce, ať verš/pokřik uvidíš i bez zvuku
-  ukazTitulky(text){
-    let el = document.getElementById("hudbaTitulky");
-    if(!el){
-      el = document.createElement("div");
-      el.id = "hudbaTitulky";
-      el.style.cssText = "position:fixed;left:50%;top:12%;transform:translateX(-50%);"
-        + "max-width:min(700px,90vw);padding:10px 20px;background:rgba(20,14,8,.85);"
-        + "color:#ffe9b8;font-size:16px;font-weight:bold;text-align:center;"
-        + "border-radius:12px;border:2px solid #b8934a;z-index:99999;pointer-events:none;"
-        + "opacity:0;transition:opacity .5s;box-shadow:0 6px 18px rgba(0,0,0,.5)";
-      document.body.appendChild(el);
-    }
-    el.textContent = "🎤 " + text;
-    el.style.opacity = "1";
-    clearTimeout(this.titulkyCasovac);
-    this.titulkyCasovac = setTimeout(() => { el.style.opacity = "0"; }, 6500);
   },
   // přepne skladbu a (pokud zrovna hraje) ji hned znova poskládá a nastartuje
   zvolSkladbu(klic){
@@ -12321,16 +12274,7 @@ const HUDBA = {
     this.silna = !!s.silna;
     this.nastroj = s.nastroj || "klavir";
     this.lang = s.lang || "cs-CZ";
-    this.titulky = s.titulky !== false;
     this.spevOd = s.spevOd || 0;
-    /* POZOR (na přání "furt tam píše ten text", šlo o anglickou skladbu,
-       co titulky mít nemá): když se přepnulo z jiné skladby, co titulky
-       ukazovala, zůstal starý titulek na obrazovce viset (mizí až po
-       6,5 s) – teď se při přepnutí na skladbu bez titulků hned schová. */
-    if(!this.titulky){
-      const el = document.getElementById("hudbaTitulky");
-      if(el) el.style.opacity = "0";
-    }
   },
   /* kolik dob (i s tou vlastní) drží nota, co začíná na kroku i – dívá se
      dopředu, kolik -1 za ní následuje */
@@ -12373,16 +12317,14 @@ const HUDBA = {
         if(this.nastroj === "kytara") this.kytara(a, this.akordy[ik], 0.045);
         else this.klavir(a, this.akordy[ik], 0.03);
         /* verš/pokřik (u skladby, co ho má) – od `spevOd` doby, ne vždycky
-           hned na 0 (anglická skladba má nejdřív ~1 s čistý rytmus).
-           POZOR (na přání "nikdy neřekne to, co sis vymyslel"): celý verš
-           je delší, než trvá jedno kolo skladby – takže se `zpivej()`
-           spustilo znovu (a `cancel()` uvnitř přerušilo to předchozí)
-           dřív, než se dostalo až na konec textu, pořád dokola od začátku.
-           Teď se znovu spustí, jen když už předchozí verš doopravdy
-           doříkal (`!speechSynthesis.speaking`). */
+           hned na 0. POZOR (na přání "nikdy neřekne to, co sis vymyslel"):
+           celý verš je delší, než trvá jedno kolo skladby – takže se
+           `zpivej()` spustilo znovu (a `cancel()` uvnitř přerušilo to
+           předchozí) dřív, než se dostalo až na konec textu, pořád dokola
+           od začátku. Teď se znovu spustí, jen když už předchozí verš
+           doopravdy doříkal (`!speechSynthesis.speaking`). */
         const jestePovida = window.speechSynthesis && speechSynthesis.speaking;
         if(ik === this.spevOd && this.spev && !jestePovida){
-          if(this.titulky) this.ukazTitulky(this.spev);
           this.zpivej(this.spev, this.nalada, this.lang);
         }
       }
@@ -12510,7 +12452,7 @@ function wizKresli(){
     };
     const rS = document.getElementById("wizSkladbaRada");
     [["stara","🎺 Stará (vážná, pochodová)"], ["nova","😢 Nová (smutná, s veršem)"],
-     ["rock","🎸 Rocková (s pokřikem)"], ["anglicka","🎵 Anglická (tanečnější)"]].forEach(([k,jm])=>{
+     ["rock","🎸 Rocková (s pokřikem)"]].forEach(([k,jm])=>{
       const b = document.createElement("button");
       b.className = "obtBtn" + (G.hudbaVyber===k ? " on" : "");
       b.textContent = jm;
@@ -12758,8 +12700,13 @@ NET.posli = function(m){
    skladby, takže se přerušil a spustil znovu od začátku – nikdy se
    nedostal k vlastnímu dopsanému konci. Teď se znovu spustí, jen když už
    doopravdy doříkal. Titulky se navíc hned schovají při přepnutí na
-   skladbu, co je mít nemá (starý titulek zůstával viset). */
-VERZE = "v58";
+   skladbu, co je mít nemá (starý titulek zůstával viset).
+   v59 = na přání "ať se text neukazuje, když zpívají" zrušeny titulky
+   úplně (zpěv/pokřik dál mluví, jen se k němu nic nepíše na obrazovku).
+   Čtvrtá, anglická skladba smazaná – zůstávají 3: stará (bez zpěváka),
+   nová a rocková (obě se zpěvákem). Kdo měl anglickou uloženou jako
+   vybranou, přepne se automaticky na starou. */
+VERZE = "v59";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
