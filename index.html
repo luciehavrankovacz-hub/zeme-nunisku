@@ -711,9 +711,16 @@ function plysak(civK, role, opt){
   }
 
   // --- tělo (chlupatá koule) ---
-  v.push(chlup(50,56,36,c.telo2,30));
+  /* POZOR (na přání "ať se to míň seká, i se 100 jednotkami na obrazovce
+     najednou"): srst byla 30+24=54 samostatných koleček NA KAŽDÉHO
+     panáčka – a panáčci se navíc při chůzi překreslují každý snímek (na
+     rozdíl od stromů, co stojí na místě). Se stovkou jednotek to bylo
+     přes 5000 koleček, co se musí kreslit pořád dokola. Zpola oříznuto
+     na 14+10 – na velikosti, v jaké se panáček ve hře doopravdy vidí, je
+     ten rozdíl skoro nepostřehnutelný, ale je to podstatně méně práce. */
+  v.push(chlup(50,56,36,c.telo2,14));
   v.push(`<circle cx="50" cy="56" r="36" fill="url(#${gid}t)"/>`);
-  v.push(chlup(50,56,33,svetlej(c.telo,0.10),24,0.11));
+  v.push(chlup(50,56,33,svetlej(c.telo,0.10),10,0.11));
   v.push(`<ellipse cx="42" cy="42" rx="24" ry="16" fill="rgba(255,255,255,.14)"/>`);
 
   // --- fleky / obličejová maska ---
@@ -12903,8 +12910,16 @@ NET.posli = function(m){
    nad `NET`/`P2P`, co už existuje pro rozkazy – hostitel svoje zprávy
    rozešle všem přes `P2P.posliVsem` (to `NET.posli` dělá samo), kamarád
    pošle jen hostiteli a ten mu ji (i všem ostatním) pošle zpátky – tak
-   se každému zobrazí přesně jednou, i tomu, kdo psal. */
-VERZE = "v65";
+   se každému zobrazí přesně jednou, i tomu, kdo psal.
+   v66 = Lucie chtěla ať se to míň seká i se 100 jednotkami na obrazovce
+   najednou. Panáčci (funkce `plysak` – vesničan/voják/lučištník/hrdina)
+   měli "srst" nakreslenou jako 30+24=54 samostatných koleček NA KAŽDÉHO
+   panáčka – a na rozdíl od stromů se panáčci při chůzi překreslují
+   KAŽDÝ SNÍMEK, ne jen jednou. Se 100 jednotkami to bylo 5400 koleček
+   pořád dokola. Oříznuto na 14+10 (24 celkem) – na velikosti panáčka ve
+   hře skoro nepostřehnutelný rozdíl, ale výrazně méně práce navíc ke
+   stromům/zlatu/železu opraveným ve v64. */
+VERZE = "v66";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
