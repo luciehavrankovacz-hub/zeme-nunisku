@@ -1493,14 +1493,17 @@ function zdrojSVG(kind, va){
   };
   /* list – kruh se svrchním osvětlením */
   if(kind==="strom"){
+    /* POZOR (na přání "ty větve smaž, jsou hnusný" – zpátky beze
+       větví!): kruh se svrchním osvětlením, teď navíc s okrajem, co
+       plynule mizí do průhledna (`stop-opacity="0"` na posledním stopu),
+       takže se překrývající kruhy měkce PROLNOU jeden do druhého místo
+       ostrého švu – vypadá to jako měkký, "nadýchaný" chomáč, ne jako
+       bublina. Levnější než rozostřovací filtr (`feBlur`), a stromů je
+       na mapě hodně, tak se to musí počítat rychle. */
     const koruna = (cx,cy,r,tmav,svet)=>`<defs><radialGradient id="${gid}${cx}${cy}" cx="38%" cy="30%" r="75%">
-        <stop offset="0" stop-color="${svet}"/><stop offset="1" stop-color="${tmav}"/></radialGradient></defs>
+        <stop offset="0" stop-color="${svet}"/><stop offset=".72" stop-color="${tmav}"/>
+        <stop offset="1" stop-color="${tmav}" stop-opacity="0"/></radialGradient></defs>
         <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid}${cx}${cy})"/>`;
-    /* POZOR (na přání "nejaký strom mívá větev uprostřed a nějaký ne, ať
-       jsou hezčí"): dvě varianty (0/2) mají VLASTNÍ, různě posazenou větev
-       prosvítající skrz mezery v koruně (jedna mimo střed, jedna uprostřed
-       s vidlicí do stran) – borovice (va===1) má korunu hustou, větev by
-       stejně nebylo skrz jehličí vidět, tak žádnou nemá. */
     if(va===1) return svgObal(`${stin}${kmen(11,30,"#6d4a2c")}
       <path d="M50 4 L76 42 H24 Z" fill="#2f7a3a"/><path d="M50 4 L64 42 H50 Z" fill="#3f9a4c"/>
       <path d="M50 20 L80 60 H20 Z" fill="#357f3d"/><path d="M50 20 L66 60 H50 Z" fill="#49a854"/>
@@ -1508,40 +1511,22 @@ function zdrojSVG(kind, va){
       <path d="M50 8 L60 26 H50 Z" fill="rgba(255,255,255,.16)"/>
       <path d="M32 76 q4 -6 8 -8 M40 78 q0 -5 2 -8" stroke="#2a6b31" stroke-width="1.5" fill="none" opacity=".5"/>`);
     if(va===2) return svgObal(`${stin}${kmen(13,26)}
-      <g stroke-linecap="round" fill="none">
-        <path d="M50 67 Q42 55 34 43" stroke="#3c2510" stroke-width="2.6" opacity=".5"/>
-        <path d="M50 67 Q42 55 34 43" stroke="#7a5533" stroke-width="1" opacity=".4"/>
-        <path d="M50 67 Q58 55 64 44" stroke="#3c2510" stroke-width="2.4" opacity=".48"/>
-        <path d="M50 67 Q58 55 64 44" stroke="#7a5533" stroke-width=".9" opacity=".4"/>
-        <path d="M42 58 Q37 53 31 51" stroke="#3c2510" stroke-width="1.3" opacity=".4"/>
-      </g>
       ${koruna(50,50,25,"#2f7a37","#63c06a")}
       ${koruna(30,46,16,"#347f3c","#5cb562")}
       ${koruna(68,48,18,"#2c7334","#57b05e")}
       ${koruna(50,34,17,"#3a8c44","#6fca76")}
       ${koruna(40,58,11,"#2c7334","#57b05e")}
       ${koruna(60,60,10,"#347f3c","#5cb562")}
-      <!-- špička větve vykukující nad korunou, ať je fakt vidět -->
-      <path d="M64 42 Q70 34 76 27" stroke="#3c2510" stroke-width="1.8" opacity=".6" fill="none" stroke-linecap="round"/>
       <circle cx="40" cy="38" r="6" fill="rgba(255,255,255,.22)"/>
       <circle cx="66" cy="58" r="3" fill="#ff7a86"/><circle cx="34" cy="60" r="2.6" fill="#ff7a86"/>
       <circle cx="56" cy="44" r="2.4" fill="#ff7a86"/>`);
     return svgObal(`${stin}${kmen(12,34)}
-      <g stroke-linecap="round" fill="none">
-        <path d="M46 59 Q37 47 27 32" stroke="#3c2510" stroke-width="3" opacity=".55"/>
-        <path d="M46 59 Q37 47 27 32" stroke="#7a5533" stroke-width="1" opacity=".42"/>
-        <path d="M38 50 Q32 45 25 41" stroke="#3c2510" stroke-width="1.6" opacity=".48"/>
-        <path d="M46 58 Q53 46 59 33" stroke="#3c2510" stroke-width="2.2" opacity=".45"/>
-        <path d="M54 48 Q59 43 65 39" stroke="#3c2510" stroke-width="1.3" opacity=".4"/>
-      </g>
       ${koruna(50,44,26,"#2f7a37","#63c06a")}
       ${koruna(30,54,17,"#347f3c","#5cb562")}
       ${koruna(70,54,17,"#2b7233","#54ad5b")}
       ${koruna(50,28,16,"#3a8c44","#6fca76")}
       ${koruna(38,32,12,"#347f3c","#5cb562")}
       ${koruna(64,36,11,"#2b7233","#54ad5b")}
-      <!-- špička větve vykukující nad korunou, ať je fakt vidět -->
-      <path d="M27 40 Q21 32 15 26" stroke="#3c2510" stroke-width="1.8" opacity=".6" fill="none" stroke-linecap="round"/>
       <circle cx="41" cy="34" r="7" fill="rgba(255,255,255,.22)"/>
       <circle cx="62" cy="32" r="3" fill="#9fe89a" opacity=".7"/>`);
   }
@@ -1552,11 +1537,23 @@ function zdrojSVG(kind, va){
     <linearGradient id="${gid}zL" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#fff6c8"/><stop offset="1" stop-color="#e7ac16"/></linearGradient>
     <linearGradient id="${gid}zR" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffd23c"/><stop offset="1" stop-color="#9a6a08"/></linearGradient></defs>
+      <stop offset="0" stop-color="#ffd23c"/><stop offset="1" stop-color="#9a6a08"/></linearGradient>
+    <!-- POZOR (na přání "ať to zlato/železo vypadá jako na tom druhém
+       obrázku"): zrnitá textura skály přes feTurbulence – u stromu se jí
+       schválně nepoužívá (těch je na mapě moc, zpomalilo by to hru), ale
+       zlatých/železných žil je na mapě jen pár kousků, tak si to můžeme
+       dovolit. -->
+    <filter id="${gid}t" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.15" numOctaves="3" seed="5" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .35 0"/>
+    </filter>
+    <clipPath id="${gid}rc"><path d="M12 90 q-4 -14 3 -24 q-3 -12 8 -18 q7 -7 17 -5 q9 -9 22 -3 q13 3 17 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z"/></clipPath>
+    </defs>
     <ellipse cx="50" cy="91" rx="32" ry="8" fill="rgba(0,0,0,.22)"/>
     <!-- nepravidelná, "hrbolatá" skála místo hladkého oválu -->
     <path d="M12 90 q-4 -14 3 -24 q-3 -12 8 -18 q7 -7 17 -5 q9 -9 22 -3 q13 3 17 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z" fill="url(#${gid}s)"/>
     <path d="M12 90 q-4 -14 3 -24 q-3 -12 8 -18 q6 -6 14 -6 q-14 12 -11 32 q1 10 -3 16 Z" fill="rgba(255,255,255,.16)"/>
+    <g clip-path="url(#${gid}rc)"><rect x="4" y="20" width="92" height="80" filter="url(#${gid}t)"/></g>
     <path d="M15 86 q-3 -13 4 -22 q6 -10 15 -13" fill="none" stroke="rgba(0,0,0,.16)" stroke-width="1.4"/>
     <path d="M52 24 q13 3 17 15 q8 5 9 15" fill="none" stroke="rgba(0,0,0,.14)" stroke-width="1.3"/>
     <!-- lišejník a drobné vetknuté zrnko -->
@@ -1579,11 +1576,18 @@ function zdrojSVG(kind, va){
     <linearGradient id="${gid}zL" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#f4fbff"/><stop offset="1" stop-color="#8ea4b6"/></linearGradient>
     <linearGradient id="${gid}zR" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#a9c0d6"/><stop offset="1" stop-color="#48555f"/></linearGradient></defs>
+      <stop offset="0" stop-color="#a9c0d6"/><stop offset="1" stop-color="#48555f"/></linearGradient>
+    <filter id="${gid}t" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.15" numOctaves="3" seed="9" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .35 0"/>
+    </filter>
+    <clipPath id="${gid}rc"><path d="M11 90 q-4 -15 4 -25 q-3 -13 8 -19 q7 -7 17 -5 q9 -9 22 -3 q13 3 18 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z"/></clipPath>
+    </defs>
     <ellipse cx="50" cy="91" rx="32" ry="8" fill="rgba(0,0,0,.22)"/>
     <!-- nepravidelná, "hrbolatá" skála místo hladkého oválu -->
     <path d="M11 90 q-4 -15 4 -25 q-3 -13 8 -19 q7 -7 17 -5 q9 -9 22 -3 q13 3 18 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z" fill="url(#${gid}s)"/>
     <path d="M11 90 q-4 -15 4 -25 q-3 -13 8 -19 q6 -6 14 -6 q-15 13 -12 34 q1 10 -3 16 Z" fill="rgba(255,255,255,.15)"/>
+    <g clip-path="url(#${gid}rc)"><rect x="3" y="20" width="92" height="80" filter="url(#${gid}t)"/></g>
     <path d="M14 86 q-3 -14 5 -23 q6 -10 15 -13" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="1.4"/>
     <path d="M53 25 q13 3 18 15 q8 5 9 15" fill="none" stroke="rgba(0,0,0,.16)" stroke-width="1.3"/>
     <!-- rezavé skvrny (oxidace) a drobný kovový třpyt v kameni -->
@@ -6988,7 +6992,6 @@ if(typeof DOHLED !== "undefined"){ DOHLED.pristav = 260; DOHLED.galeona = 300; }
 function galeonaSVG(civK, barva){
   const c = CIVS[civK], s = STYLY[civK], bar = barva || c.akcent;
   const drevo = s.ram, drevoSv = svetlej(s.ram, 0.32), drevoTm = tmavej(s.ram, 0.34);
-  const plachtSv = svetlej(bar, 0.5), plachtTm = tmavej(bar, 0.15);
   const posadka = plysak(civK, "vojak", {bezStinu:1, bezPraporku:1, bezNohou:1, barva:bar});
   const gid = "gal" + (++__gid);
   const delo = (x, y) => `
@@ -7008,7 +7011,7 @@ function galeonaSVG(civK, barva){
       <stop offset="0" stop-color="${drevoSv}"/><stop offset=".5" stop-color="${drevo}"/><stop offset="1" stop-color="${drevoTm}"/>
     </linearGradient>
     <linearGradient id="${gid}p" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${plachtSv}"/><stop offset="1" stop-color="${bar}"/>
+      <stop offset="0" stop-color="#fffdf4"/><stop offset=".6" stop-color="#eee3c4"/><stop offset="1" stop-color="#c9bb95"/>
     </linearGradient>
     <radialGradient id="${gid}g" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#fff9e0"/><stop offset="1" stop-color="#7fa8c2"/></radialGradient>
     <clipPath id="${gid}c"><path d="M6 72 q10 16 44 16 q34 0 44 -16 l-5 -20 q-39 10 -78 0 Z"/></clipPath>
@@ -7033,16 +7036,24 @@ function galeonaSVG(civK, barva){
   <circle cx="8" cy="48" r="3.2" fill="#ffd76e" opacity=".95"/>
   <!-- posádka u prostředního děla (malá, ať nezakrývá loď) -->
   <g transform="translate(36,34) scale(0.26)">${posadka}</g>
-  <!-- dva stěžně, ráhna a nadmuté plachty v barvě hráče -->
+  <!-- tři stěžně, ráhna a bílé nadmuté plachty (jak na přání – "co nejvíc
+       realisticky") -->
   <path d="M38 56 V6" stroke="${drevoTm}" stroke-width="3.4" stroke-linecap="round"/>
   <path d="M68 58 V22" stroke="${drevoTm}" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M84 60 V32" stroke="${drevoTm}" stroke-width="2.2" stroke-linecap="round"/>
   <path d="M22 10 H54" stroke="${drevoTm}" stroke-width="1.4" stroke-linecap="round"/>
   <path d="M56 24 H80" stroke="${drevoTm}" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M75 34 H93" stroke="${drevoTm}" stroke-width="1" stroke-linecap="round"/>
   <path d="M22 10 Q38 8 54 10 Q57 20 52 30 Q45 33 38 30 Q31 33 25 30 Q19 20 22 10 Z" fill="url(#${gid}p)"/>
-  <path d="M56 24 Q68 22 80 24 Q82 32 78 38 Q68 41 58 38 Q55 32 56 24 Z" fill="url(#${gid}p)" opacity=".95"/>
+  <path d="M56 24 Q68 22 80 24 Q82 32 78 38 Q68 41 58 38 Q55 32 56 24 Z" fill="url(#${gid}p)" opacity=".97"/>
+  <path d="M75 34 Q84 32 93 34 Q95 40 92 44 Q84 47 77 44 Q74 40 75 34 Z" fill="url(#${gid}p)" opacity=".95"/>
   <g stroke="rgba(0,0,0,.2)" stroke-width=".8" fill="none">
-    <path d="M25 16 Q38 13 51 16"/><path d="M27 23 Q38 27 49 23"/><path d="M60 27 Q68 25 76 27"/></g>
-  <path d="M38 6 l12 3 -12 3 Z" fill="#f0c33c"/>
+    <path d="M25 16 Q38 13 51 16"/><path d="M27 23 Q38 27 49 23"/><path d="M60 27 Q68 25 76 27"/><path d="M78 37 Q84 35 90 37"/></g>
+  <!-- praporky v barvě hráče na vrcholu každého stěžně – jediné barevné
+       místo na plachtách, ať i tak jde na dálku poznat, čí je to loď -->
+  <path d="M38 6 l9 3 -9 3 Z" fill="${bar}"/>
+  <path d="M68 22 l7 2.2 -7 2.2 Z" fill="${bar}"/>
+  <path d="M84 32 l6 1.8 -6 1.8 Z" fill="${bar}"/>
   <!-- lanoví -->
   <g stroke="${drevoTm}" stroke-width="1" opacity=".55">
     <path d="M38 12 L14 54"/><path d="M38 12 L62 52"/><path d="M68 26 L88 56"/></g>
@@ -7360,21 +7371,22 @@ obnovPanel = function(){
 function prevozSVG(civK, barva){
   const c = CIVS[civK], s = STYLY[civK], bar = barva || c.akcent;
   const drevo = s.ram, drevoSv = svetlej(s.ram, 0.34), drevoTm = tmavej(s.ram, 0.34);
-  const plachtSv = svetlej(bar, 0.5);
   const kormidelnik = plysak(civK, "vesnican", {bezStinu:1, bezPraporku:1, bezNohou:1, barva:bar});
   const gid = "prv" + (++__gid);
-  /* POZOR (na přání "co nejvíc realisticky"): trup má 3stupňový gradient,
-     pás pod ponorem je OŘÍZNUTÝ tvarem trupu (jinak vznikne "duchová" loď
-     pod skutečnou – viz stejná past u galeony), náklad má bedny s vrchní
-     stěnou navíc (vypadají 3D, ne ploché), sud má obruče. Plachta zůstává
-     v barvě hráče (stupňovaná, ne plochá), ať je pořád jasné, čí loď to je. */
+  /* POZOR (na přání "co nejvíc realisticky, ať to vypadá takhle" s
+     obrázkem plátěné zlatavé plachty): trup má 3stupňový gradient, pás
+     pod ponorem je OŘÍZNUTÝ tvarem trupu (jinak vznikne "duchová" loď pod
+     skutečnou – viz stejná past u galeony), náklad má bedny s vrchní
+     stěnou navíc (vypadají 3D, ne ploché), sud má obruče. Plachta je teď
+     přírodní plátěná barva (ne barva hráče) jako na vzoru – kdo je čí loď
+     pozná podle praporku na vrcholu stěžně, ten barvu hráče má dál. */
   return `
   <defs>
     <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="${drevoSv}"/><stop offset=".5" stop-color="${drevo}"/><stop offset="1" stop-color="${drevoTm}"/>
     </linearGradient>
-    <linearGradient id="${gid}p" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${plachtSv}"/><stop offset="1" stop-color="${bar}"/>
+    <linearGradient id="${gid}p" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f5c060"/><stop offset="1" stop-color="#c98420"/>
     </linearGradient>
     <clipPath id="${gid}c"><path d="M3 68 q8 20 47 20 q39 0 47 -20 l-4 -16 q-43 11 -86 0 Z"/></clipPath>
   </defs>
@@ -7413,7 +7425,7 @@ function prevozSVG(civK, barva){
   <path d="M32 12 Q50 20 68 12" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="1.1"/>
   <path d="M35 19 Q50 25 65 19" fill="none" stroke="rgba(90,60,20,.2)" stroke-width="1"/>
   <path d="M50 14 v20" stroke="rgba(255,255,255,.3)" stroke-width="1.6"/>
-  <path d="M50 4 l11 3 -11 3 Z" fill="#f0c33c"/>
+  <path d="M50 4 l11 3 -11 3 Z" fill="${bar}"/>
   <!-- vlnky a pěna -->
   <g stroke="#dff1fb" stroke-width="2.2" opacity=".8" fill="none">
     <path d="M0 82 q6 -5 12 0"/><path d="M84 84 q6 -5 12 0"/></g>
@@ -12807,8 +12819,20 @@ NET.posli = function(m){
    místa), lišejník/rezavé skvrny a pár zrnek – blíž tomu, co bylo na
    druhém náhledovém obrázku. U stromu přidána špička větve, co vykoukne
    NAD korunou (kreslí se AŽ PO listí, ne pod ním), ať je fakt vidět, ne
-   jen v mezerách mezi chomáči. */
-VERZE = "v61";
+   jen v mezerách mezi chomáči.
+   v62 = Lucie poslala přesně ty dva náhledové obrázky a napsala "ty
+   větve smaž, jsou hnusný, a ty stromy/zlato/železo/lodě ať vypadají
+   takhle". Větve ze stromu pryč (byl to omyl minule – nejdřív chtěla
+   větve, teď ne, budiž), koruna má měkce PROLNUTÉ okraje (gradient mizí
+   do průhledna misto ostrého švu kruhu) pro nadýchaný vzhled z obrázku.
+   Zlato/železo mají teď navíc zrnitou texturu skály (feTurbulence) – u
+   stromů se to schválně nepoužívá (jsou jich na mapě desítky, zpomalilo
+   by to hru), ale zlatých/železných žil je jen pár kousků, tak si to
+   dovolit můžeme. Galeona má TŘI bílé plátěné plachty (podle obrázku),
+   přepravní loď zlatavou plátěnou plachtu (ne barvu hráče) – aby šlo
+   pořád poznat, čí je to loď, praporek na vrcholu stěžně zůstává v
+   barvě hráče. */
+VERZE = "v62";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
