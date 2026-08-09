@@ -638,14 +638,6 @@ function tmavej(hex,f){
   r=Math.round(r*(1-f)); g=Math.round(g*(1-f)); b=Math.round(b*(1-f));
   return "#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
 }
-function chlup(cx,cy,r,barva,n,vel){
-  let s="";
-  for(let i=0;i<n;i++){
-    const a=i/n*Math.PI*2, rr=r*(0.94+((i*37)%9)/90);
-    s+=`<circle cx="${(cx+Math.cos(a)*rr).toFixed(1)}" cy="${(cy+Math.sin(a)*rr).toFixed(1)}" r="${(r*(vel||0.14)).toFixed(1)}" fill="${barva}"/>`;
-  }
-  return s;
-}
 function oko(x,y,c,r){
   r=r||1;
   return `<ellipse cx="${x}" cy="${y}" rx="${10.5*r}" ry="${12*r}" fill="#17121a"/>
@@ -710,17 +702,14 @@ function plysak(civK, role, opt){
     }
   }
 
-  // --- tělo (chlupatá koule) ---
-  /* POZOR (na přání "ať se to míň seká, i se 100 jednotkami na obrazovce
-     najednou"): srst byla 30+24=54 samostatných koleček NA KAŽDÉHO
-     panáčka – a panáčci se navíc při chůzi překreslují každý snímek (na
-     rozdíl od stromů, co stojí na místě). Se stovkou jednotek to bylo
-     přes 5000 koleček, co se musí kreslit pořád dokola. Zpola oříznuto
-     na 14+10 – na velikosti, v jaké se panáček ve hře doopravdy vidí, je
-     ten rozdíl skoro nepostřehnutelný, ale je to podstatně méně práce. */
-  v.push(chlup(50,56,36,c.telo2,14));
+  // --- tělo (hladká chlupatá koule) ---
+  /* POZOR (na přání "ty chlupy jsou hnusný, klidně je smaž, bude to
+     hezčí a míň zaseknuté"): dřív tu bylo 30+24=54 (pak zkráceno na
+     14+10) samostatných koleček jen kvůli "chlupaté" texuře na okraji
+     těla – u panáčka, co se navíc při chůzi překresluje KAŽDÝ SNÍMEK,
+     to bylo znát. Teď je tělo jen jeden gradientový kruh (stín/lesk už
+     dělá gradient sám) – vypadá to čistěji a je to prakticky zadarmo. */
   v.push(`<circle cx="50" cy="56" r="36" fill="url(#${gid}t)"/>`);
-  v.push(chlup(50,56,33,svetlej(c.telo,0.10),10,0.11));
   v.push(`<ellipse cx="42" cy="42" rx="24" ry="16" fill="rgba(255,255,255,.14)"/>`);
 
   // --- fleky / obličejová maska ---
@@ -2388,8 +2377,13 @@ function ubliz(cil, dmg, utocnik){
   if(cil.hpBox) cil.hpBox.style.display="block";
   cil.zasah = 0.18;
   // ODVETA: kdo schytá ránu, otočí se po útočníkovi (místo aby dál mlátil do zdi)
+  // POZOR (na přání "trebuchet se má vracet domů a ne se zastavovat, když
+  // ho někdo zasáhne"): obléhací stroje (`jeStroj`) z odvety VYNECHÁNY –
+  // trebuchet/beranidlo umí střílet JEN na budovy (viz `smiUtocit`), takže
+  // kdyby se mu sem nastavil útočník-panáček jako cíl, jen by se zaseknul
+  // a nikdy by nedošel tam, kam jsi ho poslal.
   if(utocnik && !utocnik.mrtvy && utocnik.druh==="jednotka"
-     && cil.druh==="jednotka" && cil.kind!=="vesnican" && cil.hp>0){
+     && cil.druh==="jednotka" && cil.kind!=="vesnican" && !jeStroj(cil) && cil.hp>0){
     const mlatiBudovu = cil.stav==="utok" && cil.cilE && cil.cilE.druh==="budova";
     if(cil.stav!=="utok" || mlatiBudovu){
       if(mlatiBudovu) cil.hlavniCil = cil.cilE;
@@ -12918,8 +12912,20 @@ NET.posli = function(m){
    KAŽDÝ SNÍMEK, ne jen jednou. Se 100 jednotkami to bylo 5400 koleček
    pořád dokola. Oříznuto na 14+10 (24 celkem) – na velikosti panáčka ve
    hře skoro nepostřehnutelný rozdíl, ale výrazně méně práce navíc ke
-   stromům/zlatu/železu opraveným ve v64. */
-VERZE = "v66";
+   stromům/zlatu/železu opraveným ve v64.
+   v67 = DVĚ věci. (1) Lucie nahlásila skutečnou hru: pošleš trebuchet
+   zpátky domů, něco do něj cestou střelí a on se "sám zastaví" místo
+   aby pokračoval. Příčina: `ubliz()` (p4a.html) měla obecnou "odvetu" –
+   kdokoli schytá ránu, otočí se a začne útočit na toho, kdo střílel.
+   Jenže trebuchet/beranidlo (`jeStroj`) umí útočit JEN na budovy
+   (`smiUtocit`) – nastavil se mu útočník jako cíl, na který nesmí
+   střílet, a tak jen stál a nikdy nedošel tam, kam byl poslaný. Opraveno
+   – obléhací stroje jsou z odvety úplně vyňaté, na útok si dál nevšímají
+   a jedou dál, kam byly poslané. (2) Lucie: "ty chlupy jsou hnusný,
+   klidně smaž" – takže žádná náhrada, ZRUŠENY úplně (byly ve v66
+   oříznuté na 24 koleček/panáčka, teď je jich 0). Tělo je jen jeden
+   gradientový kruh + lesk – vypadá to čistěji, hezčí a je to dál rychlejší. */
+VERZE = "v67";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
