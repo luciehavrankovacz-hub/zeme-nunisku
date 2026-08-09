@@ -1538,22 +1538,23 @@ function zdrojSVG(kind, va){
       <stop offset="0" stop-color="#fff6c8"/><stop offset="1" stop-color="#e7ac16"/></linearGradient>
     <linearGradient id="${gid}zR" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffd23c"/><stop offset="1" stop-color="#9a6a08"/></linearGradient>
-    <!-- POZOR (na přání "ať to zlato/železo vypadá jako na tom druhém
-       obrázku"): zrnitá textura skály přes feTurbulence – u stromu se jí
-       schválně nepoužívá (těch je na mapě moc, zpomalilo by to hru), ale
-       zlatých/železných žil je na mapě jen pár kousků, tak si to můžeme
-       dovolit. -->
-    <filter id="${gid}t" x="-30%" y="-30%" width="160%" height="160%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.15" numOctaves="3" seed="5" result="n"/>
-      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .35 0"/>
-    </filter>
     <clipPath id="${gid}rc"><path d="M12 90 q-4 -14 3 -24 q-3 -12 8 -18 q7 -7 17 -5 q9 -9 22 -3 q13 3 17 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z"/></clipPath>
     </defs>
     <ellipse cx="50" cy="91" rx="32" ry="8" fill="rgba(0,0,0,.22)"/>
     <!-- nepravidelná, "hrbolatá" skála místo hladkého oválu -->
     <path d="M12 90 q-4 -14 3 -24 q-3 -12 8 -18 q7 -7 17 -5 q9 -9 22 -3 q13 3 17 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z" fill="url(#${gid}s)"/>
     <path d="M12 90 q-4 -14 3 -24 q-3 -12 8 -18 q6 -6 14 -6 q-14 12 -11 32 q1 10 -3 16 Z" fill="rgba(255,255,255,.16)"/>
-    <g clip-path="url(#${gid}rc)"><rect x="4" y="20" width="92" height="80" filter="url(#${gid}t)"/></g>
+    <!-- zrnitá textura skály – POZOR (na přání "ať to vypadá jako na tom
+       druhém obrázku"): první pokus použil SVG filtr feTurbulence, ale
+       ten byl na výkon příliš náročný (Lucie hlásila "hra se hrozně
+       seká") – nahrazeno hrstkou malých teček (levné, žádný filtr). -->
+    <g clip-path="url(#${gid}rc)" opacity=".5">
+      <circle cx="20" cy="60" r="1.6" fill="#4a4030"/><circle cx="30" cy="45" r="1.2" fill="#786d57"/>
+      <circle cx="42" cy="70" r="1.8" fill="#4a4030"/><circle cx="55" cy="40" r="1.3" fill="#786d57"/>
+      <circle cx="65" cy="60" r="1.6" fill="#4a4030"/><circle cx="75" cy="42" r="1.2" fill="#786d57"/>
+      <circle cx="25" cy="75" r="1.3" fill="#4a4030"/><circle cx="48" cy="55" r="1.1" fill="#786d57"/>
+      <circle cx="60" cy="78" r="1.4" fill="#4a4030"/><circle cx="18" cy="35" r="1.1" fill="#786d57"/>
+    </g>
     <path d="M15 86 q-3 -13 4 -22 q6 -10 15 -13" fill="none" stroke="rgba(0,0,0,.16)" stroke-width="1.4"/>
     <path d="M52 24 q13 3 17 15 q8 5 9 15" fill="none" stroke="rgba(0,0,0,.14)" stroke-width="1.3"/>
     <!-- lišejník a drobné vetknuté zrnko -->
@@ -1577,17 +1578,21 @@ function zdrojSVG(kind, va){
       <stop offset="0" stop-color="#f4fbff"/><stop offset="1" stop-color="#8ea4b6"/></linearGradient>
     <linearGradient id="${gid}zR" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#a9c0d6"/><stop offset="1" stop-color="#48555f"/></linearGradient>
-    <filter id="${gid}t" x="-30%" y="-30%" width="160%" height="160%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.15" numOctaves="3" seed="9" result="n"/>
-      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .35 0"/>
-    </filter>
     <clipPath id="${gid}rc"><path d="M11 90 q-4 -15 4 -25 q-3 -13 8 -19 q7 -7 17 -5 q9 -9 22 -3 q13 3 18 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z"/></clipPath>
     </defs>
     <ellipse cx="50" cy="91" rx="32" ry="8" fill="rgba(0,0,0,.22)"/>
     <!-- nepravidelná, "hrbolatá" skála místo hladkého oválu -->
     <path d="M11 90 q-4 -15 4 -25 q-3 -13 8 -19 q7 -7 17 -5 q9 -9 22 -3 q13 3 18 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z" fill="url(#${gid}s)"/>
     <path d="M11 90 q-4 -15 4 -25 q-3 -13 8 -19 q6 -6 14 -6 q-15 13 -12 34 q1 10 -3 16 Z" fill="rgba(255,255,255,.15)"/>
-    <g clip-path="url(#${gid}rc)"><rect x="3" y="20" width="92" height="80" filter="url(#${gid}t)"/></g>
+    <!-- zrnitá textura skály – bez SVG filtru (viz "zlato" pro vysvětlení,
+       proč tenhle přístup a ne feTurbulence) -->
+    <g clip-path="url(#${gid}rc)" opacity=".5">
+      <circle cx="19" cy="58" r="1.6" fill="#302d28"/><circle cx="29" cy="43" r="1.2" fill="#77726a"/>
+      <circle cx="41" cy="68" r="1.8" fill="#302d28"/><circle cx="54" cy="38" r="1.3" fill="#77726a"/>
+      <circle cx="64" cy="58" r="1.6" fill="#302d28"/><circle cx="74" cy="40" r="1.2" fill="#77726a"/>
+      <circle cx="24" cy="73" r="1.3" fill="#302d28"/><circle cx="47" cy="53" r="1.1" fill="#77726a"/>
+      <circle cx="59" cy="76" r="1.4" fill="#302d28"/><circle cx="17" cy="33" r="1.1" fill="#77726a"/>
+    </g>
     <path d="M14 86 q-3 -14 5 -23 q6 -10 15 -13" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="1.4"/>
     <path d="M53 25 q13 3 18 15 q8 5 9 15" fill="none" stroke="rgba(0,0,0,.16)" stroke-width="1.3"/>
     <!-- rezavé skvrny (oxidace) a drobný kovový třpyt v kameni -->
@@ -11209,93 +11214,12 @@ if(typeof planOpevneni === "function" && typeof mistoVolne === "function"){
 
 /* ------------------------------------------------------------
    60c) HEZČÍ A PROPRACOVANĚJŠÍ STROJE A LODĚ
+   POZOR: tenhle blok dřív PŘEBÍJEL galeonaSVG/prevozSVG vlastní,
+   staromódnější kresbou – proto se pak Lucii nikdy nezobrazily žádné
+   úpravy lodí udělané v p18.html/p19.html (dvě kola oprav v tichosti
+   propadla). Teď se sem žádný nový wrapper nedává, ať se použije
+   ten, co je aktuálně v p18.html/p19.html.
    ------------------------------------------------------------ */
-if(typeof galeonaSVG === "function"){
-  const galeonaPuvodni = galeonaSVG;
-  galeonaSVG = function(civK, barva){
-    const c = CIVS[civK] || CIVS[CIVKEYS[0]];
-    const s = (typeof STYLY !== "undefined" && STYLY[civK]) || {ram:"#8a6a3a", strecha:"#a33", strecha2:"#822"};
-    const bar = barva || c.akcent;
-    const drevo = s.ram, drevoSv = svetlej(s.ram, 0.3), drevoTm = tmavej(s.ram, 0.32);
-    const zlato = "#e8c05a";
-    const posadka = plysak(civK, "vesnican", {bezStinu:1, bezPraporku:1, barva:bar});
-    try{
-      return `
-      <ellipse cx="50" cy="88" rx="42" ry="8" fill="rgba(0,0,0,.22)"/>
-      <!-- vlny kolem trupu -->
-      <path d="M6 84 q10 -5 20 0 t20 0 t20 0 t20 0" stroke="rgba(255,255,255,.5)" stroke-width="2.5" fill="none"/>
-      <!-- trup s bortem a okénky -->
-      <path d="M10 66 q6 18 40 18 q34 0 40 -18 q-14 -7 -40 -7 q-26 0 -40 7 Z" fill="${drevoTm}"/>
-      <path d="M12 65 q7 15 38 15 q31 0 38 -15 q-13 -6 -38 -6 q-25 0 -38 6 Z" fill="${drevo}"/>
-      <path d="M12 63 q38 -8 76 0" stroke="${drevoSv}" stroke-width="3" fill="none"/>
-      <g fill="${zlato}"><circle cx="30" cy="70" r="2.6"/><circle cx="44" cy="72" r="2.6"/>
-        <circle cx="58" cy="72" r="2.6"/><circle cx="70" cy="70" r="2.6"/></g>
-      <!-- příď a záď -->
-      <path d="M88 62 q10 -3 8 -13 q-6 4 -10 8 Z" fill="${drevoSv}"/>
-      <path d="M12 62 q-8 -4 -6 -12 q6 4 9 8 Z" fill="${drevoSv}"/>
-      <!-- posádka na palubě (v koši na stěžni zakrývala plachty) -->
-      <g transform="translate(6,34) scale(0.27)">${posadka}</g>
-      <!-- stěžně -->
-      <path d="M40 62 V10 M66 62 V22" stroke="${drevoTm}" stroke-width="3.4" stroke-linecap="round"/>
-      <!-- lanoví (pod plachtami) -->
-      <g stroke="rgba(90,60,25,.5)" stroke-width="1.1" fill="none">
-        <path d="M40 14 L16 60"/><path d="M40 14 L62 58"/><path d="M66 24 L88 58"/>
-      </g>
-      <!-- plachty: velké a vyduté větrem -->
-      <path d="M22 18 q18 -7 36 0 q-18 26 -36 0 Z" fill="#fdf6e6"/>
-      <path d="M22 18 q18 -7 36 0 q-9 13 -18 17 Z" fill="rgba(0,0,0,.06)"/>
-      <path d="M24 38 q16 -6 32 0 q-16 22 -32 0 Z" fill="#f3e9d2"/>
-      <path d="M24 38 q16 -6 32 0 q-8 11 -16 14 Z" fill="rgba(0,0,0,.05)"/>
-      <path d="M54 28 q14 -5 28 0 q-14 22 -28 0 Z" fill="#fdf6e6"/>
-      <path d="M54 28 q14 -5 28 0 q-7 11 -14 14 Z" fill="rgba(0,0,0,.06)"/>
-      <!-- ráhna -->
-      <path d="M21 18 H59 M23 38 H57 M53 28 H83" stroke="${drevoTm}" stroke-width="2"/>
-      <!-- vlajky v barvě hráče -->
-      <path d="M41 10 q13 4 0 9 Z" fill="${bar}"/>
-      <path d="M67 22 q11 3 0 7 Z" fill="${bar}"/>
-      <!-- děla -->
-      <g fill="#4a4f57"><rect x="6" y="66" width="9" height="4" rx="2"/><rect x="85" y="66" width="9" height="4" rx="2"/></g>`;
-    }catch(e){ return galeonaPuvodni(civK, barva); }
-  };
-}
-
-if(typeof prevozSVG === "function"){
-  const prevozPuvodni = prevozSVG;
-  prevozSVG = function(civK, barva){
-    const c = CIVS[civK] || CIVS[CIVKEYS[0]];
-    const s = (typeof STYLY !== "undefined" && STYLY[civK]) || {ram:"#8a6a3a", strecha:"#a33"};
-    const bar = barva || c.akcent;
-    const drevo = s.ram, drevoSv = svetlej(s.ram, 0.3), drevoTm = tmavej(s.ram, 0.32);
-    try{
-      return `
-      <ellipse cx="50" cy="86" rx="40" ry="8" fill="rgba(0,0,0,.22)"/>
-      <path d="M8 82 q10 -5 20 0 t20 0 t20 0 t20 0" stroke="rgba(255,255,255,.5)" stroke-width="2.5" fill="none"/>
-      <!-- široký plochý trup, ať je poznat, že veze náklad -->
-      <path d="M8 60 q4 22 42 22 q38 0 42 -22 q-16 -8 -42 -8 q-26 0 -42 8 Z" fill="${drevoTm}"/>
-      <path d="M11 59 q5 18 39 18 q34 0 39 -18 q-15 -7 -39 -7 q-24 0 -39 7 Z" fill="${drevo}"/>
-      <!-- prkna paluby -->
-      <g stroke="${drevoTm}" stroke-width="1.2" opacity=".55">
-        <path d="M22 56 V74"/><path d="M36 55 V77"/><path d="M50 54 V78"/><path d="M64 55 V77"/><path d="M78 56 V74"/></g>
-      <path d="M11 55 q39 -8 78 0" stroke="${drevoSv}" stroke-width="3.2" fill="none"/>
-      <!-- nájezdová rampa vpředu (tudy nastupují panáčci) -->
-      <path d="M89 58 q10 2 12 10 q-8 3 -13 -2 Z" fill="${drevoSv}"/>
-      <!-- bedny a sudy nákladu -->
-      <rect x="26" y="40" width="16" height="14" rx="2" fill="${drevoSv}"/>
-      <path d="M26 46 H42 M34 40 V54" stroke="${drevoTm}" stroke-width="1.6"/>
-      <rect x="46" y="44" width="13" height="11" rx="2" fill="${drevo}"/>
-      <ellipse cx="68" cy="48" rx="7" ry="8" fill="${drevoSv}"/>
-      <path d="M61 46 h14 M61 51 h14" stroke="${drevoTm}" stroke-width="1.5"/>
-      <!-- stěžeň s malou plachtou a vlajkou -->
-      <path d="M50 44 V14" stroke="${drevoTm}" stroke-width="3" stroke-linecap="round"/>
-      <path d="M50 18 q16 8 0 16 Z" fill="#fdf6e6"/>
-      <path d="M50 18 q16 8 0 16 Z" fill="rgba(0,0,0,.06)"/>
-      <path d="M49 14 q12 3 0 7 Z" fill="${bar}"/>
-      <!-- vesla -->
-      <g stroke="${drevoTm}" stroke-width="2.6" stroke-linecap="round">
-        <path d="M18 64 L6 74"/><path d="M82 64 L94 74"/></g>`;
-    }catch(e){ return prevozPuvodni(civK, barva); }
-  };
-}
 
 
 /* ============================================================
@@ -12831,8 +12755,23 @@ NET.posli = function(m){
    dovolit můžeme. Galeona má TŘI bílé plátěné plachty (podle obrázku),
    přepravní loď zlatavou plátěnou plachtu (ne barvu hráče) – aby šlo
    pořád poznat, čí je to loď, praporek na vrcholu stěžně zůstává v
-   barvě hráče. */
-VERZE = "v62";
+   barvě hráče.
+   v63 = DVĚ vážné věci, co Lucie nahlásila: "hra se hrozně seká" a
+   "ty lodě jsou pořád staré". (1) Kořen lodí: `p35.html` odjakživa
+   PŘEBÍJEL `galeonaSVG`/`prevozSVG` vlastní starší kresbou (blok "60c
+   hezčí a propracovanější stroje a lodě") – všechny opravy lodí z v60
+   až v62 se tak nikdy nezobrazily, přebilo je pokaždé tohle. Wrapper
+   smazán, teď se konečně použije verze z p18.html/p19.html.
+   (2) Kořen sekání: `feTurbulence` filtr na skále u zlata/železa (přidán
+   ve v62) byl na výkon moc drahý – při každém posunu kamery se muselo
+   překreslit každé viditelné zlato/železo znovu i s filtrem. Nahrazeno
+   hrstkou malých teček (žádný filtr, skoro zadarmo) – zrnitý vzhled
+   zůstává, výkon ne. POUČENÍ (napsat příště tučně, než se něco takového
+   zase přidá): než se přidá cokoliv nového do souboru, co existuje už
+   dýl, zkontrolovat `grep` na jméno funkce přes VŠECHNY soubory – jinak
+   se snadno stane, že úprava jde do souboru, který pak něco pozdějšího
+   v pořadí sestavení potichu přebije. */
+VERZE = "v63";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
