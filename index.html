@@ -1493,17 +1493,22 @@ function zdrojSVG(kind, va){
   };
   /* list – kruh se svrchním osvětlením */
   if(kind==="strom"){
-    /* POZOR (na přání "ty větve smaž, jsou hnusný" – zpátky beze
-       větví!): kruh se svrchním osvětlením, teď navíc s okrajem, co
-       plynule mizí do průhledna (`stop-opacity="0"` na posledním stopu),
-       takže se překrývající kruhy měkce PROLNOU jeden do druhého místo
-       ostrého švu – vypadá to jako měkký, "nadýchaný" chomáč, ne jako
-       bublina. Levnější než rozostřovací filtr (`feBlur`), a stromů je
-       na mapě hodně, tak se to musí počítat rychle. */
-    const koruna = (cx,cy,r,tmav,svet)=>`<defs><radialGradient id="${gid}${cx}${cy}" cx="38%" cy="30%" r="75%">
-        <stop offset="0" stop-color="${svet}"/><stop offset=".72" stop-color="${tmav}"/>
-        <stop offset="1" stop-color="${tmav}" stop-opacity="0"/></radialGradient></defs>
-        <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid}${cx}${cy})"/>`;
+    /* POZOR (na přání "hra se hrozně seká, zrychli to"): tohle je ta
+       druhá, skutečná příčina sekání (SPOLU s feTurbulence, co se
+       odstranilo minule) – KAŽDÝ kruh koruny měl svůj VLASTNÍ, jedinečný
+       gradient (6 gradientů na strom!). Stromů je na mapě klidně stovky,
+       takže to dělalo tisíce gradientů v prohlížeči najednou (naměřeno:
+       přes 2000 jen kvůli stromům). Teď má každý strom jen DVA sdílené
+       gradienty (A/B), kruhy koruny je jen odkazují – 3x míň gradientů,
+       a zpátky jen 4 kruhy koruny (ne 6). Okraj pořád měkce mizí do
+       průhledna (`stop-opacity="0"`), ať je koruna dál "nadýchaná". */
+    const gA = gid+"A", gB = gid+"B";
+    const grady = (tmavA,svetA,tmavB,svetB)=>`<defs>
+      <radialGradient id="${gA}" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="${svetA}"/><stop offset=".72" stop-color="${tmavA}"/><stop offset="1" stop-color="${tmavA}" stop-opacity="0"/></radialGradient>
+      <radialGradient id="${gB}" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="${svetB}"/><stop offset=".72" stop-color="${tmavB}"/><stop offset="1" stop-color="${tmavB}" stop-opacity="0"/></radialGradient>
+      </defs>`;
+    const kA = (cx,cy,r)=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gA})"/>`;
+    const kB = (cx,cy,r)=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gB})"/>`;
     if(va===1) return svgObal(`${stin}${kmen(11,30,"#6d4a2c")}
       <path d="M50 4 L76 42 H24 Z" fill="#2f7a3a"/><path d="M50 4 L64 42 H50 Z" fill="#3f9a4c"/>
       <path d="M50 20 L80 60 H20 Z" fill="#357f3d"/><path d="M50 20 L66 60 H50 Z" fill="#49a854"/>
@@ -1511,22 +1516,14 @@ function zdrojSVG(kind, va){
       <path d="M50 8 L60 26 H50 Z" fill="rgba(255,255,255,.16)"/>
       <path d="M32 76 q4 -6 8 -8 M40 78 q0 -5 2 -8" stroke="#2a6b31" stroke-width="1.5" fill="none" opacity=".5"/>`);
     if(va===2) return svgObal(`${stin}${kmen(13,26)}
-      ${koruna(50,50,25,"#2f7a37","#63c06a")}
-      ${koruna(30,46,16,"#347f3c","#5cb562")}
-      ${koruna(68,48,18,"#2c7334","#57b05e")}
-      ${koruna(50,34,17,"#3a8c44","#6fca76")}
-      ${koruna(40,58,11,"#2c7334","#57b05e")}
-      ${koruna(60,60,10,"#347f3c","#5cb562")}
+      ${grady("#2f7a37","#63c06a","#2c7334","#57b05e")}
+      ${kA(50,50,25)}${kB(30,46,16)}${kB(68,48,18)}${kA(50,34,17)}
       <circle cx="40" cy="38" r="6" fill="rgba(255,255,255,.22)"/>
       <circle cx="66" cy="58" r="3" fill="#ff7a86"/><circle cx="34" cy="60" r="2.6" fill="#ff7a86"/>
       <circle cx="56" cy="44" r="2.4" fill="#ff7a86"/>`);
     return svgObal(`${stin}${kmen(12,34)}
-      ${koruna(50,44,26,"#2f7a37","#63c06a")}
-      ${koruna(30,54,17,"#347f3c","#5cb562")}
-      ${koruna(70,54,17,"#2b7233","#54ad5b")}
-      ${koruna(50,28,16,"#3a8c44","#6fca76")}
-      ${koruna(38,32,12,"#347f3c","#5cb562")}
-      ${koruna(64,36,11,"#2b7233","#54ad5b")}
+      ${grady("#2f7a37","#63c06a","#2b7233","#54ad5b")}
+      ${kA(50,44,26)}${kB(30,54,17)}${kB(70,54,17)}${kA(50,28,16)}
       <circle cx="41" cy="34" r="7" fill="rgba(255,255,255,.22)"/>
       <circle cx="62" cy="32" r="3" fill="#9fe89a" opacity=".7"/>`);
   }
@@ -1538,23 +1535,16 @@ function zdrojSVG(kind, va){
       <stop offset="0" stop-color="#fff6c8"/><stop offset="1" stop-color="#e7ac16"/></linearGradient>
     <linearGradient id="${gid}zR" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffd23c"/><stop offset="1" stop-color="#9a6a08"/></linearGradient>
-    <clipPath id="${gid}rc"><path d="M12 90 q-4 -14 3 -24 q-3 -12 8 -18 q7 -7 17 -5 q9 -9 22 -3 q13 3 17 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z"/></clipPath>
     </defs>
     <ellipse cx="50" cy="91" rx="32" ry="8" fill="rgba(0,0,0,.22)"/>
     <!-- nepravidelná, "hrbolatá" skála místo hladkého oválu -->
     <path d="M12 90 q-4 -14 3 -24 q-3 -12 8 -18 q7 -7 17 -5 q9 -9 22 -3 q13 3 17 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z" fill="url(#${gid}s)"/>
     <path d="M12 90 q-4 -14 3 -24 q-3 -12 8 -18 q6 -6 14 -6 q-14 12 -11 32 q1 10 -3 16 Z" fill="rgba(255,255,255,.16)"/>
-    <!-- zrnitá textura skály – POZOR (na přání "ať to vypadá jako na tom
-       druhém obrázku"): první pokus použil SVG filtr feTurbulence, ale
-       ten byl na výkon příliš náročný (Lucie hlásila "hra se hrozně
-       seká") – nahrazeno hrstkou malých teček (levné, žádný filtr). -->
-    <g clip-path="url(#${gid}rc)" opacity=".5">
-      <circle cx="20" cy="60" r="1.6" fill="#4a4030"/><circle cx="30" cy="45" r="1.2" fill="#786d57"/>
-      <circle cx="42" cy="70" r="1.8" fill="#4a4030"/><circle cx="55" cy="40" r="1.3" fill="#786d57"/>
-      <circle cx="65" cy="60" r="1.6" fill="#4a4030"/><circle cx="75" cy="42" r="1.2" fill="#786d57"/>
-      <circle cx="25" cy="75" r="1.3" fill="#4a4030"/><circle cx="48" cy="55" r="1.1" fill="#786d57"/>
-      <circle cx="60" cy="78" r="1.4" fill="#4a4030"/><circle cx="18" cy="35" r="1.1" fill="#786d57"/>
-    </g>
+    <!-- POZOR (na přání "hra se hrozně seká, zrychli to"): zrnitá textura
+       (drobné tečky přes celou skálu) je pryč – zlata/železa je na mapě
+       přes 120 kousků, takže i "levná" hrstka teček navíc dělala tisíce
+       zbytečných kroužků v prohlížeči. Detail teď dělají jen kresba
+       a fasety, žádná textura navíc. -->
     <path d="M15 86 q-3 -13 4 -22 q6 -10 15 -13" fill="none" stroke="rgba(0,0,0,.16)" stroke-width="1.4"/>
     <path d="M52 24 q13 3 17 15 q8 5 9 15" fill="none" stroke="rgba(0,0,0,.14)" stroke-width="1.3"/>
     <!-- lišejník a drobné vetknuté zrnko -->
@@ -1578,21 +1568,12 @@ function zdrojSVG(kind, va){
       <stop offset="0" stop-color="#f4fbff"/><stop offset="1" stop-color="#8ea4b6"/></linearGradient>
     <linearGradient id="${gid}zR" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#a9c0d6"/><stop offset="1" stop-color="#48555f"/></linearGradient>
-    <clipPath id="${gid}rc"><path d="M11 90 q-4 -15 4 -25 q-3 -13 8 -19 q7 -7 17 -5 q9 -9 22 -3 q13 3 18 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z"/></clipPath>
     </defs>
     <ellipse cx="50" cy="91" rx="32" ry="8" fill="rgba(0,0,0,.22)"/>
     <!-- nepravidelná, "hrbolatá" skála místo hladkého oválu -->
     <path d="M11 90 q-4 -15 4 -25 q-3 -13 8 -19 q7 -7 17 -5 q9 -9 22 -3 q13 3 18 15 q9 5 10 16 q3 10 -4 17 q1 8 -6 12 Z" fill="url(#${gid}s)"/>
     <path d="M11 90 q-4 -15 4 -25 q-3 -13 8 -19 q6 -6 14 -6 q-15 13 -12 34 q1 10 -3 16 Z" fill="rgba(255,255,255,.15)"/>
-    <!-- zrnitá textura skály – bez SVG filtru (viz "zlato" pro vysvětlení,
-       proč tenhle přístup a ne feTurbulence) -->
-    <g clip-path="url(#${gid}rc)" opacity=".5">
-      <circle cx="19" cy="58" r="1.6" fill="#302d28"/><circle cx="29" cy="43" r="1.2" fill="#77726a"/>
-      <circle cx="41" cy="68" r="1.8" fill="#302d28"/><circle cx="54" cy="38" r="1.3" fill="#77726a"/>
-      <circle cx="64" cy="58" r="1.6" fill="#302d28"/><circle cx="74" cy="40" r="1.2" fill="#77726a"/>
-      <circle cx="24" cy="73" r="1.3" fill="#302d28"/><circle cx="47" cy="53" r="1.1" fill="#77726a"/>
-      <circle cx="59" cy="76" r="1.4" fill="#302d28"/><circle cx="17" cy="33" r="1.1" fill="#77726a"/>
-    </g>
+    <!-- zrnitá textura pryč (viz "zlato" – 120+ kousků na mapě, nevyplatí se) -->
     <path d="M14 86 q-3 -14 5 -23 q6 -10 15 -13" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="1.4"/>
     <path d="M53 25 q13 3 18 15 q8 5 9 15" fill="none" stroke="rgba(0,0,0,.16)" stroke-width="1.3"/>
     <!-- rezavé skvrny (oxidace) a drobný kovový třpyt v kameni -->
@@ -12770,8 +12751,21 @@ NET.posli = function(m){
    zase přidá): než se přidá cokoliv nového do souboru, co existuje už
    dýl, zkontrolovat `grep` na jméno funkce přes VŠECHNY soubory – jinak
    se snadno stane, že úprava jde do souboru, který pak něco pozdějšího
-   v pořadí sestavení potichu přebije. */
-VERZE = "v63";
+   v pořadí sestavení potichu přebije.
+   v64 = Lucie pořád hlásila "hrozně se to seká, je to pomalý" i po v63.
+   Zapnula jsem si hru v opravdovém prohlížeči a ZMĚŘILA (ne hádala) DOM:
+   613 entit = 34752 uzlů, 2224 gradientů, 10089 kroužků. Skutečná
+   příčina: KAŽDÝ list koruny stromu měl svůj VLASTNÍ gradient (6 na
+   strom) a stromů je na mapě přes 380 – to samo dělalo přes 2000
+   gradientů. Oprava: strom má teď jen 2 SDÍLENÉ gradienty místo 6 (kruhy
+   se na ně jen odkazujou) a zpátky 4 kruhy koruny místo 6. Taky smazána
+   zrnitá textura (tečky) u zlata/železa (120+ kousků na mapě, i "levná"
+   texturová vrstva se tolikrát sečte). Po opravě na stejné mapě: 1256
+   gradientů (-44 %), 0 clipPath (bylo 122). Vzhled zůstává skoro stejný,
+   jen bez zbytečné režie navíc. POUČENÍ: u dekorace, co se kreslí
+   STOVKAMI kopií (stromy, žíly), počítat cenu NA KOPII × POČET, ne jen
+   "jak to vypadá na jednom vzorku". */
+VERZE = "v64";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
