@@ -140,7 +140,7 @@ input,textarea,select{font-family:inherit}
 
 /* seznam hráčů v lobby */
 .hraciHlava,.hracRadek{display:grid;gap:6px;align-items:center;
-  grid-template-columns:44px minmax(90px,1.5fr) minmax(96px,1.4fr) 62px 54px 74px 34px}
+  grid-template-columns:44px minmax(90px,1.5fr) minmax(96px,1.4fr) 62px 54px 74px 78px 34px}
 .hraciHlava{font-size:10.5px;letter-spacing:1px;opacity:.65;text-transform:uppercase;padding:0 4px 4px}
 .hracRadek{background:rgba(255,255,255,.28);border:1px solid rgba(92,63,24,.28);
   border-radius:8px;padding:5px;margin-bottom:5px}
@@ -156,6 +156,18 @@ select.pole:disabled,input.pole:disabled{opacity:.55}
 .barvaBtn{width:100%;height:30px;border-radius:6px;border:2px solid #4a3616;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
 .odebrat{background:#a8402e;color:#fff;border-radius:6px;border:2px solid #6d2418;font-weight:bold;
   width:30px;height:30px;font-size:15px;line-height:1}
+/* SÍLA – na přání "procenta 100 az 500, ovlada jen tvurce hry". Zapnuto/
+   vypnuto a hodnota je JEDNO tlačítko (šetří místo v úzkém řádku), pod ním
+   se objeví −/+ jen když je síla zapnutá. */
+.silaBox{display:flex;flex-direction:column;gap:3px}
+.silaTog{background:#6b6459;color:#fff;border:2px solid #4d473e;border-radius:6px;font-weight:bold;
+  font-size:11.5px;padding:5px 2px;cursor:pointer;width:100%}
+.silaTog.on{background:linear-gradient(180deg,#e0a63c,#b97e1e);border-color:#7a5210;color:#3a2508}
+.silaTog:disabled{opacity:.55;cursor:default}
+.silaMM{display:flex;gap:3px}
+.silaMM button{flex:1;font-weight:bold;border-radius:5px;border:2px solid #8a6a33;background:#f7edd6;
+  color:#3a2d18;font-size:13px;padding:1px 0;cursor:pointer;line-height:1.4}
+.silaMM button:disabled{opacity:.5;cursor:default}
 .sekce{margin-top:14px}
 .sekce h3{font-size:14px;letter-spacing:2px;color:#5c3f18;text-transform:uppercase;
   border-bottom:2px dashed rgba(92,63,24,.4);padding-bottom:4px;margin-bottom:8px}
@@ -349,7 +361,7 @@ body.mobil #tip{display:none !important}
   #menuObsah{padding:0 16px;max-width:100%;justify-content:flex-end;padding-bottom:26px}
   #logo h1{font-size:clamp(26px,8vw,44px)}
   #menuStin{background:linear-gradient(0deg,rgba(6,8,12,.92) 0%,rgba(6,8,12,.6) 38%,rgba(6,8,12,.15) 70%)}
-  .hraciHlava,.hracRadek{grid-template-columns:38px 1fr 1fr 52px 46px 30px;font-size:11px}
+  .hraciHlava,.hracRadek{grid-template-columns:38px 1fr 1fr 52px 46px 66px 30px;font-size:11px}
   .hraciHlava .sl-obt,.hracRadek .sl-obt{display:none}
   .papir{padding:16px 14px}
   .papir h2{font-size:20px}
@@ -453,7 +465,7 @@ body.mobil #tip{display:none !important}
   <div class="sekce" style="margin-top:0">
     <h3>Hráči</h3>
     <div class="hraciHlava">
-      <div></div><div>Jméno</div><div>Civilizace</div><div>Tým</div><div>Barva</div><div class="sl-obt">Obtížnost</div><div></div>
+      <div></div><div>Jméno</div><div>Civilizace</div><div>Tým</div><div>Barva</div><div class="sl-obt">Obtížnost</div><div>Síla</div><div></div>
     </div>
     <div id="hraciSeznam"></div>
     <button class="papirBtn" id="pridejBota" style="margin-top:4px">+ PŘIDAT POČÍTAČ (BOTA)</button>
@@ -1995,6 +2007,17 @@ function M(side, cesta){
   if(v==null) return cesta.endsWith("popNavic")?0:1;
   return v;
 }
+/* SÍLA (na přání "procenta 100-500, ovládá jen tvůrce hry"): ruční přídavek
+   síly PER HRÁČ (i botovi, i sobě), nezávislý na CIVS.mod výše (ten je
+   daný napevno podle rasy) – tenhle si nastaví jen hostitel v lobby.
+   100 % = beze změny (výchozí, ať se nikomu nic nezmění). Násobí životy
+   a útok JEDNOTEK a rychlost těžby surovin – RYCHLOST POHYBU se na přání
+   NEMĚNÍ. */
+function silaHrace(side){
+  const h = G.hraci[side];
+  if(!h || !h.silaZap) return 1;
+  return (h.sila || 100) / 100;
+}
 function maJednotku(side, kind){
   const civ = CIVS[civKey(side)];
   return !(civ.nema||[]).includes(kind);
@@ -2018,8 +2041,8 @@ function cenaBudovy(kind, side){
 }
 function statJ(kind, side, co){
   const d = JED[kind];
-  if(co==="hp")       return Math.round(d.hp * M(side,kind+".hp"));
-  if(co==="utok")     return d.utok * M(side,kind+".utok");
+  if(co==="hp")       return Math.round(d.hp * M(side,kind+".hp") * silaHrace(side));
+  if(co==="utok")     return d.utok * M(side,kind+".utok") * silaHrace(side);
   if(co==="rychlost") return d.rychlost * M(side,kind+".rych");
   if(co==="dostrel")  return d.dostrel * M(side,kind+".dostrel");
   if(co==="rychUtoku")return d.rychUtoku / M(side,kind+".rychUtoku");
@@ -2344,7 +2367,8 @@ function novyHrac(o){
   return Object.assign({
     jm:"Hráč", ikona:CIVKEYS[0], civ:CIVKEYS[nahI(0,5)], barva:0, tym:1, bot:false, ja:false,
     res:{drevo:260, zelezo:120, zlato:180}, pop:0, popMax:10,
-    porazen:false, dalsiVlna:1e9, vlnaCislo:0, aiStavba:0
+    porazen:false, dalsiVlna:1e9, vlnaCislo:0, aiStavba:0,
+    sila:100, silaZap:false
   }, o||{});
 }
 
@@ -2652,7 +2676,7 @@ function zautoc(e, cil, dt){
   e.cd -= dt;
   if(e.cd<=0){
     e.cd = jeBudova ? def.rychUtoku : statJ(e.kind, e.side, "rychUtoku");
-    const utokMod = jeBudova ? (e.kind==="vez"? M(e.side,"vezUtok") : 1) : M(e.side, e.kind+".utok");
+    const utokMod = jeBudova ? (e.kind==="vez"? M(e.side,"vezUtok") : 1) : M(e.side, e.kind+".utok") * silaHrace(e.side);
     const dmg = def.utok * utokMod * nah(0.85,1.15)
       * nasobekPoskozeni(e, cil)                                                // stroje, lučištník na budovy, slon…
       * ((G.hraci[e.side]&&G.hraci[e.side].bot) ? OBTIZNOSTI[G.obt].dmg : 1);   // nepřítel bije slabším podle obtížnosti
@@ -2699,6 +2723,7 @@ function slotBod(e, cil, odstup){
 function tezRychlost(e){
   let r = 1.6;
   if(e.cilE && e.cilE.typ) r *= M(e.side, "tezba."+e.cilE.typ);
+  r *= silaHrace(e.side);
   return r;
 }
 
@@ -4141,6 +4166,13 @@ function smimMenit(h){
   if(NET.jsemHost) return true;
   return h.id===mojeId;
 }
+/* SÍLA (na přání "muze to ovladat jenom ten kdo to vytvoril tu hru"): na
+   rozdíl od smimMenit() výše (civilizace/tým smí měnit i hráč sám sobě)
+   tady smí sahat na VŠECHNY řádky – i svůj vlastní – jen tvůrce hry. V
+   singleplayeru je to vždycky ty. */
+function jeTvurce(){
+  return G.rezim!=="multi" || (typeof NET!=="undefined" && NET.jsemHost);
+}
 function kresliLobby(){
   const s = document.getElementById("hraciSeznam");
   s.innerHTML = "";
@@ -4150,6 +4182,7 @@ function kresliLobby(){
     const smim = smimMenit(h);
     const civOpt = CIVKEYS.map(k=>`<option value="${k}"${h.civ===k?" selected":""}>${CIVS[k].emo} ${CIVS[k].jm}</option>`).join("");
     const tymOpt = [1,2,3,4,5].map(t=>`<option value="${t}"${h.tym===t?" selected":""}>Tým ${t}</option>`).join("");
+    const smimSila = jeTvurce();
     r.innerHTML = `
       <div class="hracIkona">${svgObal(plysak(h.ikona,"vesnican",{bezPraporku:1,barva:BARVY[h.barva].h}))}</div>
       <div class="hracJm">${bezpecnyText(h.jm)}<small>${h.bot?"🤖 počítač":(h.id===mojeId?"⭐ to jsi ty":"🙂 hráč")}</small></div>
@@ -4157,10 +4190,27 @@ function kresliLobby(){
       <select class="pole sl-tym" ${smim?"":"disabled"}>${tymOpt}</select>
       <button class="barvaBtn" style="background:${BARVY[h.barva].h}" ${smim?"":"disabled"}></button>
       <div class="sl-obt" style="font-size:11px;opacity:.75">${h.bot? OBTIZNOSTI[G.obt].jm : "—"}</div>
+      <div class="silaBox">
+        <button class="silaTog${h.silaZap?" on":""}" ${smimSila?"":"disabled"}
+          title="Síla civilizace (jednotky + těžba, 100–500 %) – nastavuje jen tvůrce hry">${h.silaZap?(h.sila||100)+"%":"💪"}</button>
+        ${h.silaZap?`<div class="silaMM">
+          <button class="silaM" ${smimSila?"":"disabled"}>−</button>
+          <button class="silaP" ${smimSila?"":"disabled"}>+</button>
+        </div>`:""}
+      </div>
       <div>${(h.bot||(NET.jsemHost&&h.id!==mojeId&&G.rezim==="multi"))?'<button class="odebrat">×</button>':''}</div>`;
     r.querySelector(".sl-civ").onchange = e=>{ h.civ = e.target.value; NET.oznam(); kresliLobby(); };
     r.querySelector(".sl-tym").onchange = e=>{ h.tym = +e.target.value; NET.oznam(); kresliLobby(); };
     r.querySelector(".barvaBtn").onclick = ()=>{ if(smim) vyberBarvu(h); };
+    r.querySelector(".silaTog").onclick = ()=>{
+      if(!jeTvurce()) return;
+      h.silaZap = !h.silaZap;
+      if(h.silaZap && !h.sila) h.sila = 100;
+      zvuk("klik"); NET.oznam(); kresliLobby();
+    };
+    const sm = r.querySelector(".silaM"), sp = r.querySelector(".silaP");
+    if(sm) sm.onclick = ()=>{ if(!jeTvurce()) return; h.sila = Math.max(100,(h.sila||100)-5); zvuk("klik"); NET.oznam(); kresliLobby(); };
+    if(sp) sp.onclick = ()=>{ if(!jeTvurce()) return; h.sila = Math.min(500,(h.sila||100)+5); zvuk("klik"); NET.oznam(); kresliLobby(); };
     const od = r.querySelector(".odebrat");
     if(od) od.onclick = ()=>{ lobbyHraci = lobbyHraci.filter(x=>x!==h); zvuk("klik"); NET.oznam(); kresliLobby(); };
     s.appendChild(r);
@@ -13222,8 +13272,21 @@ NET.posli = function(m){
    NEPOSÍLÁ po síti (žádný zámek pro hostitele) a každý si může mít jinou
    podle svého počítače. Dotčené kreslicí funkce: zdrojSVG (p2c.html –
    stromy, zlato, železo), plysak (p2a1.html – panáčci), galeonaSVG a
-   prevozSVG (p18/p19.html – lodě); všude čte přes urKval() (p3.html). */
-VERZE = "v74";
+   prevozSVG (p18/p19.html – lodě); všude čte přes urKval() (p3.html).
+   v75 = nová volba v lobby (single i multiplayer): SÍLA, ručně nastavitelná
+   procenta 100–500 % (po pěti) PER HRÁČ – jde ji dát komukoli (i botovi, i
+   sobě). Na rozdíl od civilizačních schopností (ty jsou dané napevno podle
+   rasy) tohle je ruční přídavek, který smí měnit JEN tvůrce hry (v lobby
+   funkce jeTvurce() – v singleplayeru vždycky ty, v multiplayeru jen
+   hostitel) – a to i na cizích řádcích, ne jen na tom svém (jinak než u
+   civilizace/týmu, kde smí každý sám sobě). 100 % = beze změny, výchozí,
+   vypnuto. Při zapnutí násobí životy a útok JEDNOTEK (silaHrace() v
+   p3.html, použito v statJ() a v boji v p4a.html – zautoc()) a rychlost
+   těžby dřeva/zlata/železa (tezRychlost() v p4a.html) – RYCHLOST POHYBU se
+   NEMĚNÍ, jak bylo přáno. Nemá vlastní síťové zprávy – jede jako součást
+   pole hráčů (`hraci`), které se posílá už dávno kvůli civilizaci/týmu/
+   barvě, takže synchronizace vyšla úplně zadarmo. */
+VERZE = "v75";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
