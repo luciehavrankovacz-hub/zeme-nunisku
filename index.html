@@ -3732,7 +3732,7 @@ function tik(t){
   updAI(dt);
 
   obnovHud();
-  mmCas += dt; if(mmCas>0.12){ mmCas=0; kresliMinimapu(); }
+  mmCas += dt; if(mmCas>0.2){ mmCas=0; kresliMinimapu(); }
   panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
 }
 
@@ -4477,7 +4477,7 @@ tik = function(t){
     SYNC.dokresli(dt);
     updStrely(dt);
     obnovHud();
-    mmCas += dt; if(mmCas>0.12){ mmCas=0; kresliMinimapu(); }
+    mmCas += dt; if(mmCas>0.2){ mmCas=0; kresliMinimapu(); }
     panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
     return;
   }
@@ -4491,7 +4491,7 @@ tik = function(t){
   if(SYNC.jsemHost()) SYNC.posli(dt);
 
   obnovHud();
-  mmCas += dt; if(mmCas>0.12){ mmCas=0; kresliMinimapu(); }
+  mmCas += dt; if(mmCas>0.2){ mmCas=0; kresliMinimapu(); }
   panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
 };
 
@@ -12993,8 +12993,18 @@ NET.posli = function(m){
    tenhle typ chyby, co dělal "černou obrazovku" a "ENTER YOUR NAME"
    pořád dokola, i po tvrdém refreshi (nebyla to vůbec mezipaměť).
    PRAVIDLO NAVŽDY: v komentářích (i těch, co vysvětlují mezery/závorky)
-   nikdy nepsat doslovně tu čtveřici znaků – psát o ní opisem. */
-VERZE = "v71";
+   nikdy nepsat doslovně tu čtveřici znaků – psát o ní opisem.
+   v72 = Lucie pořád hlásí sekání "úplně ve všem" (bitvy, posun mapy, i v
+   klidu). Prošla jsem hlavní herní smyčku a odstrkávání jednotek – ty už
+   mají mřížkovou optimalizaci z dřívějška (viz "ABY SE TO NESEKALO" v
+   p23.html) a hýbou jen tím, co se fakt hnulo. Minimapa (p36.html) je
+   taky už chytrá – mrtvé jednotky/budovy přeskakuje, obrázek surovin má
+   předkreslený a obnovuje jen při skutečné změně. Jediné, co šlo ještě
+   utáhnout: jak ČASTO se minimapa vůbec překresluje – z 8× za vteřinu na
+   5×. Dál už bez skutečného měření na Luciině počítači (ne na tomhle,
+   kde se hra chová jinak) nejde smysluplně hádat, co dalšího brzdí –
+   jádro hry už je hodně opracované z dřívějška. */
+VERZE = "v72";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
