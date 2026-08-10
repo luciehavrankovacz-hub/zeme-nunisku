@@ -2119,15 +2119,19 @@ function vytvorEl(e){
    3) zIndex zapisujeme, jen když se změnil – přepsání zIndexu nutí prohlížeč
       přepočítat pořadí kreslení celého světa, a to stálo skoro 90 % času */
 function polohuj(e){
-  /* Schovávat smíme JEN panáčky. Budovám a stromům se polohuj() volá jednou
-     při vzniku a už nikdy – kdybychom je schovali, zůstaly by neviditelné
-     do konce hry (a půlka mapy vzniká mimo obrazovku). */
-  if(e.druh==="jednotka"){
-    const venku = e.x < G.cam.x-300 || e.x > G.cam.x+vidW()+300
-               || e.y < G.cam.y-360 || e.y > G.cam.y+vidH()+360;
-    if(venku){ if(!e.mimo){ e.mimo = true; e.el.style.display = "none"; } return; }
-    if(e.mimo){ e.mimo = false; e.el.style.display = ""; }
-  }
+  /* Na přání "ať se to nezasekává i v klidu a při posunu mapy": dřív se
+     tenhle "co není vidět, vůbec nekreslíme" trik dělal JEN pro panáčky
+     (ty se stejně přepočítávaly každý snímek). Budovy a hlavně stromy/ruda
+     (klidně stovky na mapě) se ale kreslily napořád, i kus mimo obrazovku,
+     protože jim polohuj() volal jen vytvorEl() při vzniku a pak už nikdy.
+     Teď se jim volá taky (viz p7.html – kuliCas, řidčeji, protože se samy
+     nehýbou), takže je stejná kontrola pro VŠECHNY typy – transform se
+     přepisuje jen když se x/y opravdu liší, takže se statickým entitám nic
+     nezdraží, jen konečně zmizí, když jsou mimo záběr. */
+  const venku = e.x < G.cam.x-300 || e.x > G.cam.x+vidW()+300
+             || e.y < G.cam.y-360 || e.y > G.cam.y+vidH()+360;
+  if(venku){ if(!e.mimo){ e.mimo = true; e.el.style.display = "none"; } return; }
+  if(e.mimo){ e.mimo = false; e.el.style.display = ""; }
 
   const x = +(e.x-e.vel/2).toFixed(1);
   const y = +(e.y-e.vel*0.93-(e.hopY||0)).toFixed(1);
@@ -2137,6 +2141,14 @@ function polohuj(e){
   }
   const z = Math.round(e.y);
   if(e.pz!==z){ e.pz = z; e.el.style.zIndex = z; }
+}
+/* Budovy a zdroje se samy nehýbou, takže je nikdo jiný po vzniku znovu
+   nevolá – tohle je ta "znovu" volačka, ať se schovají/objeví, jak se
+   kamera hýbe. Volá se řidčeji než každý snímek (viz p7.html – kuliCas),
+   protože stačí. */
+function kuliStatiku(){
+  for(const b of G.budovy) if(!b.mrtvy) polohuj(b);
+  for(const z of G.zdroje) if(!z.mrtvy) polohuj(z);
 }
 
 function pridejBudovu(kind, side, x, y, hotova){
@@ -3875,7 +3887,7 @@ function kameraKlavesy(dt){
    ============================================================ */
 /* posledniRAF píše JEN kreslicí smyčka. Podle ní pozná Web Worker (p13b),
    jestli kreslení opravdu stojí, nebo jen nestíhá – viz komentář tam. */
-let posledni = 0, posledniRAF = 0, mmCas = 0, panelCas = 0;
+let posledni = 0, posledniRAF = 0, mmCas = 0, panelCas = 0, kuliCas = 0;
 function tik(t){
   requestAnimationFrame(tik);
   if(!G.bezi) return;
@@ -3896,6 +3908,7 @@ function tik(t){
   obnovHud();
   mmCas += dt; if(mmCas>0.2){ mmCas=0; kresliMinimapu(); }
   panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
+  kuliCas += dt; if(kuliCas>0.2){ kuliCas=0; kuliStatiku(); }
 }
 
 /* ============================================================
@@ -4668,6 +4681,7 @@ tik = function(t){
     obnovHud();
     mmCas += dt; if(mmCas>0.2){ mmCas=0; kresliMinimapu(); }
     panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
+    kuliCas += dt; if(kuliCas>0.2){ kuliCas=0; kuliStatiku(); }
     return;
   }
 
@@ -4687,6 +4701,7 @@ tik = function(t){
   obnovHud();
   mmCas += dt; if(mmCas>0.2){ mmCas=0; kresliMinimapu(); }
   panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
+  kuliCas += dt; if(kuliCas>0.2){ kuliCas=0; kuliStatiku(); }
 };
 
 /* ---- doplnění příjmu zpráv o herní část ---- */
@@ -13330,8 +13345,24 @@ NET.posli = function(m){
    schválně vynechán (viz komentář výš u něj – nesmí se courat od hradu
    kvůli baráku v okolí, jinak by ho to táhlo pryč z obrany). Obléhací
    stroje (beranidlo/trebuchet) tohle uměly odjakživa, tohle je jen
-   dorovnání pro běžné jednotky. */
-VERZE = "v77";
+   dorovnání pro běžné jednotky.
+   v78 = Lucie hlásila, že to seká i v klidu a při posunu mapy, i na
+   "K VYHOZENÍ" – tak jsem hledala dál. Skutečný nález: "co není vidět,
+   vůbec nekreslíme" (display:none) fungovalo odjakživa JEN u panáčků
+   (polohuj() v p3.html) – ti se stejně přepočítávají každý snímek.
+   BUDOVY A ZDROJE (stromy, zlato, železo – klidně stovky na mapě) se ale
+   kreslily úplně VŠECHNY, po celou hru, i ta polovina mapy, co zrovna
+   není vidět – polohuj() se jim volalo jednou při vzniku a pak už nikdy,
+   takže se ani netušilo, že zrovna vyjely z obrazovky. Naměřeno hned na
+   startu: z 515 stromů jich bylo mimo záběr přes 280 – všechny navíc v
+   prohlížeči po celou dobu. Teď mají budovy/zdroje stejné schovávání
+   jako panáčci, jen se jim (protože se samy nehýbou) volá řidčeji –
+   5x za vteřinu přes novou kuliStatiku() (p3.html), zavolanou z tik()
+   v p7.html (kuliCas, stejný vzor jako u minimapy). Netýká se to
+   simulace ani ničeho síťového, jen kreslení – klikání na schovanou
+   budovu/zdroj funguje dál stejně (entPod() počítá s polohou v datech,
+   ne s DOM elementem). */
+VERZE = "v78";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
