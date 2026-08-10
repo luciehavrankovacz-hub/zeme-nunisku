@@ -3427,6 +3427,16 @@ function nastavOvladani(){
     else ramecekVyber(tahne.wx, tahne.wy, naSvetX(ev.clientX), naSvetY(ev.clientY));
     tahne=null;
   });
+  /* na přání: dvojklik na jednotku vybere VŠECHNY stejné vlastní jednotky
+     (třeba všechny koně) – ne jen tu jednu, na kterou se kliklo. */
+  hra.addEventListener("dblclick", ev=>{
+    if(ev.target.closest("#panel")||ev.target.closest("#horni")||ev.target.closest("#dotyk")) return;
+    const e = entPod(naSvetX(ev.clientX), naSvetY(ev.clientY));
+    if(e && e.druh==="jednotka" && jeMuj(e.side) && !e.mrtvy){
+      vyber(G.jednotky.filter(j=>!j.mrtvy && j.side===e.side && j.kind===e.kind));
+      zvuk("klik");
+    }
+  });
   hra.addEventListener("wheel", ev=>{
     ev.preventDefault();
     nastavZoom(G.zoom * (ev.deltaY<0? 1.12 : 0.89), ev.clientX, ev.clientY);
@@ -12943,8 +12953,12 @@ NET.posli = function(m){
    jednotek, hledání nejbližšího) už dřív dostalo mřížkovou optimalizaci
    (viz komentář "ABY SE TO NESEKALO" v p23.html) – zbývající sekání byly
    vždycky jen zbytečně kreslené detaily (stromy, zlato/železo, srst
-   panáčků), ne samotná simulace. */
-VERZE = "v68";
+   panáčků), ne samotná simulace.
+   v69 = nová věc na přání: dvojklik na jednotku (třeba na koně) vybere
+   VŠECHNY vlastní jednotky stejného druhu, ne jen tu jednu, na kterou se
+   kliklo. Ověřeno v prohlížeči skutečnou dvojklikovou událostí (ne jen
+   voláním funkce) – dvojklik na vesničana vybral všechny vesničany. */
+VERZE = "v69";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
