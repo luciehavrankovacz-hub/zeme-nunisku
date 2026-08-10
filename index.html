@@ -3650,7 +3650,14 @@ function klikVyber(wx,wy){
 function ramecekVyber(ax,ay,bx,by){
   const x1=Math.min(ax,bx), x2=Math.max(ax,bx), y1=Math.min(ay,by), y2=Math.max(ay,by);
   const v = G.jednotky.filter(j=>jeMuj(j.side) && !j.mrtvy && j.x>x1&&j.x<x2&&j.y>y1&&j.y<y2);
-  if(v.length){ vyber(v); zvuk("klik"); } else vyber([]);
+  if(v.length){ vyber(v); zvuk("klik"); return; }
+  /* POZOR (na přání "když takhle něco označím, není to úplně čisté"):
+     rámeček dřív hledal jenom JEDNOTKY (G.jednotky) – když byla v
+     rámečku jen budova a žádný panáček, nevybralo se vůbec nic a panel
+     zůstal prázdný, i když bylo vidět, že je budova "v rámečku". Teď se
+     hledá i mezi budovami, když se do rámečku netrefil žádný panáček. */
+  const b = G.budovy.filter(bd=>jeMuj(bd.side) && !bd.mrtvy && bd.x>x1&&bd.x<x2&&bd.y>y1&&bd.y<y2);
+  if(b.length){ vyber(b); zvuk("klik"); } else vyber([]);
 }
 function prepniPauzu(){
   if(G.konec) return;
@@ -12924,8 +12931,20 @@ NET.posli = function(m){
    a jedou dál, kam byly poslané. (2) Lucie: "ty chlupy jsou hnusný,
    klidně smaž" – takže žádná náhrada, ZRUŠENY úplně (byly ve v66
    oříznuté na 24 koleček/panáčka, teď je jich 0). Tělo je jen jeden
-   gradientový kruh + lesk – vypadá to čistěji, hezčí a je to dál rychlejší. */
-VERZE = "v67";
+   gradientový kruh + lesk – vypadá to čistěji, hezčí a je to dál rychlejší.
+   v68 = Lucie poslala obrázek s rámečkem kolem samotného domečku a
+   napsala, že "označení není úplně čisté a rychlé". Skutečná příčina
+   NEBYLA výkon, ale chyba: `ramecekVyber()` (p5.html) hledala jen mezi
+   JEDNOTKAMI (`G.jednotky`) – když byl v tažením označeném rámečku jen
+   dům bez jediného panáčka, nevybralo se vůbec nic, i když rámeček dům
+   viditelně obkroužil. Teď rámeček (když nenajde žádného panáčka) hledá
+   i mezi vlastními budovami, takže se vyberou. Ověřeno: rámeček kolem
+   domečku bez jednotek teď opravdu vybere "Domeček". Jádro hry (rozestup
+   jednotek, hledání nejbližšího) už dřív dostalo mřížkovou optimalizaci
+   (viz komentář "ABY SE TO NESEKALO" v p23.html) – zbývající sekání byly
+   vždycky jen zbytečně kreslené detaily (stromy, zlato/železo, srst
+   panáčků), ne samotná simulace. */
+VERZE = "v68";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
