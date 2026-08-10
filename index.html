@@ -12981,9 +12981,20 @@ NET.posli = function(m){
    přebuildu v build.sh (ten pokrývá jen p12–p40) – oprava v p7.html
    se do hry vůbec nedostala, dokud jsem si nevšimla, že `p7b.html`
    zůstal starý, a nevygenerovala ho ručně stejným způsobem jako
-   build.sh (ustřihnout od "</script>"). Příště zkontrolovat u every
-   editovaného souboru mimo p12–p40, jestli nemá vlastní "b" sourozence. */
-VERZE = "v70";
+   build.sh (ustřihnout od uzavírací značky scriptu). Příště zkontrolovat
+   u každého editovaného souboru mimo p12–p40, jestli nemá vlastní "b"
+   sourozence.
+   POZOR (třetí kolo za dnešek, tohle už fakt bolelo): tenhle samotný
+   odstavec obsahoval doslovně napsaný text uzavírací značky scriptu
+   uvnitř komentáře – a to i přesto, že to byl "jen komentář", HTML
+   parser prohlížeče neumí JS komentáře rozeznat, hledá tu značku úplně
+   syrově v textu. Jakmile ji najde, celý <script> tam potichu skončí a
+   všechno za tím (číslo verze, zbytek hry) se vůbec nespustí – přesně
+   tenhle typ chyby, co dělal "černou obrazovku" a "ENTER YOUR NAME"
+   pořád dokola, i po tvrdém refreshi (nebyla to vůbec mezipaměť).
+   PRAVIDLO NAVŽDY: v komentářích (i těch, co vysvětlují mezery/závorky)
+   nikdy nepsat doslovně tu čtveřici znaků – psát o ní opisem. */
+VERZE = "v71";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
