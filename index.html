@@ -2011,8 +2011,10 @@ function M(side, cesta){
    síly PER HRÁČ (i botovi, i sobě), nezávislý na CIVS.mod výše (ten je
    daný napevno podle rasy) – tenhle si nastaví jen hostitel v lobby.
    100 % = beze změny (výchozí, ať se nikomu nic nezmění). Násobí životy
-   a útok JEDNOTEK a rychlost těžby surovin – RYCHLOST POHYBU se na přání
-   NEMĚNÍ. */
+   a útok JEDNOTEK, KOLIK surovin padne z jednoho seknutí (ne jak často
+   se těží – p4a.html), a jak rychle se cvičí jednotky a staví budovy
+   (taky p4a.html). CENY zůstávají vždy stejné a RYCHLOST POHYBU se na
+   přání NEMĚNÍ. */
 function silaHrace(side){
   const h = G.hraci[side];
   if(!h || !h.silaZap) return 1;
@@ -2723,7 +2725,6 @@ function slotBod(e, cil, odstup){
 function tezRychlost(e){
   let r = 1.6;
   if(e.cilE && e.cilE.typ) r *= M(e.side, "tezba."+e.cilE.typ);
-  r *= silaHrace(e.side);
   return r;
 }
 
@@ -2815,7 +2816,15 @@ function updJednotku(e, dt){
         }
         if(e.tez>=1){
           const ks = Math.floor(e.tez); e.tez -= ks;
-          const vzit = Math.min(ks, z.zasoba);
+          /* SÍLA (na přání "tolikrat vic surovin, ne rychleji"): násobí se
+             KOLIK se jednou ranou vytěží, ne jak často se těží – máchání
+             sekerou i tempo zůstávají stejné, jen je z každého seknutí víc
+             surovin. Zůstatek (e.tezZbytek) se drží dál mezi ranami, ať i
+             malé procento (třeba 105 %) časem vážně něco přidá, místo aby
+             se pořád zaokrouhlovalo na nulu. */
+          e.tezZbytek = (e.tezZbytek||0) + ks*silaHrace(e.side);
+          const chce = Math.floor(e.tezZbytek); e.tezZbytek -= chce;
+          const vzit = Math.min(chce, z.zasoba);
           z.zasoba -= vzit;
           e.naklad = e.naklad || {typ:z.typ, ks:0};
           if(e.naklad.typ!==z.typ) e.naklad = {typ:z.typ, ks:0};
@@ -2964,7 +2973,7 @@ function updBudovu(b, dt){
   if(!b.hotova){
     const st = b.stavitele||0;
     if(st>0){
-      const rychlost = (1/BUD[b.kind].cas) * M(b.side,"stavba") * (1 + (st-1)*0.6);
+      const rychlost = (1/BUD[b.kind].cas) * M(b.side,"stavba") * silaHrace(b.side) * (1 + (st-1)*0.6);
       b.postup = Math.min(1, b.postup + dt*rychlost);
       b.hp = Math.max(b.hp, b.maxHp*(0.15+0.85*b.postup));
       if(b.postupEl) b.postupEl.style.width = (b.postup*100)+"%";
@@ -2991,7 +3000,7 @@ function updBudovu(b, dt){
     // výroba jednotek
     if(b.fronta.length){
       const kind = b.fronta[0];
-      b.vyrobaCas -= dt;
+      b.vyrobaCas -= dt*silaHrace(b.side);   // na přání: síla zrychlí i výcvik, cena se nemění
       if(b.vyrobaCas<=0){
         b.fronta.shift();
         const uh = nah(0,Math.PI*2);
@@ -13281,12 +13290,23 @@ NET.posli = function(m){
    hostitel) – a to i na cizích řádcích, ne jen na tom svém (jinak než u
    civilizace/týmu, kde smí každý sám sobě). 100 % = beze změny, výchozí,
    vypnuto. Při zapnutí násobí životy a útok JEDNOTEK (silaHrace() v
-   p3.html, použito v statJ() a v boji v p4a.html – zautoc()) a rychlost
-   těžby dřeva/zlata/železa (tezRychlost() v p4a.html) – RYCHLOST POHYBU se
-   NEMĚNÍ, jak bylo přáno. Nemá vlastní síťové zprávy – jede jako součást
-   pole hráčů (`hraci`), které se posílá už dávno kvůli civilizaci/týmu/
-   barvě, takže synchronizace vyšla úplně zadarmo. */
-VERZE = "v75";
+   p3.html, použito v statJ() a v boji v p4a.html – zautoc()), KOLIK
+   surovin padne z jednoho seknutí a jak rychle se cvičí jednotky/staví
+   budovy (obojí p4a.html) – RYCHLOST POHYBU se NEMĚNÍ, jak bylo přáno.
+   Nemá vlastní síťové zprávy – jede jako součást pole hráčů (`hraci`),
+   které se posílá už dávno kvůli civilizaci/týmu/barvě, takže
+   synchronizace vyšla úplně zadarmo.
+   v76 = oprava v75 podle upřesnění: síla u těžby měla násobit KOLIK
+   surovin padne z jednoho seknutí, ne JAK ČASTO se seká (v75 to omylem
+   zrychlovalo tempo těžení místo výtěžku – opraveno, tezRychlost() v
+   p4a.html je zase jen na civilizačním bonusu jako dřív, násobí se teď
+   `vzit` – kolik se z rány vezme). Navíc doplněno na přání: síla teď
+   zrychluje i VÝCVIK jednotek (b.vyrobaCas v p4a.html) a STAVBU budov
+   (rychlost postupu v updBudovu() – p4a.html), ceny (cenaJednotky/
+   cenaBudovy v p3.html) se přitom nemění vůbec. U těžby se drží plynulý
+   zůstatek (e.tezZbytek), ať se pozná i malé procento jako 105 % – ne
+   jen zaokrouhlovat pořád dolů na nulu. */
+VERZE = "v76";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
