@@ -3386,10 +3386,25 @@ function kresliMinimapu(){
 const JE_MOBIL = (navigator.maxTouchPoints||0) > 1 && Math.min(screen.width,screen.height) < 900;
 const klavesy = {};
 let tahne=null, mys={x:0,y:0}, dotykRezim="posun";
+/* POZOR (na přání "tlačítka na stavění/výcvik někdy nereagují"): panel
+   akcí (#akce) se přemalovává (celé innerHTML pryč a znova) 2-3× za
+   vteřinu i bez jakékoli změny (viz panelCas v tik()). Když klikneš
+   přesně v tu chvíli, prohlížeč ti tlačítko vymění zpod prstu MEZI
+   mousedown a mouseup (nebo touchstart/touchend) – takže se "klik"
+   vůbec nedopočítá a propadne. `panelDrzi` = "právě se něčeho v panelu
+   dotýkám" – dokud je true, pravidelné přemalování panelu se přeskočí. */
+let panelDrzi = false;
 
 function nastavOvladani(){
   const hra = document.getElementById("hra"), box = document.getElementById("vyber");
   hra.addEventListener("contextmenu", ev=>ev.preventDefault());
+
+  const akceEl = document.getElementById("akce");
+  akceEl.addEventListener("mousedown", ()=>{ panelDrzi = true; });
+  akceEl.addEventListener("touchstart", ()=>{ panelDrzi = true; }, {passive:true});
+  window.addEventListener("mouseup", ()=>{ panelDrzi = false; });
+  window.addEventListener("touchend", ()=>{ panelDrzi = false; });
+  window.addEventListener("touchcancel", ()=>{ panelDrzi = false; });
 
   /* ---------- MYŠ ---------- */
   hra.addEventListener("mousedown", ev=>{
@@ -3718,7 +3733,7 @@ function tik(t){
 
   obnovHud();
   mmCas += dt; if(mmCas>0.12){ mmCas=0; kresliMinimapu(); }
-  panelCas += dt; if(panelCas>0.4){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
+  panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
 }
 
 /* ============================================================
@@ -4454,38 +4469,30 @@ tik = function(t){
   requestAnimationFrame(tik);
   if(!G.bezi) return;
   const dt = Math.min(0.05, (t - posledni)/1000 || 0);
-  posledni = t; posledniRAF = t;
+  posledni = t;
   kameraKlavesy(dt);
   if(G.pauza || G.konec) return;
 
   if(SYNC.jsemKlient()){
     SYNC.dokresli(dt);
-    SYNC.strilejBudovy(dt);
     updStrely(dt);
     obnovHud();
     mmCas += dt; if(mmCas>0.12){ mmCas=0; kresliMinimapu(); }
-    panelCas += dt; if(panelCas>0.4){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
+    panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
     return;
   }
 
-  /* RYCHLOST_HRY zrychluje jen samotnou hru (pohyb, boj, výcvik) – síťová
-     smyčka (SYNC.posli níž) dostává PŮVODNÍ dt, ať se rychlejší hrou
-     nezvýší i to, jak často po síti něco posíláme (to by zase přidalo
-     sekání, přesně čemu jsme se snažili vyhnout). */
-  const dtHra = dt * RYCHLOST_HRY;
-  G.cas += dtHra;
-  for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dtHra); }
-  for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dtHra); }
+  G.cas += dt;
+  for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
+  for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
   rozestup();
-  updBrany(dtHra);
-  updOpevneni(dtHra);
-  updStrely(dtHra);
-  updAI(dtHra);
+  updStrely(dt);
+  updAI(dt);
   if(SYNC.jsemHost()) SYNC.posli(dt);
 
   obnovHud();
   mmCas += dt; if(mmCas>0.12){ mmCas=0; kresliMinimapu(); }
-  panelCas += dt; if(panelCas>0.4){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
+  panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
 };
 
 /* ---- doplnění příjmu zpráv o herní část ---- */
@@ -4496,6 +4503,7 @@ NET.prijmi = function(m){
   if(m.typ==="cmd"){ if(SYNC.jsemHost() && G.bezi) SYNC.provedCizi(m); return; }
   prijmiLobby(m);
 };
+
 
 /* ============================================================
    30) PŘÍMÉ SPOJENÍ MEZI POČÍTAČI (P2P přes internet)
@@ -12957,8 +12965,25 @@ NET.posli = function(m){
    v69 = nová věc na přání: dvojklik na jednotku (třeba na koně) vybere
    VŠECHNY vlastní jednotky stejného druhu, ne jen tu jednu, na kterou se
    kliklo. Ověřeno v prohlížeči skutečnou dvojklikovou událostí (ne jen
-   voláním funkce) – dvojklik na vesničana vybral všechny vesničany. */
-VERZE = "v69";
+   voláním funkce) – dvojklik na vesničana vybral všechny vesničany.
+   v70 = Lucie: "tlačítka na stavění/jednotky občas nereagují, někdy
+   trvá, než se to ukáže". Příčina: panel akcí (#akce) se přemalovává
+   (celé innerHTML pryč a znova) 2-3× za vteřinu i bez jakékoli změny
+   (`panelCas` v `tik()`). Klikneš-li přesně v tu chvíli, prohlížeč ti
+   tlačítko vymění zpod prstu mezi mousedown a mouseup/click – klik
+   propadne beze stopy. Řešení: `panelDrzi` – dokud držíš myš/prst na
+   panelu akcí, pravidelné přemalování se přeskočí (samo se zase spustí
+   hned po puštění). Platí v single i multiplayeru (host i klient).
+   POUČENÍ (druhé kolo za dnešek): hra má DVĚ nezávislé kopie hlavní
+   smyčky – `p7.html`/`p7b.html` (běžný běh) a `p13.html` (Web Worker,
+   běží i když je záložka na pozadí) – obě volaly `panelCas`. A hůř:
+   `p7b.html` je RUČNĚ udržovaná kopie MIMO automatický cyklus
+   přebuildu v build.sh (ten pokrývá jen p12–p40) – oprava v p7.html
+   se do hry vůbec nedostala, dokud jsem si nevšimla, že `p7b.html`
+   zůstal starý, a nevygenerovala ho ručně stejným způsobem jako
+   build.sh (ustřihnout od "</script>"). Příště zkontrolovat u every
+   editovaného souboru mimo p12–p40, jestli nemá vlastní "b" sourozence. */
+VERZE = "v70";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
