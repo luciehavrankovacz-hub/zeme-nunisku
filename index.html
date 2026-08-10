@@ -478,6 +478,11 @@ body.mobil #tip{display:none !important}
   </div>
 
   <div class="sekce">
+    <h3>Rychlost hry</h3>
+    <div class="obtRada" id="rychlostRada"></div>
+  </div>
+
+  <div class="sekce">
     <h3>Cheaty</h3>
     <button class="papirBtn" id="b_cheaty">🐐 Cheaty: VYPNUTO</button>
     <div class="podnadpis" style="margin-top:4px">Když jsou zapnuté, jde v chatu ve hře napsat tajný kód na suroviny.</div>
@@ -1633,11 +1638,6 @@ function zdrojSVG(kind, va){
    ============================================================ */
 let SVET_W = 3600, SVET_H = 2600;
 
-/* Jak rychle jde celá hra – pohyb, boj, výroba (viz p7b, hostitelova smyčka).
-   1 = původní tempo. Síť dostává furt STEJNÝ počet zpráv za vteřinu (nezávisí
-   na tomhle), takže rychlejší hra sama o sobě sekání nepřidává. */
-const RYCHLOST_HRY = 1.25;
-
 const BUD = {
   radnice:{jm:"Radnice", hp:1100, r:56, vel:130, cena:{drevo:280,zlato:130}, cas:26, popPlus:5,
     popis:"Tady cvičíš vesničany. Suroviny se sem nosí.", cvici:["vesnican"]},
@@ -2110,6 +2110,12 @@ const VELIKOSTI = [
    protože míň jednotek = míň co počítat, kreslit i posílat po síti. */
 const LIMITY = [
   {jm:"50", n:50}, {jm:"100", n:100}, {jm:"150", n:150}, {jm:"200", n:200}, {jm:"300", n:300}
+];
+/* Rychlost hry – násobí, jak rychle běží čas ve hře (těžba, stavění, pohyb,
+   boj…). Na přání: tři stupně, výchozí (index 0) je rychlost, na jakou je
+   hra odjakživa – ať se nikomu nezmění hra pod rukama, kdo si nic nevybere. */
+const RYCHLOSTI = [
+  {jm:"Pomalá", n:1}, {jm:"Normální", n:1.4}, {jm:"Rychlá", n:1.8}
 ];
 
 function postavSvet(){
@@ -3930,7 +3936,7 @@ function postavMenu(){
         return;
       }
     }
-    NET.posli({typ:"start", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit, v:VERZE});
+    NET.posli({typ:"start", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit, rychlost:G.rychlost, v:VERZE});
     spustHru();
   };
 }
@@ -4154,7 +4160,7 @@ const NET = {
   },
   /* funguje posílání mezi okny? (na souboru z plochy většinou ne, na internetu ano) */
   umiSit(){ return typeof BroadcastChannel==="function" && location.protocol!=="file:"; },
-  oznam(){ if(this.kanal && this.jsemHost) this.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit}); },
+  oznam(){ if(this.kanal && this.jsemHost) this.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit, rychlost:G.rychlost}); },
   prijmi(m){
     if(!m) return;
     if(m.typ==="join" && this.jsemHost){
@@ -4170,6 +4176,7 @@ const NET = {
       G.mapa = m.mapa; G.obt = m.obt; G.seed = m.seed;
       if(m.velikost!=null) G.velikost = m.velikost;
       if(m.limit!=null) G.limit = m.limit;
+      if(m.rychlost!=null) G.rychlost = m.rychlost;
       if(!document.getElementById("mLobby").classList.contains("zap")){
         zavri("mJoin");
         G.rezim="multi";
@@ -4213,6 +4220,7 @@ const NET = {
       G.mapa=m.mapa; G.obt=m.obt; G.seed=m.seed;
       if(m.velikost!=null) G.velikost = m.velikost;
       if(m.limit!=null) G.limit = m.limit;
+      if(m.rychlost!=null) G.rychlost = m.rychlost;
       spustHru();
     }
   }
@@ -4482,12 +4490,17 @@ tik = function(t){
     return;
   }
 
-  G.cas += dt;
-  for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dt); }
-  for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dt); }
+  /* POZOR (na přání "ať jde nastavit rychlost hry"): jen SIMULACE (pohyb,
+     stavění, těžba, boj, AI) se násobí zvolenou rychlostí – kamera,
+     posílání po síti a osvěžování panelu/minimapy běží dál v REÁLNÉM
+     čase, ať to není trhané a ať síť nezahltíme zbytečně častým posíláním. */
+  const dtHra = dt * (RYCHLOSTI[G.rychlost || 0] || RYCHLOSTI[0]).n;
+  G.cas += dtHra;
+  for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dtHra); }
+  for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dtHra); }
   rozestup();
-  updStrely(dt);
-  updAI(dt);
+  updStrely(dtHra);
+  updAI(dtHra);
   if(SYNC.jsemHost()) SYNC.posli(dt);
 
   obnovHud();
@@ -4654,7 +4667,7 @@ const P2P = {
     if(this.jeHost){
       zprava("🔌 Kamarád se připojil!","dobre");
       // rovnou mu pošlu, jak to teď v lobby vypadá
-      this.posliVsem({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit});
+      this.posliVsem({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit, rychlost:G.rychlost});
       kresliP2P();
     }else{
       zprava("🔌 Jsi připojený k hostiteli!","dobre");
@@ -5705,7 +5718,10 @@ const TIKAC = {
     while(zbyva > 0.001){
       const dt = Math.min(0.05, zbyva);
       zbyva -= dt;
-      const dtHra = dt * RYCHLOST_HRY;              // stejné zrychlení jako v p7b
+      // POZOR (na přání "ať jde nastavit rychlost hry"): stejný násobič
+      // jako v hlavní smyčce (p7.html) – ať běží na pozadí STEJNĚ rychle,
+      // ne podle staré napevno dané hodnoty.
+      const dtHra = dt * (RYCHLOSTI[G.rychlost || 0] || RYCHLOSTI[0]).n;
       G.cas += dtHra;
       for(let i=G.jednotky.length-1;i>=0;i--){ const j=G.jednotky[i]; if(!j.mrtvy) updJednotku(j,dtHra); }
       for(let i=G.budovy.length-1;i>=0;i--){ const b=G.budovy[i]; if(!b.mrtvy) updBudovu(b,dtHra); }
@@ -6487,6 +6503,24 @@ function kresliLimity(){
     r.appendChild(b);
   });
 }
+/* Rychlost hry – na přání "ať jde nastavit, jak rychle hra běží". Stejné
+   pravidlo jako u velikosti/limitu: v multiplayeru smí měnit jen hostitel
+   (jinak by se hráčům simulace rozjela nesouhlasně). */
+function kresliRychlosti(){
+  const r = document.getElementById("rychlostRada");
+  if(!r) return;
+  r.innerHTML = "";
+  RYCHLOSTI.forEach((o, i) => {
+    const b = document.createElement("button");
+    b.className = "obtBtn" + ((G.rychlost||0) === i ? " on" : "");
+    b.textContent = o.jm;
+    b.onclick = () => {
+      if(G.rezim === "multi" && !NET.jsemHost){ zprava("Rychlost hry vybírá ten, kdo hru vytvořil."); return; }
+      G.rychlost = i; zvuk("klik"); NET.oznam(); kresliRychlosti(); kresliLobby();
+    };
+    r.appendChild(b);
+  });
+}
 /* Co která civilizace umí – text už v datech byl, ale nikde se neukazoval. */
 function kresliCivTabulku(){
   const el = document.getElementById("civTabulka");
@@ -6513,14 +6547,14 @@ function chybiRadek(chybi){
 const kresliLobbyPredVolbami = kresliLobby;
 kresliLobby = function(){
   kresliLobbyPredVolbami.apply(this, arguments);
-  kresliVelikosti(); kresliLimity(); kresliCivTabulku();
+  kresliVelikosti(); kresliLimity(); kresliRychlosti(); kresliCivTabulku();
 };
 
 /* v poznámce pod lobby ať je vidět, co je nastavené */
 const otevriLobbyPredVolbami = otevriLobby;
 otevriLobby = function(rezim){
   otevriLobbyPredVolbami.apply(this, arguments);
-  kresliVelikosti(); kresliLimity(); kresliCivTabulku();
+  kresliVelikosti(); kresliLimity(); kresliRychlosti(); kresliCivTabulku();
 };
 
 
@@ -10723,7 +10757,7 @@ if(typeof NET !== "undefined" && NET.prijmi){
          && lobbyHraci.some(h => h.id === m.hrac.id)){
         // je zpátky a v seznamu už je – ať vidí, jak to v lobby vypadá
         NET.posli({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt,
-                   seed:G.seed, velikost:G.velikost, limit:G.limit});
+                   seed:G.seed, velikost:G.velikost, limit:G.limit, rychlost:G.rychlost});
         kresliLobby(); kresliP2P();
       }
     }catch(e){}
@@ -11989,7 +12023,7 @@ if(typeof P2P !== "undefined" && P2P.zprava){
           spoj.startZnovu = true;                   // ať se to nepošle dvakrát
           spoj.kanal.send(JSON.stringify({typ:"start", hraci:lobbyHraci,
             mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost,
-            limit:G.limit, v:VERZE}));
+            limit:G.limit, rychlost:G.rychlost, v:VERZE}));
         }
       }
     }catch(e){}
@@ -13003,8 +13037,18 @@ NET.posli = function(m){
    utáhnout: jak ČASTO se minimapa vůbec překresluje – z 8× za vteřinu na
    5×. Dál už bez skutečného měření na Luciině počítači (ne na tomhle,
    kde se hra chová jinak) nejde smysluplně hádat, co dalšího brzdí –
-   jádro hry už je hodně opracované z dřívějška. */
-VERZE = "v72";
+   jádro hry už je hodně opracované z dřívějška.
+   v73 = nová věc na přání: v lobby (single i multiplayer) jde vybrat
+   RYCHLOST HRY – Pomalá (výchozí, jak to bylo dřív, ať se nikomu nezmění
+   hra pod rukama), Normální (1,4×) a Rychlá (1,8×). Zrychluje se jen
+   SIMULACE (pohyb, boj, stavění, těžba, AI) – kamera, síť a překreslování
+   panelu/minimapy běží dál v reálném čase, ať to zůstane plynulé a síť se
+   nezahltí. V multiplayeru smí rychlost měnit jen hostitel (jako mapu/
+   velikost/limit) a posílá se všem stejným mechanismem – jinak by se
+   hráčům simulace rozjela nesouhlasně. Mimochodem: v kódu už dávno
+   existovala nepoužitá `RYCHLOST_HRY=1.25` jen pro běh na pozadí
+   (skrytá záložka) – nahrazeno stejným novým přepínačem, ať sedí i tam. */
+VERZE = "v73";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
