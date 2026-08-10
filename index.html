@@ -2786,8 +2786,20 @@ function updJednotku(e, dt){
     }else{
       /* Král se brání jen nablízko. Kdyby se rozbíhal za nepřáteli jako
          ostatní, odtáhl by si sám od hradu – a na něm visí celá hra. */
-      const c = nepritelBlizko(e, e.kind==="lukostrelec"?230 : (e.kind==="kral"?120:190));
+      const dosah = e.kind==="lukostrelec"?230 : (e.kind==="kral"?120:190);
+      const c = nepritelBlizko(e, dosah);
       if(c){ e.stav="utok"; e.cilE=c; e.hlidka={x:e.x,y:e.y}; }
+      else if(e.kind!=="kral"){
+        /* Na přání "kdyz je nechas a nic nedelas tak by meli nicit budovy
+           sami": dřív nečinná jednotka viděla jen NEPŘÁTELSKÉ PANÁČKY
+           (nejbliz hledalo jen druh==="jednotka") – když stála klidně vedle
+           nepřátelského domečku bez jediného vojáka poblíž, netušila, že
+           tam vůbec něco je. Teď, když poblíž není žádný nepřítel k boji,
+           zkusí to samé i mezi budovami. Král vynechán schválně (viz výš –
+           nesmí se od hradu vzdalovat kvůli budově v okolí). */
+        const b = nejbliz(G.budovy, e.x, e.y, o=>jeNepritel(e.side,o.side) && !o.mrtvy, dosah);
+        if(b){ e.stav="utok"; e.cilE=b; e.hlidka={x:e.x,y:e.y}; }
+      }
     }
   }
 
@@ -13305,8 +13317,21 @@ NET.posli = function(m){
    (rychlost postupu v updBudovu() – p4a.html), ceny (cenaJednotky/
    cenaBudovy v p3.html) se přitom nemění vůbec. U těžby se drží plynulý
    zůstatek (e.tezZbytek), ať se pozná i malé procento jako 105 % – ne
-   jen zaokrouhlovat pořád dolů na nulu. */
-VERZE = "v76";
+   jen zaokrouhlovat pořád dolů na nulu.
+   v77 = Lucie nahlásila: "kdyz je nechas a nic nedelas tak by meli nicit
+   budovy sami ale oni nic nedelaji" – konkrétně sloni (a stejně tak
+   ostatní bojové jednotky) stáli klidně vedle nepřátelského domečku a
+   nedělali nic. Příčina: nečinná jednotka (p4a.html, blok "automatické
+   bránění") hledala jen nejbližšího NEPŘÁTELSKÉHO PANÁČKA (nejbliz na
+   G.ents, druh==="jednotka") – u prázdné budovy bez hlídky tam tedy
+   žádný cíl neviděla, i když stála doslova opřená o zeď. Teď, když
+   poblíž není žádný nepřátelský panáček, zkusí to samé mezi budovami
+   (stejný dosah, `nejbliz` na G.budovy) – a pustí se do nejbližší. Král
+   schválně vynechán (viz komentář výš u něj – nesmí se courat od hradu
+   kvůli baráku v okolí, jinak by ho to táhlo pryč z obrany). Obléhací
+   stroje (beranidlo/trebuchet) tohle uměly odjakživa, tohle je jen
+   dorovnání pro běžné jednotky. */
+VERZE = "v77";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
