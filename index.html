@@ -1850,11 +1850,12 @@ const JED = {
   jezdec:{jm:"Jezdec na koni", ik:"🐴", hp:240, r:19, vel:78, rychlost:124, utok:27, dostrel:34, rychUtoku:1.0,
     cena:{drevo:40,zelezo:55,zlato:85}, cas:16, popis:"Uhání přes mapu a rozpráší lučištníky. Drahý!"},
   /* KOPIJNÍK – na přání "neni to nejak silna jednotka, ale je zase hodne
-     silna proti slonum, a hodne levny". Sám o sobě slabší než bojovník
-     (nižší hp i útok), ale proti slonům má obří násobič poškození (viz
-     nasobekPoskozeni() v p4a.html). Cvičí se ve STÁJÍCH, ne v kasárnách. */
+     silna proti slonum [a jezdcum na koni]". Sám o sobě slabší než
+     bojovník (nižší hp i útok), ale proti jízdě má obří násobič
+     poškození (viz nasobekPoskozeni() v p4a.html – ×4 na slona, ×3 na
+     jezdce na koni). Cvičí se ve STÁJÍCH, ne v kasárnách. */
   kopijnik:{jm:"Kopijník", ik:"🔱", hp:100, r:16, vel:52, rychlost:70, utok:8, dostrel:34, rychUtoku:1.1,
-    cena:{drevo:20,zelezo:10}, cas:6, popis:"Slabý sám o sobě, ale s dlouhým kopím rozseká slony jako nic. Levný."},
+    cena:{drevo:20,zelezo:10}, cas:6, popis:"Slabý sám o sobě, ale s dlouhým kopím rozseká jezdce na koni i na slonu. Levný."},
   slon:{jm:"Jezdec na slonu", ik:"🐘", hp:640, r:24, vel:102, rychlost:50, utok:58, dostrel:42, rychUtoku:1.5,
     cena:{zelezo:200,zlato:260}, cas:30, popis:"Chodící pevnost. Boří budovy jako nic, ale je pomalý a hodně drahý."},
   hrdina:{jm:"Hrdina", ik:"👑", hp:480, r:20, vel:64, rychlost:84, utok:42, dostrel:34, rychUtoku:0.9,
@@ -2637,7 +2638,11 @@ function nasobekPoskozeni(e, cil){
   if(cilBudova && e.kind==="slon") m *= 1.7;
   /* KOPIJNÍK (na přání "hodne silna proti slonum"): dlouhé kopí sám o
      sobě slabou jednotku promění v postrach slonů. */
+  /* KOPIJNÍK proti jízdě (na přání "at jsou dobry i na jezdce na koni"):
+     dlouhé kopí je postrach všeho, co jezdí – slon dostane ještě víc,
+     je to větší a nebezpečnější cíl. */
   if(jedU && e.kind==="kopijnik" && cil.druh==="jednotka" && cil.kind==="slon") m *= 4;
+  if(jedU && e.kind==="kopijnik" && cil.druh==="jednotka" && cil.kind==="jezdec") m *= 3;
   if(jedU && def.stroj) m *= cilBudova ? (def.protiBudovam||1) : (def.protiJednotkam||0);
   if(jeStroj(cil)){
     const cd = JED[cil.kind];
@@ -13603,8 +13608,13 @@ NET.posli = function(m){
    fungovalo nekonzistentně a bylo to tak zákeřné najít). Oprava: `!!`
    před oběma výrazy, ať jaLod/onLod jsou vždycky opravdové true/false.
    Ověřeno: stejný scénář, co dřív po 40 s hry nechal budovu na 320/320
-   životech, ji teď za stejnou dobu srovná se zemí. */
-VERZE = "v83";
+   životech, ji teď za stejnou dobu srovná se zemí.
+   v84 = na přání "at jsou kopijnici dobry i na jezdce na koni": dřív
+   měl kopijník obří násobič poškození (×4) jen proti slonům, teď má
+   (×3) i proti jezdci na koni (nasobekPoskozeni() v p3.html/p4a.html).
+   Dlouhé kopí je teď postrach jízdy obecně, slon dostane pořád nejvíc,
+   je to větší a nebezpečnější cíl. */
+VERZE = "v84";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
