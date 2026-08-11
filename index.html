@@ -676,12 +676,47 @@ function oko(x,y,c,r){
   <circle cx="${x+3*r}" cy="${y+4*r}" r="${1.7*r}" fill="#fff" opacity=".6"/>`;
 }
 
+/* SDÍLENÉ GRADIENTY PANÁČKŮ (na přání "chci to mít stejně čistý"): tělo i
+   bříško barví gradient, co záleží JEN na civilizaci (c.telo/c.bricho) –
+   barva hráče (praporek/štít) je úplně jiná věc. Přesto měl dřív KAŽDÝ
+   JEDNOTLIVÝ panáček svůj vlastní, jedinečný pár gradientů (přesně ta
+   samá chyba, co se dřív našla a opravila u stromů – "6 gradientů na
+   strom" – jen se u panáčků nikdy nenašla). Se 100 jednotkami na
+   obrazovce (a civilizací je jen 6!) to dělalo klidně 200 zbytečných
+   duplicitních gradientů. Teď se gradient vyrobí JEDNOU za civilizaci a
+   uloží se do trvalého, NIKDY nemazaného <svg><defs> v <body> – žádný
+   jednotlivý panáček ho tedy nemůže smrtí smazat ostatním zpod rukou. */
+  let __plysakDefs = null;
+  function sdilenyGradPlysaka(civK, c){
+    if(!__plysakDefs){
+      __plysakDefs = document.createElementNS("http://www.w3.org/2000/svg","svg");
+      __plysakDefs.style.cssText = "position:absolute;width:0;height:0;overflow:hidden";
+      __plysakDefs.innerHTML = "<defs></defs>";
+      document.body.appendChild(__plysakDefs);
+    }
+    let gt = sdilenyGradPlysaka.cache[civK];
+    if(gt) return gt;
+    gt = sdilenyGradPlysaka.cache[civK] = "plG_"+civK;
+    const defsEl = __plysakDefs.firstChild;
+    const w = document.createElementNS("http://www.w3.org/2000/svg","g");
+    w.innerHTML = `<radialGradient id="${gt}t" cx="36%" cy="26%" r="82%">
+        <stop offset="0" stop-color="${svetlej(c.telo,0.30)}"/>
+        <stop offset="0.55" stop-color="${c.telo}"/>
+        <stop offset="1" stop-color="${tmavej(c.telo,0.16)}"/>
+      </radialGradient>
+      <radialGradient id="${gt}b" cx="50%" cy="30%" r="80%">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="${c.bricho}"/>
+      </radialGradient>`;
+    while(w.firstChild) defsEl.appendChild(w.firstChild);
+    return gt;
+  }
+  sdilenyGradPlysaka.cache = {};
+
 /* Hlavní panáček. role: vesnican | vojak | lukostrelec | hrdina | portret */
 function plysak(civK, role, opt){
   opt = opt || {};
   const c = CIVS[civK], v=[];
   const boj = (role==="vojak"||role==="hrdina"), luk=(role==="lukostrelec"), hrd=(role==="hrdina");
-  const gid = "p"+(++__gid);
   const bar = opt.barva || c.akcent;     // barva hráče (jako v Age of Empires)
   /* Kvalita vzhledu (na přání "at jde nastavit kvalitu"): u NEJHORŠÍ a
      DRUHÉ nejhorší kvality nemá tělo gradient vůbec (jen plochá barva) –
@@ -689,18 +724,7 @@ function plysak(civK, role, opt){
      tělo měkký přechod a lesklou skvrnku. "VELMI SIGMA" přidá navíc ještě
      jednu jemnou třpytku – hezčí, ale o něco dražší, proto jen na přání. */
   const kv = urKval();
-
-  // --- přechody pro měkkou srst (jen když si hráč nevybral nejlevnější vzhled) ---
-  if(kv>=1) v.push(`<defs>
-    <radialGradient id="${gid}t" cx="36%" cy="26%" r="82%">
-      <stop offset="0" stop-color="${svetlej(c.telo,0.30)}"/>
-      <stop offset="0.55" stop-color="${c.telo}"/>
-      <stop offset="1" stop-color="${tmavej(c.telo,0.16)}"/>
-    </radialGradient>
-    <radialGradient id="${gid}b" cx="50%" cy="30%" r="80%">
-      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="${c.bricho}"/>
-    </radialGradient>
-  </defs>`);
+  const gid = kv>=1 ? sdilenyGradPlysaka(civK, c) : null;
 
   // --- stín na zemi ---
   if(!opt.bezStinu) v.push(`<ellipse cx="50" cy="93" rx="29" ry="7.5" fill="rgba(0,0,0,.24)"/>`);
@@ -13361,8 +13385,22 @@ NET.posli = function(m){
    v p7.html (kuliCas, stejný vzor jako u minimapy). Netýká se to
    simulace ani ničeho síťového, jen kreslení – klikání na schovanou
    budovu/zdroj funguje dál stejně (entPod() počítá s polohou v datech,
-   ne s DOM elementem). */
-VERZE = "v78";
+   ne s DOM elementem).
+   v79 = Lucie: "ty na tom oknu to mas uplne cisty, ja chci presne tohle,
+   zadne vymluvy" – tak jsem hledala dál a našla přesně tu samou chybu,
+   co se řešila u stromů (v66/67 – "6 gradientů na strom"), jen u
+   PANÁČKŮ (p2a1.html – plysak()): tělo i bříško barví gradient, který
+   závisí JEN na civilizaci (c.telo/c.bricho), NE na hráči ani na
+   konkrétním panáčkovi – přesto měl KAŽDÝ JEDNOTLIVÝ panáček svůj
+   vlastní, jedinečný pár gradientů. Se 100 jednotkami na obrazovce (a
+   civilizací je jen 6!) to bylo klidně 200 zbytečných duplicitních
+   gradientů. Teď se gradient vyrobí JEDNOU za civilizaci (sdilenyGradPlysaka())
+   a uloží se do trvalého <svg><defs> přímo v <body>, mimo životní cyklus
+   kteréhokoli panáčka – ověřeno naživo, že smrt a smazání jednoho
+   panáčka gradient nijak nepoškodí ostatním té civilizace. Naměřeno:
+   36 jednotek jedné civilizace = 12 gradientů CELKEM (2 na civilizaci,
+   ne 2 na panáčka) – dřív by to bylo 72. */
+VERZE = "v79";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
