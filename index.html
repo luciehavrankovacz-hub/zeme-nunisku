@@ -2936,9 +2936,13 @@ function updJednotku(e, dt){
            (nejbliz hledalo jen druh==="jednotka") – když stála klidně vedle
            nepřátelského domečku bez jediného vojáka poblíž, netušila, že
            tam vůbec něco je. Teď, když poblíž není žádný nepřítel k boji,
-           zkusí to samé i mezi budovami. Král vynechán schválně (viz výš –
-           nesmí se od hradu vzdalovat kvůli budově v okolí). */
-        const b = nejbliz(G.budovy, e.x, e.y, o=>jeNepritel(e.side,o.side) && !o.mrtvy, dosah);
+           zkusí to samé i mezi budovami – s VĚTŠÍM dosahem než na panáčky
+           (Lucie pořád hlásila "vojaci proste neutoci na budovy", 190 na
+           budovu bylo zjevně málo – budova se nehýbe a nekouše zpátky,
+           tak není důvod být u ní opatrný jako u nepřátelského vojáka).
+           Král vynechán schválně (viz výš – nesmí se od hradu vzdalovat
+           kvůli budově v okolí). */
+        const b = nejbliz(G.budovy, e.x, e.y, o=>jeNepritel(e.side,o.side) && !o.mrtvy, dosah*1.7);
         if(b){ e.stav="utok"; e.cilE=b; e.hlidka={x:e.x,y:e.y}; }
       }
     }
@@ -13551,8 +13555,19 @@ NET.posli = function(m){
    vždycky, i na "K VYHOZENÍ". Teď mají oči taky stupně: nejnižší
    kvalita = 1 element na oko, druhá = 2, "SUPER" (výchozí) a výš beze
    změny. Naměřeno: celý panáček 49→40 elementů mezi SUPER a K
-   VYHOZENÍ. */
-VERZE = "v81";
+   VYHOZENÍ.
+   v82 = Lucie pořád hlásila "vojaci proste neutoci na budovy!" i po
+   v77/v78. Ověřeno naživo přímo v kódu (v81): mechanismus SÁM O SOBĚ
+   funguje (nečinný voják i trebuchet si budovu poblíž všimnou a jdou
+   na ni), ruční rozkaz "Útok!" na budovu taky funguje. Nejpravděpo-
+   dobnější vysvětlení: dosah 190 px (stejný jako na nepřátelské
+   panáčky) je na "kdyz je nechas u nepritele" málo – u budovy navíc
+   není důvod být tak opatrný jako u živého nepřítele (budova se
+   nehýbe ani nekouše zpátky). Dosah pro HLEDÁNÍ BUDOV (p4a.html,
+   "automatické bránění") teď 1,7× větší než na panáčky. Kdyby to
+   pořád nestačilo, bude to spíš stará verze v prohlížeči (zkusit
+   Ctrl+F5) než chyba v mechanismu. */
+VERZE = "v82";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
