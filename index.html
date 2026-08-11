@@ -7395,8 +7395,23 @@ const smiUtocitPredMorem = smiUtocit;
 smiUtocit = function(e, cil){
   if(!smiUtocitPredMorem(e, cil)) return false;
   if(!TEREN.pripraven || !e || !cil) return true;
-  const jaLod  = e.druh === "jednotka" && JED[e.kind] && JED[e.kind].lod;
-  const onLod  = cil.druh === "jednotka" && JED[cil.kind] && JED[cil.kind].lod;
+  /* KRITICKÁ OPRAVA (na přání "vojaci proste neutoci na budovy!" – Lucie
+     to psala už po několikáté): JED[e.kind].lod je u panáčků BEZ lodě
+     nedefinované (undefined), ne false. cil.druh==="budova" ale hned na
+     začátku &&-řetězu vyhodnotí onLod jako doslova `false` (zkrátí se to
+     tam, dál se JED[cil.kind] vůbec nezjišťuje). Takže u KAŽDÉHO souboje
+     "panáček (undefined) útočí na budovu (false)" vyšlo jaLod!==onLod
+     jako undefined!==false, což je v JavaScriptu VŽDYCKY true – i když
+     obojí "ve skutečnosti" znamená to samé (nikdo není loď)! Výsledek:
+     každý pěší/jízdní panáček bez střely (tedy skoro všichni – jen
+     lučištník/věž/hrad/galeona mají strela:1) nikdy nesměl budovu ani
+     škrábnout, ať byl sebeblíž. Souboj panáček-proti-panáčkovi tohle
+     nechytilo (undefined!==undefined je false), proto to vypadalo, že
+     boj "normálně funguje" a jen budovy byly nedotknutelné. Oprava: !!
+     převede obojí na opravdové true/false, ať se undefined s false nikdy
+     nespletou. */
+  const jaLod  = !!(e.druh === "jednotka" && JED[e.kind] && JED[e.kind].lod);
+  const onLod  = !!(cil.druh === "jednotka" && JED[cil.kind] && JED[cil.kind].lod);
   // na blízko (bez střely) se přes břeh bít nedá
   const def = e.druh === "budova" ? BUD[e.kind] : JED[e.kind];
   if(!def.strela && jaLod !== onLod) return false;
@@ -13566,8 +13581,30 @@ NET.posli = function(m){
    nehýbe ani nekouše zpátky). Dosah pro HLEDÁNÍ BUDOV (p4a.html,
    "automatické bránění") teď 1,7× větší než na panáčky. Kdyby to
    pořád nestačilo, bude to spíš stará verze v prohlížeči (zkusit
-   Ctrl+F5) než chyba v mechanismu. */
-VERZE = "v82";
+   Ctrl+F5) než chyba v mechanismu.
+   v83 = KRITICKÁ OPRAVA – konečně ten skutečný důvod, proč "vojaci
+   proste neutoci na budovy" (Lucie to psala už po několikáté a měla
+   pravdu, mechanismus vypadal v pořádku, ale škodu nikdy nedal).
+   Najito přes headless test se sledováním vnitřního stavu krok za
+   krokem (smiUtocit() vracelo false, i když všechno ostatní bylo OK).
+   Příčina v p18.html, smiUtocit() – hlídání "loď nebije na souš":
+     jaLod = e.druh==="jednotka" && JED[e.kind] && JED[e.kind].lod
+     onLod = cil.druh==="jednotka" && JED[cil.kind] && JED[cil.kind].lod
+   U panáčka BEZ lodi je JED[kind].lod nedefinované (undefined), ne
+   false. Ale když je cíl BUDOVA, výraz cil.druh==="jednotka" je rovnou
+   false a &&-řetěz se zkrátí – onLod tak vyjde doslova `false`, ne
+   `undefined`. Pak `jaLod !== onLod` = `undefined !== false`, což je
+   v JavaScriptu VŽDYCKY true, i když to obojí "znamená" totéž (nikdo
+   není loď)! Válka panáček-proti-panáčkovi (undefined!==undefined)
+   tenhle rozdíl nechytila, takže boj mezi jednotkami vypadal úplně
+   normálně – jen boj PROTI BUDOVĚ byl potichu zablokovaný, a to jen u
+   jednotek BEZ střely (lučištník/věž/hrad/galeona mají strela:1, tak
+   je `!def.strela` false a chyba se vůbec neprojevila – proto to
+   fungovalo nekonzistentně a bylo to tak zákeřné najít). Oprava: `!!`
+   před oběma výrazy, ať jaLod/onLod jsou vždycky opravdové true/false.
+   Ověřeno: stejný scénář, co dřív po 40 s hry nechal budovu na 320/320
+   životech, ji teď za stejnou dobu srovná se zemí. */
+VERZE = "v83";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
