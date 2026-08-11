@@ -6396,6 +6396,7 @@ SYNC.dokresli = function(dt){
    (p4a), takže moc malý dohled by znamenal, že se po zboření budovy zastaví. */
 const DOHLED = {
   vesnican:170, vojak:200, lukostrelec:240, jezdec:260, slon:210, hrdina:260,
+  kopijnik:200,
   beranidlo:210, trebuchet:300,
   radnice:300, domek:180, kasarna:220, staj:220, vez:330, hrad:380,
   dilna:220, hradba:190, brana:190
@@ -8567,9 +8568,13 @@ updAI = function(dt){
       const umi = k => maJednotku(si,k);
       let druh = "vojak";
       const r = Math.random();
-      if(r<0.28 && umi("lukostrelec")) druh = "lukostrelec";
-      else if(r<0.42 && umi("jezdec")) druh = "jezdec";
-      else if(r<0.5 && G.obt>=3 && umi("slon")) druh = "slon";
+      /* Na přání "at botaci taky umeji s kopijniky": pár procent navíc
+         vyhrazeno kopijníkovi (levný, hodí se hlavně proti jízdě), ať
+         boti proti hráčovým jezdcům/slonům nejsou úplně bezmocní. */
+      if(r<0.25 && umi("lukostrelec")) druh = "lukostrelec";
+      else if(r<0.37 && umi("jezdec")) druh = "jezdec";
+      else if(r<0.47 && umi("kopijnik")) druh = "kopijnik";
+      else if(r<0.55 && G.obt>=3 && umi("slon")) druh = "slon";
       /* POZOR (Lucie, v26): boti neplatí za vojáky suroviny (nemají opravdovou
          ekonomiku jako hráč) – ale ať je aspoň VYCVIČÍ tak rychle, jak dlouho by
          to trvalo hráči (JED[druh].cas), ne podle odtrženého vzorečku 2,4 s.
@@ -13613,8 +13618,15 @@ NET.posli = function(m){
    měl kopijník obří násobič poškození (×4) jen proti slonům, teď má
    (×3) i proti jezdci na koni (nasobekPoskozeni() v p3.html/p4a.html).
    Dlouhé kopí je teď postrach jízdy obecně, slon dostane pořád nejvíc,
-   je to větší a nebezpečnější cíl. */
-VERZE = "v84";
+   je to větší a nebezpečnější cíl.
+   v85 = na přání "at botaci taky umeji s kopijniky": bot si dřív při
+   cvičení vojska (p21.html, "CVIČENÍ VOJSKA po jednom") vybíral jen
+   mezi vojákem/lučištníkem/jezdcem/slonem – kopijník nikdy. Teď má
+   kopijník svůj podíl (~10 %) v tom náhodném výběru, ať boti nejsou
+   proti jezdcům/slonům úplně bezmocní. Taky doplněn do DOHLED (p16.html
+   – kolik vidí) pro úplnost. Ověřeno naživo: bot po chvíli hraní má
+   kopijníka v armádě. */
+VERZE = "v85";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
