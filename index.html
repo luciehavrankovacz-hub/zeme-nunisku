@@ -819,11 +819,15 @@ function plysak(civK, role, opt){
   // poznat koho to je") – dřív barvu hráče nesl jen praporek na zádech
   // a u bojovníků štít, takže třeba vesničana nebo lučištníka nešlo
   // poznat vůbec. Šerpa jde přes VŠECHNY role napříč tělem, ale kreslí
-  // se hned pod obličej (ne přes něj), ať tvářička zůstane čitelná. */
-  if(!opt.bezPraporku) v.push(`<path d="M22 40 L36 35 L80 84 L66 89 Z" fill="${bar}" opacity=".85" stroke="rgba(0,0,0,.25)" stroke-width="1.1"/>`);
+  // se hned pod obličej (ne přes něj), ať tvářička zůstane čitelná.
+  // Na přání "kdyz je vic jednotek tak se to seká": jako oči i tohle teď
+  // ubírá na nejnižší kvalitě – prapor na zádech zůstává (ten pozná
+  // majitele i tak), jen tahle přidaná šerpa navíc je od "NIC MOC" dolů
+  // pryč. */
+  if(!opt.bezPraporku && kv>=1) v.push(`<path d="M22 40 L36 35 L80 84 L66 89 Z" fill="${bar}" opacity=".85" stroke="rgba(0,0,0,.25)" stroke-width="1.1"/>`);
 
-  // --- tvářičky ---
-  v.push(`<ellipse cx="23" cy="66" rx="7.5" ry="4.6" fill="#ff7fa8" opacity=".26"/>
+  // --- tvářičky (jen od "SUPER" výš – čistě ozdoba) ---
+  if(kv>=2) v.push(`<ellipse cx="23" cy="66" rx="7.5" ry="4.6" fill="#ff7fa8" opacity=".26"/>
           <ellipse cx="77" cy="66" rx="7.5" ry="4.6" fill="#ff7fa8" opacity=".26"/>`);
 
   // --- očka ---
@@ -1191,9 +1195,17 @@ function strechaSVG(s, x1, x2, yb, h, akcent){
      lip poznat ciji to je") – dřív ho měly jen 2 typy střech ze 6 (a byl
      maličký), teď ho má úplně každá střecha, na stejném místě jako
      "štítek" u panáčků (barevný kruh + tenký prstýnek), ať to vypadá
-     jako jedno vizuální pravidlo, ne náhodná tečka. */
-  const odznak = (px,py,r)=>`<circle cx="${px}" cy="${py}" r="${r}" fill="${akcent}" stroke="rgba(0,0,0,.3)" stroke-width="1.2"/>
+     jako jedno vizuální pravidlo, ne náhodná tečka.
+     Na přání "kdyz je vic budov tak se to seka": stejně jako u panáčků
+     ubírá i tohle na nižší kvalitě – na "K VYHOZENÍ" žádný odznak,
+     "NIC MOC" jen plný kroužek bez prstýnku, "SUPER" a výš beze změny. */
+  const kv = urKval();
+  const odznak = (px,py,r)=>{
+    if(kv===0) return "";
+    if(kv===1) return `<circle cx="${px}" cy="${py}" r="${r}" fill="${akcent}"/>`;
+    return `<circle cx="${px}" cy="${py}" r="${r}" fill="${akcent}" stroke="rgba(0,0,0,.3)" stroke-width="1.2"/>
       <circle cx="${px}" cy="${py}" r="${r}" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.2" stroke-dasharray="2 4"/>`;
+  };
   const rOdznak = Math.max(5, w*0.09);
 
   if(s.strechaTyp==="houba"){
@@ -13689,8 +13701,16 @@ NET.posli = function(m){
    Po zapnutí (a restartu Chromu) potvrdila "je to krasne plynuly"! Aby
    na tohle nemuseli kamarádi/další hráči v multiplayeru přijít sami,
    přidána krátká nápověda přímo v lobby pod "Kvalita vzhledu" (p1.html)
-   s přesným postupem. */
-VERZE = "v88";
+   s přesným postupem.
+   v89 = i po zapnuté hardwarové akceleraci Lucie hlásila sekání u
+   fakt velké hry (7 botů, obrovská základna, screenshot). Dvě nejnovější
+   ozdoby (šerpa u panáčků – v81, odznak na střeše budov – v81) se dřív
+   kreslily VŽDYCKY bez ohledu na kvalitu vzhledu. Teď ubírají stejně
+   jako oči/tělo: na "K VYHOZENÍ" šerpa úplně zmizí a odznak střechy
+   taky, na "NIC MOC" má odznak jen plný kroužek bez prstýnku. "SUPER"
+   (výchozí) beze změny. Panáček tak klesl z 40 na 37 elementů na
+   nejnižší kvalitě. */
+VERZE = "v89";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
