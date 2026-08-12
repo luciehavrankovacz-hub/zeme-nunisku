@@ -12174,6 +12174,14 @@ function ukazStatistiky(){
   const nej = pole => Math.max(0, ...radky.map(r => r[pole]));
   const nejSkore = nej("skore"), nZabil = nej("zabil"), nZboril = nej("zboril"), nNasb = nej("nasb");
   const hv = (v, n) => (v > 0 && v === n) ? " ⭐" : "";
+  /* Na přání "kdo ma nejmin toho tak ma hvezdicku" – u Ztraceno/Přišel o je
+     to naopak: MÉNĚ je LEPŠÍ (nejlepší obránce), takže hvězdička patří
+     nejnižšímu číslu, ne nejvyššímu. A na rozdíl od hv() výše smí být
+     hvězdička i za 0 – žádná ztráta je přece ten nejlepší možný výsledek,
+     ne "nic nedokázal". */
+  const nejmene = pole => Math.min(...radky.map(r => r[pole]));
+  const nZtrJed = nejmene("ztrJed"), nZtrBud = nejmene("ztrBud");
+  const hvMin = (v, n) => (v === n) ? " ⭐" : "";
 
   const radek = r => {
     const h = r.h, b = BARVY[h.barva];
@@ -12185,9 +12193,9 @@ function ukazStatistiky(){
         <b>${bezpecnyText(h.jm)}</b>${koruna}<span style="opacity:.55;font-size:11px"> T${h.tym}</span></td>
       <td style="padding:6px 8px"><b>${r.skore}</b>${medaile}</td>
       <td style="padding:6px 8px">${r.zabil}${hv(r.zabil, nZabil)}</td>
-      <td style="padding:6px 8px">${r.ztrJed}</td>
+      <td style="padding:6px 8px">${r.ztrJed}${hvMin(r.ztrJed, nZtrJed)}</td>
       <td style="padding:6px 8px">${r.zboril}${hv(r.zboril, nZboril)}</td>
-      <td style="padding:6px 8px">${r.ztrBud}</td>
+      <td style="padding:6px 8px">${r.ztrBud}${hvMin(r.ztrBud, nZtrBud)}</td>
       <td style="padding:6px 8px">${r.nasb}${hv(r.nasb, nNasb)}</td>
     </tr>`;
   };
@@ -13709,8 +13717,16 @@ NET.posli = function(m){
    jako oči/tělo: na "K VYHOZENÍ" šerpa úplně zmizí a odznak střechy
    taky, na "NIC MOC" má odznak jen plný kroužek bez prstýnku. "SUPER"
    (výchozí) beze změny. Panáček tak klesl z 40 na 37 elementů na
-   nejnižší kvalitě. */
-VERZE = "v89";
+   nejnižší kvalitě.
+   v90 = na přání "za ztraceno a prisel o ma hvezdicku ten kdo ma
+   nejmin, ne nejvic": tabulka Statistiky bitvy (p39.html) uměla
+   hvězdičku dát jen za nejvyšší číslo (Zabito/Zbořeno/Natěženo – to
+   zůstává beze změny). U sloupců Ztraceno (jednotek) a Přišel o
+   (budov) je to ale obráceně – MÉNĚ je LÍP (nejlepší obránce), takže
+   tam teď hvězdičku dostane nejnižší číslo, klidně i 0 (žádná ztráta
+   je ten nejlepší možný výsledek, ne "nic nedokázal" jako u ostatních
+   sloupců). */
+VERZE = "v90";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
