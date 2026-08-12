@@ -762,9 +762,14 @@ function plysak(civK, role, opt){
   const uy = c.velkeUsi?20:25, ur = c.velkeUsi?15:11.5;
   for(const ux of (c.velkeUsi?[20,80]:[23,77])){
     if(c.spicateUsi){
+      /* Na přání "ty usi jsou tam hnusny, udelej je hezci": ostrý plochý
+         trojúhelník vypadal jako papírový. Teď má oušku jemně prohnuté
+         hrany (stejné dvě cesty jako předtím, jen zakřivené místo rovných
+         čar) – měkčí, "kočičí" tvar, ale úplně zadarmo, žádný element
+         navíc. */
       const zn = ux<50?-1:1;
-      v.push(`<path d="M${ux-10} ${uy+12} L${ux+zn*3} ${uy-13} L${ux+10} ${uy+12} Z" fill="${c.usi}" stroke="rgba(0,0,0,.12)" stroke-width="1"/>
-              <path d="M${ux-5} ${uy+9} L${ux+zn*1.5} ${uy-5} L${ux+5} ${uy+9} Z" fill="${c.usiIn}"/>`);
+      v.push(`<path d="M${ux-10} ${uy+12} Q${ux-7} ${uy-1} ${ux+zn*3} ${uy-13} Q${ux+7} ${uy-1} ${ux+10} ${uy+12} Z" fill="${c.usi}" stroke="rgba(0,0,0,.12)" stroke-width="1"/>
+              <path d="M${ux-5} ${uy+9} Q${ux-3} ${uy+1} ${ux+zn*1.5} ${uy-5} Q${ux+3} ${uy+1} ${ux+5} ${uy+9} Z" fill="${c.usiIn}"/>`);
     }else{
       v.push(`<ellipse cx="${ux}" cy="${uy}" rx="${ur}" ry="${ur*1.08}" fill="${c.usi}" stroke="rgba(0,0,0,.12)" stroke-width="1"/>
               <ellipse cx="${ux}" cy="${uy+1}" rx="${ur*0.55}" ry="${ur*0.62}" fill="${c.usiIn}"/>`);
@@ -5013,6 +5018,14 @@ const P2P = {
       zprava("🔌 Kamarád se připojil!","dobre");
       // rovnou mu pošlu, jak to teď v lobby vypadá
       this.posliVsem({typ:"stav", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit, rychlost:G.rychlost});
+      /* Na přání "at maji vsechno stejne jako tvurce, at se nikomu neseka
+         ani se 3-4 hrackama": zabalSnimek() jinak posílá jen ZMĚNY od
+         posledního snímku (šetří to přenos), plný obrázek světa jde jen
+         jednou za ~2 s. Nově připojenému (nebo vracejícímu se uprostřed
+         hry) by to ale 2 vteřiny ukazovalo neúplný svět – budovy/jednotky,
+         co se zrovna nehýbou, by v jeho okně vůbec nebyly. Když se někdo
+         připojí za běhu hry, příští snímek pro VŠECHNY ať je rovnou plný. */
+      if(G.bezi && typeof SYNC !== "undefined") SYNC.klic = 1;
       kresliP2P();
     }else{
       zprava("🔌 Jsi připojený k hostiteli!","dobre");
@@ -12439,6 +12452,13 @@ if(typeof P2P !== "undefined" && P2P.zprava){
           spoj.kanal.send(JSON.stringify({typ:"start", hraci:lobbyHraci,
             mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost,
             limit:G.limit, rychlost:G.rychlost, v:VERZE}));
+          /* Vracející se hráč si mapu přepočítá ze semínka (stejné jako u
+             ostatních), ale ROZEHRANOU hru (postavené budovy, natrénované
+             jednotky, vytěžené suroviny) zná jen z binárních snímků
+             (SYNC.zabalSnimek) – a ty mezi sebou posílají jen ZMĚNY, ne
+             celý svět. Bez tohohle by pár vteřin koukal na skoro prázdnou
+             mapu. Příští snímek pro všechny ať je rovnou plný. */
+          if(typeof SYNC !== "undefined") SYNC.klic = 1;
         }
       }
     }catch(e){}
@@ -13625,8 +13645,21 @@ NET.posli = function(m){
    kopijník svůj podíl (~10 %) v tom náhodném výběru, ať boti nejsou
    proti jezdcům/slonům úplně bezmocní. Taky doplněn do DOHLED (p16.html
    – kolik vidí) pro úplnost. Ověřeno naživo: bot po chvíli hraní má
-   kopijníka v armádě. */
-VERZE = "v85";
+   kopijníka v armádě.
+   v86 = na přání "at je multiplayer stejny a nesekany pro 2/3/4 hrace,
+   najdi chyby". Prošla jsem síťovou synchronizaci (p8/p9/p14/p40) –
+   TURN server pro NAT (v45), binární snímek jen se ZMĚNAMI (šetří
+   přenos) a interval podle počtu spojení (0,1/0,15/0,2 s – v43/v46) už
+   byly z dřívějška dobře odladěné. Našla jsem ale skutečnou skulinu:
+   SYNC.zabalSnimek() posílá VŠECHNO jen jednou za ~2 s (`klic`), jinak
+   jen změny od minule. Kdo se připojí NEBO se vrátí uprostřed hry, tak
+   pár vteřin viděl neúplný svět – budovy/jednotky, co se zrovna
+   nehýbaly, u něj vůbec nebyly. Teď se při každém novém/vracejícím se
+   spojení (p8.html – P2P.pripojen, p40.html – návrat uprostřed hry)
+   vynutí, že příští snímek pro všechny bude rovnou PLNÝ. Taky trochu
+   hezčí špičaté kočičí uši (p2a1.html) – zakřivené hrany místo ostrého
+   trojúhelníku, stejný počet elementů, nic to nezpomalí. */
+VERZE = "v86";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
