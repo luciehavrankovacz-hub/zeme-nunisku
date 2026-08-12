@@ -586,9 +586,12 @@ body.mobil #tip{display:none !important}
    1) CIVILIZACE – barvy podle skutečných plyšáků
    ============================================================ */
 const CIVS = {
+  /* Barvy 12. 8. znovu srovnané přímo podle fotek skutečných plyšáků
+     (Lucie je poslala) – číči je fakt černý, ne šedofialový, a prstýnek
+     kolem oka je oranžovorudý, ne žlutý. */
   cici: {jm:"Číči", emo:"🐱", akcent:"#f0871f", nazev:"Rychlé stíny",
-    telo:"#4b3b47", telo2:"#392c36", bricho:"#5f4c59", usi:"#6b5462", usiIn:"#e0a08f",
-    nos:"#f0871f", packy:"#f0871f", oko:"#f7d267", vousky:1, ocas:"kocka", spicateUsi:1,
+    telo:"#2a2228", telo2:"#19141a", bricho:"#453840", usi:"#4a3c42", usiIn:"#e0a08f",
+    nos:"#f0871f", packy:"#f0871f", oko:"#e8642a", vousky:1, ocas:"kocka", spicateUsi:1,
     silne:"⚡ Nejrychlejší panáčci ve hře a nejrychlejší jezdci na koni",
     slabe:"💔 Málo životů a žádní sloni – dlouhou bitvu neustojí",
     nema:["slon"],
@@ -600,7 +603,7 @@ const CIVS = {
 
   pejsci:{jm:"Pejsci", emo:"🐶", akcent:"#e8956a", nazev:"Lovci",
     telo:"#f4b192", telo2:"#e0966f", bricho:"#fbdcc9", usi:"#8b5a3c", usiIn:"#c98f6d",
-    nos:"#b9c3e8", packy:"#eda683", oko:"#f7e08a", fleky:"pes", ocas:"pes",
+    nos:"#2b2019", packy:"#eda683", oko:"#f7e08a", fleky:"pes", ocas:"pes",
     silne:"🏹 Nejlepší lučištníci ve hře – víc útoku i delší dostřel. Rychle kácí dřevo",
     slabe:"⚔️ Slabší bojovník s mečem a žádní sloni",
     nema:["slon"],
@@ -641,7 +644,7 @@ const CIVS = {
 
   mysky:{jm:"Myšky", emo:"🐭", akcent:"#d98fd6", nazev:"Hbitý lid",
     telo:"#d98fd6", telo2:"#c176bf", bricho:"#fdf2fb", usi:"#e6a8e2", usiIn:"#f7c9ef",
-    nos:"#e878b0", packy:"#f0b9d8", oko:"#c9a6ff", vousky:1, ocas:"mys", velkeUsi:1,
+    nos:"#3a2530", packy:"#f0b9d8", oko:"#c9a6ff", vousky:1, ocas:"mys", velkeUsi:1,
     silne:"🏠 Panáčci stojí o čtvrtinu míň, do domečku se vejde víc a vesničané pádí",
     slabe:"💔 Jsou malé a křehké a slona nemají – ve rvačce dlouho nevydrží",
     nema:["slon"],
@@ -678,10 +681,12 @@ function oko(x,y,c,r){
   if(kv===0) return `<ellipse cx="${x}" cy="${y}" rx="${9*r}" ry="${10.5*r}" fill="#17121a"/>`;
   if(kv===1) return `<ellipse cx="${x}" cy="${y}" rx="${9*r}" ry="${10.5*r}" fill="#17121a"/>
   <circle cx="${x-3*r}" cy="${y-3.5*r}" r="${2.6*r}" fill="#fff" opacity=".85"/>`;
+  /* na fotkách plyšáků je právě ten velký lesklý odlesk oka to hlavní,
+     co je dělá roztomilé – zvětšeno a víc bílé, ať to svítí stejně */
   return `<ellipse cx="${x}" cy="${y}" rx="${10.5*r}" ry="${12*r}" fill="#17121a"/>
   <path d="M${x-10*r} ${y+2*r} a${10.5*r} ${12*r} 0 0 0 ${20*r} 0 a${10.5*r} ${12*r} 0 0 0 ${-20*r} 0" fill="${c.oko}" opacity=".9"/>
   <ellipse cx="${x}" cy="${y+1}" rx="${7*r}" ry="${8*r}" fill="#17121a"/>
-  <circle cx="${x-3.5*r}" cy="${y-4.5*r}" r="${3.4*r}" fill="#fff" opacity=".95"/>
+  <circle cx="${x-3.5*r}" cy="${y-4.5*r}" r="${4.2*r}" fill="#fff"/>
   <circle cx="${x+3*r}" cy="${y+4*r}" r="${1.7*r}" fill="#fff" opacity=".6"/>`;
 }
 
@@ -789,9 +794,11 @@ function plysak(civK, role, opt){
 
   // --- fleky / obličejová maska ---
   if(c.fleky==="panda"){
-    v.push(`<path d="M14 62 q6 -20 20 -22 q6 12 2 26 q-14 6 -22 -4 Z" fill="#26262e" opacity=".95"/>`);
-    v.push(`<ellipse cx="34" cy="53" rx="13" ry="14.5" fill="#26262e"/>`);
-    v.push(`<ellipse cx="66" cy="53" rx="13" ry="14.5" fill="#26262e"/>`);
+    /* na fotce plyšáka je maska tmavě MODRÁ (ladí s modrýma ušima), ne
+       černá */
+    v.push(`<path d="M14 62 q6 -20 20 -22 q6 12 2 26 q-14 6 -22 -4 Z" fill="#1c2b47" opacity=".95"/>`);
+    v.push(`<ellipse cx="34" cy="53" rx="13" ry="14.5" fill="#1c2b47"/>`);
+    v.push(`<ellipse cx="66" cy="53" rx="13" ry="14.5" fill="#1c2b47"/>`);
   }
   if(c.fleky==="pes"){
     v.push(`<ellipse cx="30" cy="46" rx="13" ry="11" fill="#9a6440" opacity=".85"/>`);
@@ -13658,8 +13665,19 @@ NET.posli = function(m){
    spojení (p8.html – P2P.pripojen, p40.html – návrat uprostřed hry)
    vynutí, že příští snímek pro všechny bude rovnou PLNÝ. Taky trochu
    hezčí špičaté kočičí uši (p2a1.html) – zakřivené hrany místo ostrého
-   trojúhelníku, stejný počet elementů, nic to nezpomalí. */
-VERZE = "v86";
+   trojúhelníku, stejný počet elementů, nic to nezpomalí.
+   v87 = Lucie poslala fotky skutečných plyšáků (Ňuníci) a chtěla podle
+   nich panáčky "trochu vylepšit, ale ať se to furt nesekaj". Žádné nové
+   kousky – jen barvy (CIVS v p2a1.html), přesně srovnané podle fotek:
+   číči je fakt ČERNÝ (byl šedofialový) a prstýnek kolem oka má
+   oranžovorudý (byl žlutý), pejskům je čenich ČERNÝ (omylem byl bledě
+   modrý!), myškám je čenich tmavý (byl jasně růžový), pandí maska u očí
+   je tmavě MODRÁ, ne černá (ladí s modrýma ušima na fotce). Taky
+   zvětšený hlavní lesklý odlesk v očích (jen větší kolečko, žádné
+   navíc) – na fotkách je to přesně to, co dělá plyšáky nejroztomilejší.
+   Nula nových elementů, nula nových gradientů – čistě barvy a jedna
+   velikost, takže výkon zůstává úplně stejný. */
+VERZE = "v87";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
