@@ -504,6 +504,11 @@ body.mobil #tip{display:none !important}
   <div class="sekce">
     <h3>Kvalita vzhledu</h3>
     <div class="obtRada" id="kvalitaRada"></div>
+    <div class="pozn" style="margin-top:6px">
+      💡 <b>Pořád se to seká?</b> V Chromu zkus <code>chrome://settings/system</code>
+      a zapni <b>„Používat akceleraci grafiky, pokud je k dispozici"</b> (pak restartovat
+      Chrome) – u někoho to spraví úplně všechno.
+    </div>
   </div>
 
   <div class="sekce">
@@ -13676,8 +13681,16 @@ NET.posli = function(m){
    zvětšený hlavní lesklý odlesk v očích (jen větší kolečko, žádné
    navíc) – na fotkách je to přesně to, co dělá plyšáky nejroztomilejší.
    Nula nových elementů, nula nových gradientů – čistě barvy a jedna
-   velikost, takže výkon zůstává úplně stejný. */
-VERZE = "v87";
+   velikost, takže výkon zůstává úplně stejný.
+   v88 = ROZLUŠTĚNO, proč se to Lucii pořád seká, i po všech těch
+   úpravách výkonu: v Chromu měla VYPNUTOU hardwarovou akceleraci
+   grafiky (chrome://settings/system) – s tím kreslí všechno procesor
+   místo grafické karty, a je to znát na úplně všem, i na tlačítkách.
+   Po zapnutí (a restartu Chromu) potvrdila "je to krasne plynuly"! Aby
+   na tohle nemuseli kamarádi/další hráči v multiplayeru přijít sami,
+   přidána krátká nápověda přímo v lobby pod "Kvalita vzhledu" (p1.html)
+   s přesným postupem. */
+VERZE = "v88";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
