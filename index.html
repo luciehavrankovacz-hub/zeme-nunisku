@@ -240,6 +240,13 @@ select.pole:disabled,input.pole:disabled{opacity:.55}
 .trenink{position:absolute;left:50%;transform:translateX(-50%);width:18px;height:18px;border-radius:50%;
   pointer-events:none;border:2px solid rgba(0,0,0,.55);box-shadow:0 2px 4px rgba(0,0,0,.4);
   background:conic-gradient(#9dfbb0 calc(var(--p,0)*1%),rgba(20,14,8,.62) 0)}
+/* POŽÁR na poškozených budovách – čím míň hp, tím víc a větší plamínky */
+.ohen{position:absolute;top:2%;left:0;width:100%;height:1px;pointer-events:none;z-index:6}
+.ohen span{position:absolute;bottom:0;display:none;border-radius:65% 65% 65% 0;
+  transform:translateX(-50%) rotate(-45deg);
+  background:radial-gradient(circle at 35% 30%,#fff6b0,#ffb121 45%,#ff5a1a 80%,#c22a0a);
+  box-shadow:0 0 8px 2px rgba(255,110,20,.6);animation:plamen .5s ease-in-out infinite alternate}
+@keyframes plamen{0%{transform:translateX(-50%) rotate(-49deg)}100%{transform:translateX(-50%) rotate(-41deg)}}
 .strela{position:absolute;width:14px;height:5px;border-radius:3px;background:linear-gradient(90deg,#fff,#c9a15a);pointer-events:none;z-index:9000}
 .jiskra{position:absolute;pointer-events:none;font-size:15px;font-weight:bold;z-index:9500;
   text-shadow:0 2px 3px #000;animation:let 1s forwards}
@@ -3168,6 +3175,18 @@ function novyZdroj(e){
 /* ============================================================
    11) BUDOVY – VÝROBA A STŘELBA
    ============================================================ */
+function zajistiOhen(b){
+  if(b.ohenEl) return b.ohenEl;
+  const d = document.createElement("div");
+  d.className = "ohen";
+  d.style.display = "none";
+  const pozice = [38, 62, 50];   // % zleva; prostřední plamínek naskočí až poslední (viz pocet)
+  d.innerHTML = pozice.map((p,i)=>`<span style="left:${p}%;animation-delay:${(i*0.15).toFixed(2)}s"></span>`).join("");
+  b.el.appendChild(d);
+  b.ohenEl = d;
+  b.plamenky = [...d.children];
+  return d;
+}
 function updBudovu(b, dt){
   if(b.zasah>0){ b.zasah-=dt; b.svgEl.style.filter="brightness(1.8)"; }
   else if(b.svgEl.style.filter) b.svgEl.style.filter="";
@@ -3227,6 +3246,29 @@ function updBudovu(b, dt){
     if(pom<0.999) b.hpBox.style.display="block"; else b.hpBox.style.display="none";
     b.hpEl.style.width = Math.max(0,pom*100)+"%";
   }
+  /* Na přání "kdyz ma budova cim dal min zivotu tak zacina postupne vic
+     horet, zalezi na pozkozeni" – čím víc poškozená hotová budova, tím víc
+     (a větších) plamínků jí houpe na střeše. Element se vytvoří, jen když
+     ho budova poprvé opravdu potřebuje (zdravé budovy nedostanou nic navíc,
+     žádné zpomalení), a na nejnižší kvalitě se to celé vynechává. */
+  if(b.hotova){
+    const skoda = 1 - b.hp/b.maxHp;
+    if(skoda > 0.12 && urKval() > 0){
+      const o = zajistiOhen(b);
+      const sila = klam((skoda-0.12)/0.68, 0, 1);   // 0..1 od škrábnutí po zboření
+      const pocet = 1 + Math.min(2, Math.floor(sila*2.2));
+      o.style.display = "block";
+      for(let i=0;i<b.plamenky.length;i++){
+        const s = b.plamenky[i];
+        if(i < pocet){
+          s.style.display = "block";
+          s.style.width  = (7+sila*11)+"px";
+          s.style.height = (10+sila*15)+"px";
+          s.style.opacity = 0.45+sila*0.55;
+        } else s.style.display = "none";
+      }
+    } else if(b.ohenEl) b.ohenEl.style.display = "none";
+  } else if(b.ohenEl) b.ohenEl.style.display = "none";
   if(b.treninkEl){
     if(b.hotova && b.fronta.length){
       const cas = JED[b.fronta[0]].cas;
@@ -3514,6 +3556,7 @@ function zacniStavet(kind){
 function zrusStaveni(){ G.stavim=null; if(G.ghost) G.ghost.style.display="none"; }
 function mistoVolne(kind,x,y){
   const r = BUD[kind].r;
+  const polV = BUD[kind].vel/2;
   if(x<r+30||y<r+30||x>SVET_W-r-30||y>SVET_H-r-30) return false;
   const jaZed = !!BUD[kind].zed;
   for(const e of G.ents){
@@ -3533,7 +3576,13 @@ function mistoVolne(kind,x,y){
       else if((jaZed && e.kind==="vez") || (kind==="vez" && BUD[e.kind].zed)){
         if(dist2(x,y,e.x,e.y) < 40) return false;
       }
-      else if(dist2(x,y,e.x,e.y) < r+e.r+14) return false;
+      /* Na přání "at jdou budovy stavet u sebe blizko ale ne pres sebe":
+         starý odstup počítal jen s bojovým "r", který je u leckteré budovy
+         (hlavně věž: r=28, ale kreslí se do vel=94, tedy polovina 47!)
+         dost menší než skutečná kresba – budovy se pak vizuálně kously.
+         Teď se hlídá součet polovin SKUTEČNÉ kresby (vel), takže dvě
+         budovy smí stát těsně "na dotek", ale obrázky se nikdy nepřekryjí. */
+      else if(dist2(x,y,e.x,e.y) < polV + BUD[e.kind].vel/2) return false;
     }
     if(e.druh==="zdroj"  && dist2(x,y,e.x,e.y) < r+e.r*0.7) return false;
   }
@@ -12133,6 +12182,14 @@ function spectatorTik(){
   if(Math.abs(G.cam.x - spectCamX) < 40 && Math.abs(G.cam.y - spectCamY) < 40) return;
   spectCamX = G.cam.x; spectCamY = G.cam.y;
   for(const j of G.jednotky) if(!j.mrtvy) polohuj(j);
+  /* OPRAVA (na přání "po hre se botakum neukazuji budovy kdyz dam zpet
+     na mapu"): budovy a stromy/ruda se běžně "odkulisují" v kuliStatiku()
+     volané z hlavní smyčky (p7.html) – ta ale po konci hry stojí. Tady se
+     to samé chybělo dělat pro budovy i zdroje, takže ty, co byly mimo
+     záběr v okamžiku konce hry, zůstaly navždy display:none, ať kamera
+     jela kamkoli. */
+  for(const b of G.budovy) if(!b.mrtvy) polohuj(b);
+  for(const z of G.zdroje) if(!z.mrtvy) polohuj(z);
 }
 
 function pryDoMapy(){
@@ -13725,8 +13782,30 @@ NET.posli = function(m){
    (budov) je to ale obráceně – MÉNĚ je LÍP (nejlepší obránce), takže
    tam teď hvězdičku dostane nejnižší číslo, klidně i 0 (žádná ztráta
    je ten nejlepší možný výsledek, ne "nic nedokázal" jako u ostatních
-   sloupců). */
-VERZE = "v90";
+   sloupců).
+   v91 = tři přání najednou.
+   1) "at jdou budovy stavet u sebe blizko ale ne pres sebe" – mistoVolne()
+   v p5.html hlídala odstup jen podle bojového poloměru "r", který je u
+   leckteré budovy (hlavně věž: r=28, ale kreslí se do vel=94!) dost menší
+   než skutečná kresba. Budovy se tak daly postavit tak blízko, že se jejich
+   obrázky viditelně překrývaly. Teď se hlídá součet polovin SKUTEČNÉ
+   kresby (vel), takže smí stát těsně "na dotek", ale nikdy se nepřekryjí.
+   Hradby/brány/věž-na-hradbě mají svoje staré výjimky beze změny (mají na
+   sebe navazovat).
+   2) "kdyz ma budova cim dal min zivotu tak zacina postupne vic horet,
+   zalezi na pozkozeni" – hotové budovy teď od cca 12 % poškození dostanou
+   plamínek na střeše (p1.html – nová .ohen animace, p4a.html – updBudovu),
+   a čím víc jsou sbořené, tím je plamínků víc (až 3) a tím jsou větší.
+   Element se vytvoří, jen když ho budova poprvé fakt potřebuje – zdravým
+   budovám se nic nepřidává, takže žádné zpomalení. Na nejnižší kvalitě
+   vzhledu se to celé vynechává kvůli výkonu.
+   3) "po hre se botakum neukazuji budovy kdyz dam zpet na mapu" – po konci
+   hry se odkulisování mimo obrazovku (běžně jede v hlavní smyčce, co ale
+   po konci hry stojí) v p39.html dělalo při pohybu kamery JEN pro jednotky
+   (spectatorTik). Budovy a stromy/ruda, co byly mimo záběr v okamžiku
+   konce hry, tak zůstaly navždy schované (display:none), ať kamera jela
+   kamkoli. Teď spectatorTik() odkulisovává i budovy a zdroje. */
+VERZE = "v91";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
