@@ -3080,7 +3080,7 @@ function updJednotku(e, dt){
       const dosah = e.r + s.r + 12;
       e.vratCas = (e.vratCas||0) + dt;
       if(e.slotSId!==s.id){ e.slotS = slotBod(e, s, dosah-2); e.slotSId = s.id; }
-      const uSkladu = jdiK(e, e.slotS.x, e.slotS.y, dt, 7) || dist(e,s) <= dosah;
+      const uSkladu = jdiKZdi(e, e.slotS.x, e.slotS.y, dt, 7) || dist(e,s) <= dosah;
       // záchrana: kdyby se přece jen o něco zadrhl, po chvíli suroviny odevzdá i tak
       if(uSkladu || (e.vratCas>6 && dist(e,s) < dosah+30)){
         e.vratCas = 0;
@@ -3104,7 +3104,7 @@ function updJednotku(e, dt){
       const b = e.cilE;
       if(!b || b.mrtvy || b.hotova){ e.stav="stoj"; e.cilE=null; break; }
       if(e.slotBId!==b.id){ e.slotB = slotBod(e, b, e.r + b.r + 8); e.slotBId = b.id; }
-      if(jdiK(e, e.slotB.x, e.slotB.y, dt, 7) || dist(e,b) <= e.r + b.r + 16){
+      if(jdiKZdi(e, e.slotB.x, e.slotB.y, dt, 7) || dist(e,b) <= e.r + b.r + 16){
         b.stavitele = (b.stavitele||0) + 1;
         e.kotva = true;
         e.swingT = (e.swingT||0) + dt*10;
@@ -3623,10 +3623,22 @@ function mistoVolne(kind,x,y){
   for(const e of G.ents){
     if(e.mrtvy) continue;
     if(e.druh==="budova"){
-      /* Hradby a brány mají na sebe NAVAZOVAT, takže smí stát těsně u sebe. */
+      /* Hradby a brány mají na sebe NAVAZOVAT, takže smí stát těsně u sebe.
+         Na přání "hradby jdou stavet pres sebe, chci uplne tesne, ne pres
+         sebe": obdélníkový test (dřív ZED_MIN_X/Y) měl u téhle budovy
+         zásadní chybu – u ROVNÉ (vodorovné/svislé) zdi kontroloval JEN
+         jednu osu, takže třeba čistě vodorovný klik na 42 px (místo
+         plných ~60) prošel, protože druhá osa (dy=0) byla "málo", ale
+         první osa (42) byla nad starým MIN_X, jenže samotných 42 px je
+         pořád notný přeskryv skutečné 64px široké kresby. Správný test:
+         stejná ELIPSA, podle které si zeď sama počítá krok při tažení
+         (krokZdi/ZED_KROK_X/Y) – bod uvnitř elipsy = doopravdy překryv,
+         bod na jejím okraji (přesně tam, kam krokZdi tažené kusy dává) =
+         v pořádku. 0.98 misto 1 je jen drobná rezerva proti zaokrouhlení,
+         ať si tažená zeď sama sobě nikdy neodmítne vlastní další kus. */
       if(jaZed && BUD[e.kind].zed){
-        // zdi smí navazovat; vadí, až když si lezou na sebe v OBOU směrech
-        if(Math.abs(x-e.x) < ZED_MIN_X && Math.abs(y-e.y) < ZED_MIN_Y) return false;
+        const ex = (x-e.x)/ZED_KROK_X, ey = (y-e.y)/ZED_KROK_Y;
+        if(ex*ex + ey*ey < 0.98) return false;
       }
       /* Věž patří do hradby – v opravdové pevnosti stojí v rozích rovnou na zdi.
          Proto smí být těsně u zdi (a zeď u ní), ale dvě věže vedle sebe pořád ne,
@@ -4044,19 +4056,6 @@ function ghostNa(wx,wy){
 const ZED_KROK_X = 60;    // rozestup kusů zdi do stran
 const ZED_KROK_Y = 30;    // rozestup kusů zdi nahoru/dolů
 const ZED_MAX    = 60;    // strop, ať se jedním tahem nepostaví půl mapy
-/* Nejmenší povolená vzdálenost dvou kusů zdi. Taky musí být zvlášť pro obě osy
-   a MENŠÍ než rozestup, jinak si řada odmítne vlastní kusy – přesně tohle
-   dělalo ty mezery, které nešly doplnit. Musí být menší i než ŠIKMÝ krok
-   (ten má složky asi 42 a 21), jinak si šikmá zeď odmítne každý druhý kus. */
-/* Na přání "hradby jdou stavet pres sebe, chci je uplne tesne, ne pres sebe":
-   naměřeno (vykreslením do plátna), že kus zdi kreslí přes CELOU šířku
-   dílku (64 px) – staré MIN 38 tak dovolovalo až 26 px opravdového
-   překryvu. Nejde to ale zavřít úplně (dotek = 64), protože šikmý krok má
-   složky jen ~42 a ~21 (viz komentář výš) – větší MIN by odmítal každý
-   druhý kus tažené šikmé zdi. Aspoň těsně pod šikmý krok, ať je přesah
-   citelně menší, i když ne nulový. */
-const ZED_MIN_X  = 41;
-const ZED_MIN_Y  = 20;
 /* Krok podle směru tahu: vodorovně ZED_KROK_X, svisle ZED_KROK_Y, šikmo plynule
    mezi tím (jde o bod na elipse s těmihle poloosami). */
 function krokZdi(dx, dy){
@@ -6870,10 +6869,12 @@ function vyklidOpevneni(kind, x, y){
     if(e.druh === "budova"){
       const jaZed = !!BUD[kind].zed;
       if(jaZed && BUD[e.kind].zed){
-        if(Math.abs(x-e.x) < ZED_MIN_X && Math.abs(y-e.y) < ZED_MIN_Y) return -1;
+        // stejná elipsa jako mistoVolne() v p5.html (krokZdi) – ať se to neliší
+        const ex = (x-e.x)/ZED_KROK_X, ey = (y-e.y)/ZED_KROK_Y;
+        if(ex*ex + ey*ey < 0.98) return -1;
       }else if((jaZed && e.kind==="vez") || (kind==="vez" && BUD[e.kind].zed)){
         if(dist2(x,y,e.x,e.y) < 40) return -1;
-      }else if(dist2(x,y,e.x,e.y) < r+e.r+14) return -1;
+      }else if(dist2(x,y,e.x,e.y) < r+e.r) return -1;
     }
     if(e.druh === "zdroj" && dist2(x,y,e.x,e.y) < r+e.r*0.7) kacet.push(e);
   }
@@ -13936,8 +13937,24 @@ NET.posli = function(m){
    p21.html; (b) bot smí vycvičit jen typ, na který má HOTOVOU budovu
    (stejná podmínka BUD[x].cvici jako u hráče, ne jen "civilizace to umí")
    – p21.html; (c) rychlost výcviku nikdy nepřekročí lidské tempo, ani na
-   nejtěžší obtížnosti (Math.min(1,…) místo Math.max(0.4,…)). */
-VERZE = "v94";
+   nejtěžší obtížnosti (Math.min(1,…) místo Math.max(0.4,…)).
+   v95 = v94 nestačilo, dvě věci opraveny pořádně.
+   1) jdiKZdi() z v94 chytala jen "jdi"/"tez" – cesta ZPÁTKY s nákladem
+   (case "vrat", ke skladu) a cesta NA STAVENIŠTĚ (case "stav") pořád
+   používaly holé jdiK(), takže vesničan s nákladem uvízlý u vlastní zdi
+   se pořád netrefil do brány. Teď jdiKZdi() i tam (p4a.html).
+   2) Hradby se pořád daly stavět přes sebe – ZED_MIN_X/Y (obdélníkový
+   test) měl díru: u ČISTĚ vodorovné/svislé zdi se kontrolovala jen jedna
+   osa pořádně, takže třeba vodorovný klik na 42 px (ze 60 potřebných)
+   prošel. Celý obdélníkový test nahrazen elipsou – přesně tou, podle
+   které si zeď při tažení sama počítá krok (krokZdi/ZED_KROK_X/Y,
+   p5.html) – bod uvnitř elipsy = doopravdy překryv, na jejím okraji (kam
+   krokZdi tažené kusy klade) = v pořádku. Stejná oprava i v duplicitní
+   kontrole pro "Opevnit základnu" (p17.html), která se předtím vůbec
+   neladila spolu s mistoVolne(). Ověřeno: čistě vodorovný/svislý klik
+   teď potřebuje plných 60/30 px (dřív stačilo 42/20), tažení zdi šikmo
+   na 7 různých úhlech (0°-90°) proběhlo bez jediného zamítnutého kusu. */
+VERZE = "v95";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
