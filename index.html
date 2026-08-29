@@ -2921,18 +2921,6 @@ function jdiK(e, tx, ty, dt, odstup){
    chování stejné jako dřív (prostě stojí u zdi). */
 function jdiKZdi(e, tx, ty, dt, odstup){
   if(e._branaCil && (e._branaCil.mrtvy || !e._branaCil.hotova)) e._branaCil = null;
-  if(e._branaCil){
-    /* Na dřívější pokus (pouštěl bránu už na 70 px) uvízl v koleček – ze
-       vzdálenosti 70 px se totiž přímka k CÍLI (ne k bráně) často stočila
-       diagonálně přes SOUSEDNÍ kus zdi, takže cestaVolnaBudov() hned zase
-       zahlásila "blokováno" a jednotka si vybrala TUTÉŽ bránu znovu –
-       navěky dokola, ani o píď dál. Teď se k bráně dojde skoro přesně
-       (odstup 4, stejně jako "jdi"), takže se jednotka fakticky postaví
-       do samotného vjezdu, než zkusí pokračovat napřímo – odtamtud už
-       skoro žádný cíl neškrábne sousední kus zdi. */
-    if(jdiK(e, e._branaCil.x, e._branaCil.y, dt, 4)) e._branaCil = null;
-    else return false;
-  }
   if(!e._branaCil){
     e._zdCas = (e._zdCas||0) - dt;
     if(e._zdCas <= 0){
@@ -2944,7 +2932,19 @@ function jdiKZdi(e, tx, ty, dt, odstup){
       }
     }
   }
-  if(e._branaCil){ jdiK(e, e._branaCil.x, e._branaCil.y, dt, 4); return false; }
+  if(e._branaCil){
+    /* Když k bráně míří VÍC jednotek najednou (skupinový rozkaz), a
+       všechny by mířily na TENTÝŽ bod (samotný střed brány), navzájem se
+       tam odstrkávaly (rozestup()) dřív, než se kterákoli dostala
+       "dost blízko" na to, aby bránu pustila – hlouček tak zůstal navěky
+       stát těsně před vjezdem. Každá jednotka má teď (podle svého id,
+       stejný trik jako slotBod() u těžby) svoje vlastní mírně posunuté
+       místo uvnitř vjezdu, takže se nemačkají na jeden bod. */
+    const jit = (e.id * 2.3999632) % (Math.PI*2);
+    const jx = e._branaCil.x + Math.cos(jit)*10, jy = e._branaCil.y + Math.sin(jit)*10;
+    if(jdiK(e, jx, jy, dt, 6)) e._branaCil = null;
+    else return false;
+  }
   return jdiK(e, tx, ty, dt, odstup);
 }
 
@@ -13981,8 +13981,18 @@ NET.posli = function(m){
    stranou – obojí prošlo bez zaseknutí.
    Taky na přání "at jsou lesy vic u sebe": shlukStromu() (p3.html) teď
    sází stejný počet stromů do o čtvrtinu menšího kruhu, takže les
-   vypadá hustší. */
-VERZE = "v96";
+   vypadá hustší.
+   v97 = skutečný viník, proč to Lucii pořád nešlo: testovala to (správně)
+   s CELOU skupinou jednotek najednou, ne jednou. Všechny mířily na
+   TENTÝŽ bod uprostřed brány – navzájem se tam odstrkávaly (rozestup())
+   dřív, než se kterákoli dostala dost blízko na to, aby bránu pustila a
+   šla dál, takže hlouček zůstal navěky stát těsně před vjezdem. Ověřeno
+   živě: 5 z 5 jednotek takhle uvízlo permanentně (300 s simulace beze
+   změny). Řešení: každá jednotka má teď (podle svého id, stejný trik
+   jako slotBod() u těžby) svoje vlastní mírně posunuté místo uvnitř
+   vjezdu, takže se nemačkají na jeden bod. Ověřeno na skupině 8 jednotek
+   (různé druhy) – všech 8 branou prošlo. */
+VERZE = "v97";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
