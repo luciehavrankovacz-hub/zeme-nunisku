@@ -2328,6 +2328,7 @@ function suchoNa(x,y){
   return (typeof TEREN === "undefined" || !TEREN.pripraven) ? true : TEREN.sucho(x,y);
 }
 function shlukStromu(cx,cy,n,rad){
+  rad *= 0.72;   // na přání "at jsou lesy vic u sebe" - hustší shluk, stejný počet stromů
   for(let i=0;i<n;i++){
     // POZOR: musí to být rnd() se semínkem, ne Math.random()! Mapu si počítá
     // každý hráč sám a musí vyjít úplně stejná, jinak má kamarád stromy jinde.
@@ -2902,34 +2903,48 @@ function jdiK(e, tx, ty, dt, odstup){
   e.chodi = true;
   return (d - kr) <= odstup + 0.6;   // právě teď dorazil
 }
-/* Na přání "vesnicani co dotaveji hradby neumeji najit cestu zpet do
-   prace...najit konec hradby nebo nejblizsi branu" – jdiK() jde na cíl
-   narovinu a je slepé ke zdem. Vlastní/spojenecká zeď v cestě = panáček
-   jen stojí a tlačí se do ní. Když se dýl nehne (stejný test na "uvíznutí"
-   jako u prorazZdiUvizle, jen bez ničení zdi – tohle je jen pro civilní
-   pohyb), najde se nejbližší VLASTNÍ/spojenecká hotová brána a jde se
-   nejdřív k ní; jakmile je jednotka u brány nebo je zas blíž skutečnému
-   cíli, než když uvízla, brána se pustí a jde se dál napřímo. Bez brány
-   v okolí zůstává chování stejné jako dřív (prostě stojí). */
+/* Na přání "vesnicani...neumeji najit cestu zpet do prace...najit konec
+   hradby nebo nejblizsi branu" – jdiK() jde na cíl narovinu a je slepé ke
+   zdem. Vlastní/spojenecká zeď v cestě = panáček jen stojí a tlačí se do
+   ní. PRVNÍ pokus (v94) čekal, až se jednotka přestane hýbat ("uvíznutí")
+   – v praxi to ale nestačilo: podél dlouhé/rohové zdi jednotku rozestup()
+   pořád trochu POSOUVAL (klouzala podél ní), takže vzdálenost k cíli se
+   sem tam změnila o víc než práh a "uvíznutí" se nikdy nespustilo, i když
+   fakticky nikam nedocházela. Teď se místo hádání ze stagnace používá
+   PŘÍMO existující kontrola viditelnosti cesty (cestaVolnaBudov, dřív
+   psaná právě pro tenhle problém, viz "70) VESNIČAN NEUMÍ NAJÍT BRÁNU" –
+   jen se dosud volala jinde, ne z jdiK): jakmile je přímka k cíli
+   zablokovaná vlastní/spojeneckou zdí, jde se rovnou k nejbližší hotové
+   bráně (brány cestu neblokují, takže "volná cesta" skrz ně projde).
+   Jakmile je jednotka u brány, pustí ji a zkusí to znovu napřímo – když
+   je za bránou další zeď, hned si najde další. Bez brány v okolí zůstává
+   chování stejné jako dřív (prostě stojí u zdi). */
 function jdiKZdi(e, tx, ty, dt, odstup){
   if(e._branaCil && (e._branaCil.mrtvy || !e._branaCil.hotova)) e._branaCil = null;
   if(e._branaCil){
-    const uBrany = dist2(e.x,e.y,e._branaCil.x,e._branaCil.y) < e.r+e._branaCil.r+30;
-    if(uBrany || dist2(e.x,e.y,tx,ty) < e._branaD0) e._branaCil = null;
+    /* Na dřívější pokus (pouštěl bránu už na 70 px) uvízl v koleček – ze
+       vzdálenosti 70 px se totiž přímka k CÍLI (ne k bráně) často stočila
+       diagonálně přes SOUSEDNÍ kus zdi, takže cestaVolnaBudov() hned zase
+       zahlásila "blokováno" a jednotka si vybrala TUTÉŽ bránu znovu –
+       navěky dokola, ani o píď dál. Teď se k bráně dojde skoro přesně
+       (odstup 4, stejně jako "jdi"), takže se jednotka fakticky postaví
+       do samotného vjezdu, než zkusí pokračovat napřímo – odtamtud už
+       skoro žádný cíl neškrábne sousední kus zdi. */
+    if(jdiK(e, e._branaCil.x, e._branaCil.y, dt, 4)) e._branaCil = null;
+    else return false;
   }
   if(!e._branaCil){
-    e._zdCas = (e._zdCas||0) + dt;
-    if(e._zdCas >= 1){
-      const d = dist2(e.x,e.y,tx,ty);
-      if(e._zdD !== undefined && Math.abs(e._zdD-d) < 14 && d > 60){
+    e._zdCas = (e._zdCas||0) - dt;
+    if(e._zdCas <= 0){
+      e._zdCas = 0.4;
+      if(typeof cestaVolnaBudov === "function" && !cestaVolnaBudov(e.x, e.y, tx, ty, e)){
         const b = nejbliz(G.budovy, e.x, e.y,
-          o => !o.mrtvy && o.hotova && BUD[o.kind] && BUD[o.kind].brana && !jeNepritel(e.side,o.side), 500);
-        if(b){ e._branaCil = b; e._branaD0 = d; }
+          o => !o.mrtvy && o.hotova && BUD[o.kind] && BUD[o.kind].brana && !jeNepritel(e.side,o.side), 700);
+        if(b) e._branaCil = b;
       }
-      e._zdD = d; e._zdCas = 0;
     }
   }
-  if(e._branaCil){ jdiK(e, e._branaCil.x, e._branaCil.y, dt, odstup); return false; }
+  if(e._branaCil){ jdiK(e, e._branaCil.x, e._branaCil.y, dt, 4); return false; }
   return jdiK(e, tx, ty, dt, odstup);
 }
 
@@ -13953,8 +13968,21 @@ NET.posli = function(m){
    kontrole pro "Opevnit základnu" (p17.html), která se předtím vůbec
    neladila spolu s mistoVolne(). Ověřeno: čistě vodorovný/svislý klik
    teď potřebuje plných 60/30 px (dřív stačilo 42/20), tažení zdi šikmo
-   na 7 různých úhlech (0°-90°) proběhlo bez jediného zamítnutého kusu. */
-VERZE = "v95";
+   na 7 různých úhlech (0°-90°) proběhlo bez jediného zamítnutého kusu.
+   v96 = v95 pořád nefungovala – najit důvod přímo živým testem v
+   prohlížeči (ne jen čtením kódu): jdiKZdi() pouštěla bránu už ze 70 px,
+   ale přímka odtamtud k CÍLI se často stočila přes SOUSEDNÍ kus zdi dřív,
+   než se jednotka fakt dostala na druhou stranu – cestaVolnaBudov() hned
+   zase zahlásila "blokováno" a vybrala TUTÉŽ bránu znovu → věčná smyčka
+   na místě. Teď se k bráně dochází skoro přesně (odstup 4, jako "jdi"),
+   takže jednotka fakticky stojí přímo ve vjezdu, než zkusí pokračovat –
+   odtamtud už žádný rozumný cíl neškrábne sousední kus. Ověřeno naživo:
+   uzavřený okruh se zdí i jednou bránou, cíl rovnou přes zeď i cíl daleko
+   stranou – obojí prošlo bez zaseknutí.
+   Taky na přání "at jsou lesy vic u sebe": shlukStromu() (p3.html) teď
+   sází stejný počet stromů do o čtvrtinu menšího kruhu, takže les
+   vypadá hustší. */
+VERZE = "v96";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
