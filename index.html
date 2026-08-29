@@ -3581,8 +3581,14 @@ function mistoVolne(kind,x,y){
          (hlavně věž: r=28, ale kreslí se do vel=94, tedy polovina 47!)
          dost menší než skutečná kresba – budovy se pak vizuálně kously.
          Teď se hlídá součet polovin SKUTEČNÉ kresby (vel), takže dvě
-         budovy smí stát těsně "na dotek", ale obrázky se nikdy nepřekryjí. */
-      else if(dist2(x,y,e.x,e.y) < polV + BUD[e.kind].vel/2) return false;
+         budovy smí stát těsně "na dotek", ale obrázky se nikdy nepřekryjí.
+         POZOR (oprava v92): "přesně na dotek" byl na první pokus tak
+         přísný, že myší prakticky nešlo trefit – i 1 px navíc to shodilo.
+         Malá tolerance (10 px) dovolí lehký, sotva viditelný přesah kresby
+         (budovy mají navíc kolem sebe okraj/stín, takže se opravdu nic
+         netváří rozbitě), ale pořád je to o desítky pixelů méně přesahu,
+         než dovolovala stará chyba. */
+      else if(dist2(x,y,e.x,e.y) < polV + BUD[e.kind].vel/2 - 10) return false;
     }
     if(e.druh==="zdroj"  && dist2(x,y,e.x,e.y) < r+e.r*0.7) return false;
   }
@@ -13804,8 +13810,14 @@ NET.posli = function(m){
    po konci hry stojí) v p39.html dělalo při pohybu kamery JEN pro jednotky
    (spectatorTik). Budovy a stromy/ruda, co byly mimo záběr v okamžiku
    konce hry, tak zůstaly navždy schované (display:none), ať kamera jela
-   kamkoli. Teď spectatorTik() odkulisovává i budovy a zdroje. */
-VERZE = "v91";
+   kamkoli. Teď spectatorTik() odkulisovává i budovy a zdroje.
+   v92 = Lucie hned zkoušela dvě věže postavit fakt "na dotek" (screenshot)
+   a nešlo to – oprava z v91 hlídala odstup TAK přesně, že myší se na tu
+   jedinou správnou vzdálenost prakticky nedalo trefit. mistoVolne()
+   v p5.html teď má malou toleranci (10 px) navíc, takže jde postavit i
+   "skoro na dotek" – kresby se pořád nepřekryjí viditelně, jen o pár
+   pixelů, které stejně schová okraj/stín budovy. */
+VERZE = "v92";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
