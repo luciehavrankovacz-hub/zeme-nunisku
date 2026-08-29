@@ -2903,6 +2903,14 @@ function jdiK(e, tx, ty, dt, odstup){
   e.chodi = true;
   return (d - kr) <= odstup + 0.6;   // právě teď dorazil
 }
+/* Bezpečná verze dosahUtoku() – ta spadne, když cíl není ani jednotka, ani
+   budova s platným záznamem v JED/BUD (stalo se to při zásahu honičky u
+   nějaké kombinace jednotek). Bez platné definice prostě 0 (jako by cíl
+   žádný dostřel neměl). */
+function dosahUtokuBezp(e, cil){
+  const def = e.druh==="budova" ? BUD[e.kind] : JED[e.kind];
+  return def ? dosahUtoku(e, cil) : 0;
+}
 /* Na přání "vesnicani...neumeji najit cestu zpet do prace...najit konec
    hradby nebo nejblizsi branu" – jdiK() jde na cíl narovinu a je slepé ke
    zdem. Vlastní/spojenecká zeď v cestě = panáček jen stojí a tlačí se do
@@ -2992,10 +3000,21 @@ function updJednotku(e, dt){
   /* KRÁLOVO VODÍTKO. Bez tohohle si král (i botův) nabíhal za nepřáteli
      a hra o něj skončila hned na začátku. Dál než KRAL_VODIK od svého
      stanoviště se nevzdálí – když ho to táhne, pustí cíl a jde domů.
-     Hráč ho pořád může poslat kamkoli ručně: rozkaz mu stanoviště přepíše. */
+     Hráč ho pořád může poslat kamkoli ručně: rozkaz mu stanoviště přepíše.
+     OPRAVA (na přání "kral jde za lucisnikem, v pulce se otoci zpatky, ale
+     lucisnik po nem strili, porad dokola, dokud kral neumre"): vodítko
+     dřív tahalo krále domů, i když stál PŘÍMO v dostřelu lučištníka, co ho
+     honil – král se otočil zády a dostal ránu zadarmo, auto-obrana ho hned
+     zase poslala za stejným lučištníkem, znovu narazil na vodítko… dokola.
+     Teď se domů netahá, dokud stojí v dosahu útoku toho, s kým bojuje –
+     buď se k němu dostane na souboj zblízka, nebo lučištník uteče dost
+     daleko, a teprve pak je bezpečné jít domů. */
   if(e.kind==="kral" && e.straz && dist2(e.x,e.y,e.straz.x,e.straz.y) > KRAL_VODIK){
-    e.cilE = null; e.hlidka = null;
-    e.stav = "jdi"; e.cil = {x:e.straz.x, y:e.straz.y};
+    const vNebezpeci = e.cilE && !e.cilE.mrtvy && dist(e, e.cilE) <= dosahUtokuBezp(e.cilE, e) + 40;
+    if(!vNebezpeci){
+      e.cilE = null; e.hlidka = null;
+      e.stav = "jdi"; e.cil = {x:e.straz.x, y:e.straz.y};
+    }
   }
 
   // automatické bránění (průzkumník a jiní „nebojující" NIKDY – ti si jen hledí svého;
@@ -3152,7 +3171,17 @@ function updJednotku(e, dt){
          boje, co začal SÁM od sebe (e.hlidka je z automatické obrany) –
          ruční rozkaz "Útok!" hlídku nenastavuje, tam to hráč chce dotáhnout
          do konce. */
-      if(e.hlidka && dist(e, c) > ((typeof DOHLED!=="undefined" && DOHLED[e.kind]) || 200)){
+      /* OPRAVA: samotný DOHLED nestačil – u krále (chybí v tabulce, spadl na
+         výchozích 200) i u vojáka (taky rovných 200) vycházelo "ztratil z
+         dohledu" PŘESNĚ na hranici dostřelu lučištníka (taky 200). Lučištník
+         kouzelně ucouvne o krok, honička se vzdá a otočí se domů – jenže
+         pořád stojí v jeho dostřelu, tak dostane ránu do zad, otočí se zase
+         za ním, znovu ucouvne… dokola až do smrti. Bezpečná vzdálenost teď
+         musí být VĚTŠÍ i než dostřel toho, co ho honí (s rezervou), ne jen
+         vlastní dohled. */
+      const honickaDohled = (typeof DOHLED!=="undefined" && DOHLED[e.kind]) || 200;
+      const honickaBezpecno = Math.max(honickaDohled, dosahUtokuBezp(c, e) + 60);
+      if(e.hlidka && dist(e, c) > honickaBezpecno){
         e.cilE = null; e.hlavniCil = null;
         e.stav = "jdi"; e.cil = {...e.hlidka}; e.hlidka = null;
         break;
@@ -3368,6 +3397,12 @@ function rozestup(){
       const dx = b.x-a.x, dy = (b.y-a.y)*1.6;
       const d = Math.hypot(dx,dy), min = (a.r+b.r)*1.22;
       if(d>0 && d<min){
+        /* Na přání "nevejdou se tam dve jednotky najednou" – dvě jednotky
+           mířící do STEJNÉ brány (jdiKZdi, v97) se u úzkého vjezdu navzájem
+           odstrkávaly dřív, než se která z nich dostala dost blízko na
+           projití – hlouček tak uměl vypadat "zaseklý" na místě. V samotném
+           vjezdu si smí lehce překrývat, ať jedna druhé nepřekáží v cestě. */
+        if(a._branaCil && a._branaCil === b._branaCil) continue;
         // kdo těží nebo staví, stojí pevně – uhne jen ten druhý
         const p = (min-d)/d;
         if(a.kotva && b.kotva) continue;
@@ -13991,8 +14026,28 @@ NET.posli = function(m){
    změny). Řešení: každá jednotka má teď (podle svého id, stejný trik
    jako slotBod() u těžby) svoje vlastní mírně posunuté místo uvnitř
    vjezdu, takže se nemačkají na jeden bod. Ověřeno na skupině 8 jednotek
-   (různé druhy) – všech 8 branou prošlo. */
-VERZE = "v97";
+   (různé druhy) – všech 8 branou prošlo.
+   v98 = dvě další věci.
+   1) "nevejdou se tam dve jednotky najednou" u brány – dvě jednotky
+   mířící do STEJNÉ brány se navzájem odstrkávaly (rozestup()) dřív, než
+   se která z nich dostala dost blízko na projití. rozestup() teď mezi
+   dvěma jednotkami se stejným _branaCil (obě právě prochází touž bránou)
+   odstrkávání vynechá – v samotném vjezdu smí lehce projít jedna přes
+   druhou, ať si navzájem neblokují cestu (p4a.html).
+   2) "kral jde za lucisnikem, v pulce se otoci zpatky, lucisnik po nem
+   strili, porad dokola dokud kral neumre" – král má svoje vlastní
+   vodítko (KRAL_VODIK, vzdálenost OD STANOVIŠTĚ), nezávislé na honičce
+   opravené v předchozích verzích. Dřív táhlo krále domů, i když stál
+   PŘÍMO v dostřelu toho, s kým bojoval – otočil se zády, dostal ránu
+   zadarmo, auto-obrana ho poslala zpátky za stejným cílem, znovu narazil
+   na vodítko… dokola až do smrti. Teď se domů netahá, dokud je v dosahu
+   útoku nepřítele, se kterým právě bojuje. Ověřeno naživo (král vs.
+   kiting lučištník) – dřív končilo smrtí, teď král přežil se ztrátou
+   pár procent života.
+   Cestou opravena i chyba, co tenhle balík (honička + královo vodítko)
+   způsobil: dosahUtoku() spadla, když cíl neměl platný záznam v JED/BUD
+   – nová bezpečná obálka dosahUtokuBezp() to ošetří (vrátí 0 místo pádu). */
+VERZE = "v98";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
