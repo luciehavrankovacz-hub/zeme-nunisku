@@ -234,7 +234,7 @@ select.pole:disabled,input.pole:disabled{opacity:.55}
 .kroužek{position:absolute;inset:auto;border:3px dashed #9dfbb0;border-radius:50%;pointer-events:none;
   box-shadow:0 0 12px rgba(140,250,165,.55),inset 0 0 10px rgba(140,250,165,.3);animation:toc 6s linear infinite}
 @keyframes toc{to{transform:rotate(360deg)}}
-.stavba{opacity:.55;filter:saturate(.4)}
+.stavba{filter:saturate(.55)}
 .prubeh{position:absolute;left:50%;transform:translateX(-50%);height:7px;width:56px;background:#111;border-radius:4px;overflow:hidden;border:1px solid #000}
 .prubeh i{display:block;height:100%;background:linear-gradient(180deg,#ffe08a,#f0a63c)}
 .trenink{position:absolute;left:50%;transform:translateX(-50%);width:18px;height:18px;border-radius:50%;
@@ -3198,9 +3198,17 @@ function updBudovu(b, dt){
       b.postup = Math.min(1, b.postup + dt*rychlost);
       b.hp = Math.max(b.hp, b.maxHp*(0.15+0.85*b.postup));
       if(b.postupEl) b.postupEl.style.width = (b.postup*100)+"%";
+      /* Na přání "at vidis konstrukci cimdal vetsi a hotovejsi" – žádná
+         změna rychlosti stavby, jen vizuál: budova se odspoda nahoru
+         postupně "vynořuje" podle stejného b.postup, co už řídí ukazatel
+         průběhu. Kresba má viewBox 0-100 a základy/zeď/střecha/vlaječka na
+         sobě přirozeně navazují odspoda nahoru, takže z toho vznikne hezká
+         "roste to jak se staví" iluze zadarmo – žádná nová kresba netřeba. */
+      b.svgEl.style.clipPath = `inset(${(1-b.postup)*100}% 0 0 0)`;
       if(b.postup>=1){
         b.hotova = true; b.hp = b.maxHp;
         b.el.classList.remove("stavba");
+        b.svgEl.style.clipPath = "";
         if(b.postupBox) b.postupBox.remove();
         if(b.popPlus) zmenPop(b.side, b.popPlus);
         if(jeMuj(b.side)){ zvuk("hotovo"); zprava("🏗️ "+BUD[b.kind].jm+" je hotová!","dobre"); }
@@ -3556,16 +3564,12 @@ function zacniStavet(kind){
 function zrusStaveni(){ G.stavim=null; if(G.ghost) G.ghost.style.display="none"; }
 function mistoVolne(kind,x,y){
   const r = BUD[kind].r;
-  const polV = BUD[kind].vel/2;
   if(x<r+30||y<r+30||x>SVET_W-r-30||y>SVET_H-r-30) return false;
   const jaZed = !!BUD[kind].zed;
   for(const e of G.ents){
     if(e.mrtvy) continue;
     if(e.druh==="budova"){
-      /* Hradby a brány mají na sebe NAVAZOVAT, takže smí stát těsně u sebe.
-         Odstup 14 px navíc platí jen mezi normálními budovami – kvůli němu
-         se dřív z tažené řady postavil jen každý druhý kus a mezera pak
-         nešla doplnit ani ručně. */
+      /* Hradby a brány mají na sebe NAVAZOVAT, takže smí stát těsně u sebe. */
       if(jaZed && BUD[e.kind].zed){
         // zdi smí navazovat; vadí, až když si lezou na sebe v OBOU směrech
         if(Math.abs(x-e.x) < ZED_MIN_X && Math.abs(y-e.y) < ZED_MIN_Y) return false;
@@ -3576,19 +3580,16 @@ function mistoVolne(kind,x,y){
       else if((jaZed && e.kind==="vez") || (kind==="vez" && BUD[e.kind].zed)){
         if(dist2(x,y,e.x,e.y) < 40) return false;
       }
-      /* Na přání "at jdou budovy stavet u sebe blizko ale ne pres sebe":
-         starý odstup počítal jen s bojovým "r", který je u leckteré budovy
-         (hlavně věž: r=28, ale kreslí se do vel=94, tedy polovina 47!)
-         dost menší než skutečná kresba – budovy se pak vizuálně kously.
-         Teď se hlídá součet polovin SKUTEČNÉ kresby (vel), takže dvě
-         budovy smí stát těsně "na dotek", ale obrázky se nikdy nepřekryjí.
-         POZOR (oprava v92): "přesně na dotek" byl na první pokus tak
-         přísný, že myší prakticky nešlo trefit – i 1 px navíc to shodilo.
-         Malá tolerance (10 px) dovolí lehký, sotva viditelný přesah kresby
-         (budovy mají navíc kolem sebe okraj/stín, takže se opravdu nic
-         netváří rozbitě), ale pořád je to o desítky pixelů méně přesahu,
-         než dovolovala stará chyba. */
-      else if(dist2(x,y,e.x,e.y) < polV + BUD[e.kind].vel/2 - 10) return false;
+      /* Na přání "at jsou tesne u sebe, jenom aby se neprekryvaly": v91/v92
+         zkoušely počítat odstup podle CELÉ kreslicí plochy (vel) – změřeno
+         ale (vykreslením do plátna a najitím okraje neprůhledných pixelů),
+         že skutečná kresba je ve skutečnosti blízko původnímu bojovému "r"
+         (u věže dokonce téměř přesně), zatímco vel má navíc velkou
+         průhlednou rezervu kolem (na stín, plamínek z v91 apod.). Vel-based
+         odstup tedy dělal mezery zbytečně VĚTŠÍ, přesně obráceně, než
+         chtěla Lucie. Zpátky na součet "r" (bez staré přirážky 14 px), ať
+         jde postavit fakt těsně na dotek. */
+      else if(dist2(x,y,e.x,e.y) < r+e.r) return false;
     }
     if(e.druh==="zdroj"  && dist2(x,y,e.x,e.y) < r+e.r*0.7) return false;
   }
@@ -13816,8 +13817,23 @@ NET.posli = function(m){
    jedinou správnou vzdálenost prakticky nedalo trefit. mistoVolne()
    v p5.html teď má malou toleranci (10 px) navíc, takže jde postavit i
    "skoro na dotek" – kresby se pořád nepřekryjí viditelně, jen o pár
-   pixelů, které stejně schová okraj/stín budovy. */
-VERZE = "v92";
+   pixelů, které stejně schová okraj/stín budovy.
+   v93 = Lucie i po v92 ukázala screenshot dvou věží s pořád velkou mezerou
+   a chtěla je fakt těsně u sebe. Změřila jsem to napřímo (vykreslení
+   budovy do plátna a hledání okraje neprůhledných pixelů) a v91/v92 byly
+   celou dobu na špatné stopě: počítaly odstup podle CELÉ kreslicí plochy
+   (vel), ale ta má kolem skutečné kresby velkou průhlednou rezervu (na
+   stín, plamínek). Skutečná kresba je ve skutečnosti blízko původnímu
+   bojovému "r". mistoVolne() v p5.html je teď zpátky na součtu "r" (bez
+   staré přirážky 14 px) – budovy jdou postavit fakt na dotek.
+   Druhé přání: "at vidis konstrukci cimdal hotovejsi, jak se budova
+   staví" – bez JAKÉKOLI změny doby stavby (b.postup se počítá úplně
+   stejně jako předtím) se teď budova podle stejného čísla vizuálně
+   "vynořuje" odspoda nahoru (CSS clip-path v updBudovu, p4a.html) – od
+   základů přes zdi až po střechu a vlaječku, přesně v pořadí, v jakém je
+   fakt nakreslená. Žádná nová kresba, jen jedna vlastnost navíc u
+   rozestavěné budovy, takže to nic nezpomalí. */
+VERZE = "v93";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
