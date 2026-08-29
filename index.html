@@ -240,13 +240,20 @@ select.pole:disabled,input.pole:disabled{opacity:.55}
 .trenink{position:absolute;left:50%;transform:translateX(-50%);width:18px;height:18px;border-radius:50%;
   pointer-events:none;border:2px solid rgba(0,0,0,.55);box-shadow:0 2px 4px rgba(0,0,0,.4);
   background:conic-gradient(#9dfbb0 calc(var(--p,0)*1%),rgba(20,14,8,.62) 0)}
-/* POŽÁR na poškozených budovách – čím míň hp, tím víc a větší plamínky */
-.ohen{position:absolute;top:2%;left:0;width:100%;height:1px;pointer-events:none;z-index:6}
+/* POŽÁR na poškozených budovách – čím míň hp, tím víc a větší plamínky.
+   top:38% míří na střechu/zeď u většiny budov (změřeno – různí se to kus
+   od kusu, ale tohle sedí nejlíp napříč typy), plamínek navíc sahá dolů
+   (bottom:0 v .ohen span), takže "sedí" na kresbě, ne visí ve vzduchu. */
+.ohen{position:absolute;top:38%;left:0;width:100%;height:1px;pointer-events:none;z-index:6}
 .ohen span{position:absolute;bottom:0;display:none;border-radius:65% 65% 65% 0;
   transform:translateX(-50%) rotate(-45deg);
   background:radial-gradient(circle at 35% 30%,#fff6b0,#ffb121 45%,#ff5a1a 80%,#c22a0a);
   box-shadow:0 0 8px 2px rgba(255,110,20,.6);animation:plamen .5s ease-in-out infinite alternate}
 @keyframes plamen{0%{transform:translateX(-50%) rotate(-49deg)}100%{transform:translateX(-50%) rotate(-41deg)}}
+.kour{position:absolute;left:50%;display:none;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(90,90,90,.55),rgba(90,90,90,0) 70%);
+  animation:koureni 2.2s ease-out infinite}
+@keyframes koureni{0%{transform:translate(-50%,0) scale(.5);opacity:.55}100%{transform:translate(-50%,-34px) scale(1.5);opacity:0}}
 .strela{position:absolute;width:14px;height:5px;border-radius:3px;background:linear-gradient(90deg,#fff,#c9a15a);pointer-events:none;z-index:9000}
 .jiskra{position:absolute;pointer-events:none;font-size:15px;font-weight:bold;z-index:9500;
   text-shadow:0 2px 3px #000;animation:let 1s forwards}
@@ -2077,12 +2084,6 @@ function klam(v,a,b){return v<a?a:(v>b?b:v);}
 function limitJednotek(){ return (LIMITY[G.limit] || LIMITY[1]).n; }
 /* Jak daleko od svého stanoviště smí zajít král, než ho to pošle domů. */
 const KRAL_VODIK = 260;
-/* Jak daleko od hlídkového místa smí honička (SAMA od sebe začatá – ne
-   ruční "Útok!") zajít, než se jednotce nevyplatí pokračovat a vrátí se
-   zpátky. Na přání "porad mi pronasleduji pruzkumnika, kdyz ho ani
-   nemaji na dohled" – bez tohohle honička nikdy neskončila. */
-const NEJVIC_HONBA = 420;
-
 /* Text od cizího hráče NIKDY nevkládat do innerHTML rovnou! Kamarád si může dát
    jméno "<img src=x onerror=...>" a spustil by nám tím svůj kód v prohlížeči.
    bezpecnyText() z něj udělá neškodný text, ocistiJmeno() ho ještě zkrátí. */
@@ -2476,8 +2477,14 @@ function postavSvet(){
     if(h.bot){
       h.res.drevo = Math.round(h.res.drevo * (0.9+O.tezba*0.3));
       pridejBudovu("kasarna", i, z.x + dovnitrX*190, z.y + dovnitrY*95, true);
+      /* Na přání "plati to i pro nej ze je nemuze stavet pres sebe" – náhodná
+         pozice počáteční věže se dřív nekontrolovala vůbec, takže občas
+         vylezla přes domeček. Pár pokusů, první volný bod se použije. */
       for(let v=0; v<Math.min(3,O.veze); v++)
-        pridejBudovu("vez", i, z.x + nah(-170,170), z.y - dovnitrY*nah(90,190), true);
+        for(let pokus=0; pokus<8; pokus++){
+          const vx = z.x + nah(-170,170), vy = z.y - dovnitrY*nah(90,190);
+          if(mistoVolne("vez", vx, vy)){ pridejBudovu("vez", i, vx, vy, true); break; }
+        }
       const hlidacu = Math.max(1, Math.round(O.sila*2.4));
       for(let k=0;k<hlidacu;k++){
         const s = pridejJednotku("vojak", i, z.x+nah(-150,150), z.y+dovnitrY*nah(120,200));
@@ -2895,6 +2902,36 @@ function jdiK(e, tx, ty, dt, odstup){
   e.chodi = true;
   return (d - kr) <= odstup + 0.6;   // právě teď dorazil
 }
+/* Na přání "vesnicani co dotaveji hradby neumeji najit cestu zpet do
+   prace...najit konec hradby nebo nejblizsi branu" – jdiK() jde na cíl
+   narovinu a je slepé ke zdem. Vlastní/spojenecká zeď v cestě = panáček
+   jen stojí a tlačí se do ní. Když se dýl nehne (stejný test na "uvíznutí"
+   jako u prorazZdiUvizle, jen bez ničení zdi – tohle je jen pro civilní
+   pohyb), najde se nejbližší VLASTNÍ/spojenecká hotová brána a jde se
+   nejdřív k ní; jakmile je jednotka u brány nebo je zas blíž skutečnému
+   cíli, než když uvízla, brána se pustí a jde se dál napřímo. Bez brány
+   v okolí zůstává chování stejné jako dřív (prostě stojí). */
+function jdiKZdi(e, tx, ty, dt, odstup){
+  if(e._branaCil && (e._branaCil.mrtvy || !e._branaCil.hotova)) e._branaCil = null;
+  if(e._branaCil){
+    const uBrany = dist2(e.x,e.y,e._branaCil.x,e._branaCil.y) < e.r+e._branaCil.r+30;
+    if(uBrany || dist2(e.x,e.y,tx,ty) < e._branaD0) e._branaCil = null;
+  }
+  if(!e._branaCil){
+    e._zdCas = (e._zdCas||0) + dt;
+    if(e._zdCas >= 1){
+      const d = dist2(e.x,e.y,tx,ty);
+      if(e._zdD !== undefined && Math.abs(e._zdD-d) < 14 && d > 60){
+        const b = nejbliz(G.budovy, e.x, e.y,
+          o => !o.mrtvy && o.hotova && BUD[o.kind] && BUD[o.kind].brana && !jeNepritel(e.side,o.side), 500);
+        if(b){ e._branaCil = b; e._branaD0 = d; }
+      }
+      e._zdD = d; e._zdCas = 0;
+    }
+  }
+  if(e._branaCil){ jdiK(e, e._branaCil.x, e._branaCil.y, dt, odstup); return false; }
+  return jdiK(e, tx, ty, dt, odstup);
+}
 
 const NAKLAD_MAX = 12;
 /* Každý panáček dostane svoje vlastní místečko kolem stromu / skladu,
@@ -2991,7 +3028,7 @@ function updJednotku(e, dt){
 
   switch(e.stav){
     case "jdi":
-      if(jdiK(e, e.cil.x, e.cil.y, dt, 4)) e.stav="stoj";
+      if(jdiKZdi(e, e.cil.x, e.cil.y, dt, 4)) e.stav="stoj";
       break;
 
     case "tez": {
@@ -2999,7 +3036,7 @@ function updJednotku(e, dt){
       if(!z || z.mrtvy){ novyZdroj(e); break; }
       if(e.slotId!==z.id){ e.slot = slotBod(e, z, e.r + z.r + 4); e.slotId = z.id; e.uCile = false; }
       if(e.uCile && dist2(e.x,e.y,e.slot.x,e.slot.y) > 30) e.uCile = false;   // někdo do něj strčil
-      if(!e.uCile && jdiK(e, e.slot.x, e.slot.y, dt, 7)) e.uCile = true;
+      if(!e.uCile && jdiKZdi(e, e.slot.x, e.slot.y, dt, 7)) e.uCile = true;
       if(e.uCile){
         e.kotva = true;                    // stojí pevně, nikdo s ním nešoupe
         e.swingT = (e.swingT||0) + dt*9;   // máchání sekerou
@@ -3089,13 +3126,18 @@ function updJednotku(e, dt){
         else e.stav="stoj";
         break;
       }
-      /* Na přání "porad mi pronasleduji pruzkumnika, kdyz ho ani nemaji
-         na dohled": honička bez konce. Týká se jen boje, co začal SÁM od
-         sebe (e.hlidka je nastavená z automatické obrany – viz výš
-         "automatické bránění") – ruční rozkaz "Útok!" hlídku nenastavuje,
-         takže ho tohle neomezuje, tam to hráč fakt chce dotáhnout do
-         konce. */
-      if(e.hlidka && dist(e, e.hlidka) > NEJVIC_HONBA){
+      /* Na přání "kdyz jde sam automaticky za nepratelmi tak se vraci na
+         misto kde byl predtim, az kdyz je zabije nebo je ztrati z dohledu"
+         – dřív se hlídka vzdávala podle vzdálenosti OD SVÉHO STANOVIŠTĚ
+         (NEJVIC_HONBA), takže se vzdala i uprostřed boje s nepřítelem, co
+         měla pořád přímo před nosem, jen daleko od domova. Teď se sleduje
+         vzdálenost OD SAMOTNÉHO CÍLE – jakmile je dál, než kam jednotka
+         vůbec dohlédne (DOHLED), fakticky ho "ztratila z dohledu" a vrací
+         se. Zabití cíle řeší už blok výš (if(!c || c.mrtvy)). Týká se jen
+         boje, co začal SÁM od sebe (e.hlidka je z automatické obrany) –
+         ruční rozkaz "Útok!" hlídku nenastavuje, tam to hráč chce dotáhnout
+         do konce. */
+      if(e.hlidka && dist(e, c) > ((typeof DOHLED!=="undefined" && DOHLED[e.kind]) || 200)){
         e.cilE = null; e.hlavniCil = null;
         e.stav = "jdi"; e.cil = {...e.hlidka}; e.hlidka = null;
         break;
@@ -3185,6 +3227,11 @@ function zajistiOhen(b){
   b.el.appendChild(d);
   b.ohenEl = d;
   b.plamenky = [...d.children];
+  // kouř (na přání "par koure cim dal vic, jestli se vic nici budova")
+  const k = document.createElement("div");
+  k.className = "kour"; k.style.display = "none"; k.style.left = "50%"; k.style.top = "36%";
+  b.el.appendChild(k);
+  b.kourEl = k;
   return d;
 }
 function updBudovu(b, dt){
@@ -3275,8 +3322,15 @@ function updBudovu(b, dt){
           s.style.opacity = 0.45+sila*0.55;
         } else s.style.display = "none";
       }
-    } else if(b.ohenEl) b.ohenEl.style.display = "none";
-  } else if(b.ohenEl) b.ohenEl.style.display = "none";
+      if(b.kourEl){
+        b.kourEl.style.display = "block";
+        const roz = 14+sila*24;
+        b.kourEl.style.width = roz+"px"; b.kourEl.style.height = roz+"px";
+        b.kourEl.style.marginLeft = (-roz/2)+"px";
+        b.kourEl.style.opacity = 0.4+sila*0.5;
+      }
+    } else { if(b.ohenEl) b.ohenEl.style.display = "none"; if(b.kourEl) b.kourEl.style.display = "none"; }
+  } else { if(b.ohenEl) b.ohenEl.style.display = "none"; if(b.kourEl) b.kourEl.style.display = "none"; }
   if(b.treninkEl){
     if(b.hotova && b.fronta.length){
       const cas = JED[b.fronta[0]].cas;
@@ -3994,8 +4048,15 @@ const ZED_MAX    = 60;    // strop, ať se jedním tahem nepostaví půl mapy
    a MENŠÍ než rozestup, jinak si řada odmítne vlastní kusy – přesně tohle
    dělalo ty mezery, které nešly doplnit. Musí být menší i než ŠIKMÝ krok
    (ten má složky asi 42 a 21), jinak si šikmá zeď odmítne každý druhý kus. */
-const ZED_MIN_X  = 38;
-const ZED_MIN_Y  = 18;
+/* Na přání "hradby jdou stavet pres sebe, chci je uplne tesne, ne pres sebe":
+   naměřeno (vykreslením do plátna), že kus zdi kreslí přes CELOU šířku
+   dílku (64 px) – staré MIN 38 tak dovolovalo až 26 px opravdového
+   překryvu. Nejde to ale zavřít úplně (dotek = 64), protože šikmý krok má
+   složky jen ~42 a ~21 (viz komentář výš) – větší MIN by odmítal každý
+   druhý kus tažené šikmé zdi. Aspoň těsně pod šikmý krok, ať je přesah
+   citelně menší, i když ne nulový. */
+const ZED_MIN_X  = 41;
+const ZED_MIN_Y  = 20;
 /* Krok podle směru tahu: vodorovně ZED_KROK_X, svisle ZED_KROK_Y, šikmo plynule
    mezi tím (jde o bod na elipse s těmihle poloosami). */
 function krokZdi(dx, dy){
@@ -8638,8 +8699,18 @@ updAI = function(dt){
         else if(!moje.some(b=>b.kind==="kasarna")) kind = "kasarna";
         else if(G.obt>=3 && !moje.some(b=>b.kind==="staj") && maBudovu(si,"staj") && Math.random()<0.4) kind = "staj";
         else if(G.obt>=4 && !moje.some(b=>b.kind==="hrad") && Math.random()<0.3) kind = "hrad";
-        const a = nah(0,Math.PI*2), d = nah(180,320);
-        pridejBudovu(kind, si, klam(zakl.x+Math.cos(a)*d,90,SVET_W-90), klam(zakl.y+Math.sin(a)*d,90,SVET_H-90), true);
+        /* Na přání "at botak nestavi uplne random ty budovy a plati to i
+           pro nej ze je nemuze stavet pres sebe": dřív bot budovu prostě
+           postavil na náhodný bod bez jediné kontroly – klidně do stromu,
+           do vody nebo přes vlastní jinou budovu (mistoVolne() se u něj
+           vůbec nevolalo, jen u hráče). Pár pokusů na náhodných bodech
+           kolem základny, první volný se použije; když se ani jeden
+           netrefí, bot si prostě počká na příští kolo stavby. */
+        for(let pokus=0; pokus<8; pokus++){
+          const a = nah(0,Math.PI*2), d = nah(180,320);
+          const x = klam(zakl.x+Math.cos(a)*d,90,SVET_W-90), y = klam(zakl.y+Math.sin(a)*d,90,SVET_H-90);
+          if(mistoVolne(kind, x, y)){ pridejBudovu(kind, si, x, y, true); break; }
+        }
       }
       const hlidacu = G.jednotky.filter(j=>j.side===si && j.straz && !j.mrtvy).length;
       if(hlidacu < Math.max(2, Math.round(O.sila*2.6))){
@@ -8659,27 +8730,37 @@ updAI = function(dt){
     H.trenink = (H.trenink||0) - krok;
     if(H.trenink<=0 && armada.length < strop){
       const umi = k => maJednotku(si,k);
-      let druh = "vojak";
+      /* Na přání "botak musi taky stavet jednotky z domu, ze kterych se
+         staveji": dřív bot vycvičil libovolný typ, jen když ho civilizace
+         vůbec uměla (umi) – klidně jezdce bez jediné stáje. Teď navíc
+         potřebuje aspoň jednu HOTOVOU budovu, co ten typ fakt cvičí
+         (stejná podmínka jako u hráče, BUD[x].cvici). */
+      const maStavbuPro = k => G.budovy.some(b=>b.side===si && !b.mrtvy && b.hotova && (BUD[b.kind].cvici||[]).includes(k));
+      let druh = null;
       const r = Math.random();
       /* Na přání "at botaci taky umeji s kopijniky": pár procent navíc
          vyhrazeno kopijníkovi (levný, hodí se hlavně proti jízdě), ať
          boti proti hráčovým jezdcům/slonům nejsou úplně bezmocní. */
-      if(r<0.25 && umi("lukostrelec")) druh = "lukostrelec";
-      else if(r<0.37 && umi("jezdec")) druh = "jezdec";
-      else if(r<0.47 && umi("kopijnik")) druh = "kopijnik";
-      else if(r<0.55 && G.obt>=3 && umi("slon")) druh = "slon";
-      /* POZOR (Lucie, v26): boti neplatí za vojáky suroviny (nemají opravdovou
-         ekonomiku jako hráč) – ale ať je aspoň VYCVIČÍ tak rychle, jak dlouho by
-         to trvalo hráči (JED[druh].cas), ne podle odtrženého vzorečku 2,4 s.
-         Ten byl mnohem kratší než skutečný výcvik (vojak 9 s, jezdec 16 s…),
-         takže boti měli spoustu vojáků rychleji, než na to hráč vůbec mohl
-         stačit. O.sila škáluje podle obtížnosti – těžší bot cvičí rychleji
-         než by to trvalo hráči, lehčí pomaleji. */
-      H.trenink = (JED[druh].cas / Math.max(0.4, O.sila)) * nah(0.9,1.1);
-      const u = pridejJednotku(druh, si, zakl.x+nah(-120,120), zakl.y+nah(70,170));
-      u.armadni = true;
-      u.rally = {x: zakl.x + (zakl.x<SVET_W/2?1:-1)*nah(120,190), y: zakl.y + (zakl.y<SVET_H/2?1:-1)*nah(120,190)};
-      u.stav = "jdi"; u.cil = {...u.rally};
+      if(r<0.25 && umi("lukostrelec") && maStavbuPro("lukostrelec")) druh = "lukostrelec";
+      else if(r<0.37 && umi("jezdec") && maStavbuPro("jezdec")) druh = "jezdec";
+      else if(r<0.47 && umi("kopijnik") && maStavbuPro("kopijnik")) druh = "kopijnik";
+      else if(r<0.55 && G.obt>=3 && umi("slon") && maStavbuPro("slon")) druh = "slon";
+      else if(maStavbuPro("vojak")) druh = "vojak";
+      if(!druh){ H.trenink = 1; }   // ještě nemá kde cvičit – zkusí to znovu za chvíli
+      else{
+        /* POZOR (Lucie, v26): boti neplatí za vojáky suroviny (nemají opravdovou
+           ekonomiku jako hráč) – ale ať je aspoň VYCVIČÍ tak rychle, jak dlouho by
+           to trvalo hráči (JED[druh].cas), ne podle odtrženého vzorečku 2,4 s.
+           O.sila škáluje podle obtížnosti – lehčí bot cvičí pomaleji. Strop
+           Math.min(1,...) (na přání "at nemaji rychlost armady, co pro
+           realneho cloveka neni mozna"): bot nikdy necvičí RYCHLEJI, než by to
+           šlo hráči, ani na nejtěžší obtížnosti – jen stejně rychle nejvýš. */
+        H.trenink = (JED[druh].cas / Math.min(1, Math.max(0.4, O.sila))) * nah(0.9,1.1);
+        const u = pridejJednotku(druh, si, zakl.x+nah(-120,120), zakl.y+nah(70,170));
+        u.armadni = true;
+        u.rally = {x: zakl.x + (zakl.x<SVET_W/2?1:-1)*nah(120,190), y: zakl.y + (zakl.y<SVET_H/2?1:-1)*nah(120,190)};
+        u.stav = "jdi"; u.cil = {...u.rally};
+      }
     }
 
     /* --- VÝPRAVA: mám dost vojska → vyrazím. Znám-li nepřítele, jdu na něj;
@@ -13832,8 +13913,31 @@ NET.posli = function(m){
    "vynořuje" odspoda nahoru (CSS clip-path v updBudovu, p4a.html) – od
    základů přes zdi až po střechu a vlaječku, přesně v pořadí, v jakém je
    fakt nakreslená. Žádná nová kresba, jen jedna vlastnost navíc u
-   rozestavěné budovy, takže to nic nezpomalí. */
-VERZE = "v93";
+   rozestavěné budovy, takže to nic nezpomalí.
+   v94 = velký balík na jedno přání s víc body.
+   1) Vesničan/jednotka uvízlá u VLASTNÍ zdi (typicky: dostavěla hradby a
+   neumí se vrátit k práci) – nová jdiKZdi() (p4a.html) nahrazuje jdiK() u
+   "jdi"/"tez": po ~1 s bez postupu najde nejbližší vlastní/spojeneckou
+   hotovou bránu a jde nejdřív k ní, pak pokračuje k cíli. Brány (p8/p2…)
+   se už dřív samy otvíraly svým – to fungovalo, jen se k nim nikdo netrefil.
+   2) Plamínky na hořící budově byly nad kresbou, ne na ní – přesunuty na
+   střechu/zeď (p1.html, .ohen top:38%). Přidán i kouř, co houstne se
+   škodou (.kour, p4a.html).
+   3) Hradby šly stavět přes sebe (naměřeno: kreslí se přes celou šířku
+   dílku, staré MIN 38/18 dovolovalo desítky px překryvu). MIN zvednuto na
+   41/20 – těsně pod šikmý krok tažené řady (~42/21), aby šlo dál stavět i
+   šikmo, ale s citelně menším přesahem.
+   4) Král/vojáci: honička sama od sebe začatá se dřív vzdávala podle
+   vzdálenosti OD STANOVIŠTĚ (NEJVIC_HONBA) – teď podle vzdálenosti OD
+   CÍLE vs. DOHLED (p4a.html, case "utok"), takže se vzdá, až cíl fakt
+   ztratí z dohledu (nebo ho zabije – to řešil kód už dřív).
+   5) Boti: (a) startovní věž i průběžné stavění teď taky kontrolují
+   mistoVolne() (dřív stavěli naslepo, klidně přes domeček) – p3.html,
+   p21.html; (b) bot smí vycvičit jen typ, na který má HOTOVOU budovu
+   (stejná podmínka BUD[x].cvici jako u hráče, ne jen "civilizace to umí")
+   – p21.html; (c) rychlost výcviku nikdy nepřekročí lidské tempo, ani na
+   nejtěžší obtížnosti (Math.min(1,…) místo Math.max(0.4,…)). */
+VERZE = "v94";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
