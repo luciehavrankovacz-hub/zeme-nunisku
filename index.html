@@ -2388,7 +2388,17 @@ const RYCHLOSTI = [
 const KVALITY = [
   {jm:"K VYHOZENÍ"}, {jm:"NIC MOC"}, {jm:"SUPER"}, {jm:"VELMI SIGMA"}
 ];
-function urKval(){ return G.kvalita==null ? 2 : G.kvalita; }
+/* Na přání "kamarad ma mobil, na mobilu se to mnohem vic seka": mobil má
+   mnohem slabší procesor než počítač, a dřív default (SUPER, kv=2) byl
+   pro všechny stejný bez ohledu na zařízení – nový hráč na mobilu si
+   sám nevšiml, že si dole v lobby může vybrat nižší kvalitu. Teď dokud
+   si hráč sám výslovně nevybere (G.kvalita zůstává null), mobil dostane
+   rovnou nejnižší kvalitu (K VYHOZENÍ) – kdykoli si může v lobby zvolit
+   vyšší, pokud jeho telefon zvládne víc. */
+function urKval(){
+  if(G.kvalita!=null) return G.kvalita;
+  return (typeof JE_MOBIL!=="undefined" && JE_MOBIL) ? 0 : 2;
+}
 
 function postavSvet(){
   const mapa = MAPY[G.mapa];
@@ -14205,8 +14215,19 @@ NET.posli = function(m){
    zdvořile zeptá (kdyby fakt někdo zrovna dopisoval kód), ale HNED
    druhý klik spustí hru vždycky, ať po kamarádovi zbyl jakýkoli duch v
    spojeních. P2P.pripojKodem (jak se kamarád připojuje) se tímhle vůbec
-   nedotklo – zůstává přesně jak v104 (p6.html). */
-VERZE = "v105";
+   nedotklo – zůstává přesně jak v104 (p6.html).
+   v106 = "kamarad ma to na mobilu, seka se mnohem vic" – zkusila jsem
+   nejdřív zrychlit rozestup() chytřejší mřížkou místo porovnávání
+   VŠECH dvojic jednotek, ale přímo naměřeno (250-400 jednotek): při
+   běžném počtu jednotek to reálně nebylo rychlejší, takže se to
+   NENASADILO (žádná změna je lepší než změna, co jen vypadá jako
+   vylepšení). Skutečná příčina je jinde: mobil má mnohem slabší
+   procesor, ale výchozí kvalita vzhledu (urKval(), p3.html) byla pro
+   všechny stejná (SUPER), dokud si hráč sám nevšiml přepínače v lobby.
+   Teď mobil, pokud si hráč výslovně nevybere jinak, dostane rovnou
+   nejnižší kvalitu (K VYHOZENÍ) – kdykoli si může v lobby zvolit vyšší,
+   když to telefon zvládne. */
+VERZE = "v106";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
