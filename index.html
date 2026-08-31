@@ -4450,6 +4450,7 @@ function postavMenu(){
     zavri("mLobby"); zvuk("klik");
   };
   document.getElementById("pridejBota").onclick = pridejBota;
+  let startBlokPokusu = 0;
   document.getElementById("startHry").onclick = ()=>{
     if(G.rezim==="multi" && !NET.jsemHost){ zprava("Hru spouští ten, kdo ji vytvořil."); return; }
     /* Nespouštět, dokud je někdo připojený, ale ještě nezapsaný mezi hráče –
@@ -4458,26 +4459,26 @@ function postavMenu(){
        tabulce hráčů byl kamarád už dávno vidět se jménem i civilizací) –
        tahle kontrola počítala VŠECHNA spojení bez hracId jako "ještě se
        přihlašuje", ale nerozlišovala živé přihlašování od starého,
-       mrtvého pokusu o spojení (typicky na mobilu – výpadek sítě,
-       přepnutí aplikací uprostřed handshake), který se nikdy nedostane
-       ani do "spojeno", ani do "odpojeno", a tak blokoval start navěky.
-       Teď se každému takovému spojení při prvním nálezu poznamená čas a
-       po 7 vteřinách se přestane počítat – ať uvízlý duch nedrží
-       rukojmí celou lobby, i kdyby šlo o 1 kamaráda nebo všech 7. */
-    if(G.rezim==="multi" && NET.jsemHost && typeof P2P!=="undefined"){
-      const ted = Date.now();
-      const ceka = P2P.spoje.filter(s=>{
-        if(s.stav==="odpojeno") return false;
-        if(s.hracId && lobbyHraci.some(h=>h.id===s.hracId)) return false;
-        if(!s._cekaOd) s._cekaOd = ted;
-        return (ted - s._cekaOd) < 7000;
-      });
+       mrtvého pokusu o spojení, který se nikdy nedostane ani do
+       "spojeno", ani do "odpojeno", a tak blokoval start navěky.
+       DALŠÍ POKUS (v100, časový odklad) na tohle nestačil – Lucie hlásila,
+       že to psalo "čeká se na kamaráda" znovu, i když ho lobby už dávno
+       ukazovala se jménem i civilizací. Místo hádání, jak starý duch je
+       "dost starý", je to teď jednoduché a spolehlivé: napoprvé se to
+       ještě zdvořile zeptá (kdyby fakt někdo právě teď dopisoval kód),
+       ale hned na DRUHÉ kliknutí STARTU se spustí vždy, ať tam po
+       kamarádovi zbyl jakýkoli duch. */
+    if(G.rezim==="multi" && NET.jsemHost && typeof P2P!=="undefined" && startBlokPokusu===0){
+      const ceka = P2P.spoje.filter(s=>s.stav!=="odpojeno"
+        && (!s.hracId || !lobbyHraci.some(h=>h.id===s.hracId)));
       if(ceka.length){
+        startBlokPokusu = 1;
         zprava("⏳ Ještě se " + ceka.length + (ceka.length===1?" kamarád přihlašuje":" kamarádi přihlašují")
              + ", počkej vteřinku a dej start znovu.","zle");
         return;
       }
     }
+    startBlokPokusu = 0;
     NET.posli({typ:"start", hraci:lobbyHraci, mapa:G.mapa, obt:G.obt, seed:G.seed, velikost:G.velikost, limit:G.limit, rychlost:G.rychlost, v:VERZE});
     spustHru();
   };
@@ -14195,8 +14196,17 @@ NET.posli = function(m){
    vůbec. Každý pokus zřejmě zakládá nové spojení a čím víc jich běží
    najednou, tím větší nepořádek. Vráceno zpátky na původní 3× po 2 s
    (p24.html) – to fungovalo. v100 (start hry se nezasekne na "kamarád
-   se připojuje") zůstává beze změny, nic jiného se tímhle nemění. */
-VERZE = "v104";
+   se připojuje") zůstává beze změny, nic jiného se tímhle nemění.
+   v105 = "de pripojit kamarad, ale ted zase pise ze se ceka na kamarada"
+   – kamarád byl už dávno vidět v tabulce hráčů, ale start se pořád
+   blokoval. Časový odklad z v100 (7 vteřin) na tenhle konkrétní duch
+   zjevně nestačil/nefungoval spolehlivě. Místo hádání "jak starý duch
+   je dost starý" je to teď jednoduché: první klik na START se ještě
+   zdvořile zeptá (kdyby fakt někdo zrovna dopisoval kód), ale HNED
+   druhý klik spustí hru vždycky, ať po kamarádovi zbyl jakýkoli duch v
+   spojeních. P2P.pripojKodem (jak se kamarád připojuje) se tímhle vůbec
+   nedotklo – zůstává přesně jak v104 (p6.html). */
+VERZE = "v105";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
