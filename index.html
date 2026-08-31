@@ -250,6 +250,11 @@ select.pole:disabled,input.pole:disabled{opacity:.55}
   background:radial-gradient(circle at 35% 30%,#fff6b0,#ffb121 45%,#ff5a1a 80%,#c22a0a);
   box-shadow:0 0 8px 2px rgba(255,110,20,.6);animation:plamen .5s ease-in-out infinite alternate}
 @keyframes plamen{0%{transform:translateX(-50%) rotate(-49deg)}100%{transform:translateX(-50%) rotate(-41deg)}}
+/* Konfety pro oslavu kulatých verzí (v50, v100, v150…) – nezávislé na
+   herním světě, ať jdou pustit i z hlavního menu. */
+.oslava{position:fixed;top:-20px;width:10px;height:10px;border-radius:2px;
+  pointer-events:none;z-index:99999;animation:oslavaPad linear forwards}
+@keyframes oslavaPad{to{transform:translateY(110vh) rotate(540deg);opacity:0}}
 .kour{position:absolute;left:50%;display:none;border-radius:50%;pointer-events:none;
   background:radial-gradient(circle,rgba(90,90,90,.55),rgba(90,90,90,0) 70%);
   animation:koureni 2.2s ease-out infinite}
@@ -10099,6 +10104,36 @@ function napisVerzi(){
 }
 napisVerzi();
 
+/* Oslava kulatých verzí (na přání Lucie) – při KAŽDÉM čísle, co končí na
+   00 nebo 50 (v50, v100, v150, v200…), ne jen jednou napořád. Každý
+   milník se ale slaví jen jednou za prohlížeč (localStorage podle
+   konkrétního čísla), ať to při každém znovunačtení nebliká pořád
+   dokola. Konfety jsou vlastní, jednoduché a nezávislé na herním světě
+   (ohnostroj() potřebuje běžící hru), takže jde spustit klidně z
+   hlavního menu. */
+function oslavKulatou(){
+  const cislo = parseInt(String(VERZE).replace(/[^0-9]/g, ""), 10);
+  if(!cislo || cislo % 50 !== 0) return;
+  const klic = "nunisci_oslava_" + cislo;
+  let uz;
+  try{ uz = localStorage.getItem(klic); }catch(e){}
+  if(uz) return;
+  try{ localStorage.setItem(klic, "1"); }catch(e){}
+  const barvy = ["#ffd447","#ff8ad0","#8ef0a0","#8ecaff","#ff9a5a"];
+  for(let i=0;i<70;i++){
+    const d = document.createElement("div");
+    d.className = "oslava";
+    d.style.left = (Math.random()*100)+"vw";
+    d.style.background = barvy[i%barvy.length];
+    d.style.animationDuration = (2.2+Math.random()*1.6)+"s";
+    d.style.animationDelay = (Math.random()*0.6)+"s";
+    document.body.appendChild(d);
+    setTimeout(()=>d.remove(), 4600);
+  }
+  if(typeof zprava==="function") zprava("🎉 Verze "+cislo+"! Díky, že to se mnou doháníš až sem!","dobre");
+}
+oslavKulatou();
+
 
 
 /* ============================================================
@@ -14102,8 +14137,14 @@ NET.posli = function(m){
    aplikací uprostřed handshake), který se nikdy nedostane ani do
    "spojeno", ani do "odpojeno" – takový duch blokoval start navěky, ať
    šlo o 1 kamaráda nebo všech 7. Každému takovému spojení se teď při
-   prvním nálezu poznamená čas a po 7 vteřinách přestane start blokovat. */
-VERZE = "v100";
+   prvním nálezu poznamená čas a po 7 vteřinách přestane start blokovat.
+   v101 = oslava kulatých verzí (na přání Lucie, když jsme spolu slavily
+   sto verzí) – od teď se při KAŽDÉM čísle končícím na 00 nebo 50 (v50,
+   v100, v150, v200…) samo pustí malé konfety v hlavním menu + hláška.
+   Každý milník se slaví jen jednou za prohlížeč (p25.html – oslavKulatou,
+   p1.html – .oslava/@keyframes oslavaPad), ať to při každém načtení
+   nebliká pořád dokola. Nezávislé na běžící hře, jde i z menu. */
+VERZE = "v101";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
