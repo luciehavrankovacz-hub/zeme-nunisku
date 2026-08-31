@@ -4065,7 +4065,7 @@ function nastavOvladani(){
 
   /* ---------- KLÁVESY ---------- */
   window.addEventListener("keydown", ev=>{
-    if(document.activeElement && document.activeElement.tagName==="INPUT") return;
+    if(document.activeElement && (document.activeElement.tagName==="INPUT" || document.activeElement.tagName==="TEXTAREA" || document.activeElement.isContentEditable)) return;
     klavesy[ev.key.toLowerCase()] = true;
     // Poražený hostitel jen kouká – nesmí ostatním zmrazit hru mezerníkem.
     if(ev.key===" "){ ev.preventDefault(); if(!G.divak) prepniPauzu(); }
@@ -4074,6 +4074,8 @@ function nastavOvladani(){
     if(ev.key.toLowerCase()==="t" && !G.divak) vsichniTezit();
     if(ev.key==="+"||ev.key==="=") nastavZoom(G.zoom*1.15, window.innerWidth/2, window.innerHeight/2);
     if(ev.key==="-") nastavZoom(G.zoom*0.87, window.innerWidth/2, window.innerHeight/2);
+    // Na přání "kliknu na jednotku/budovu a delete ji znici"
+    if((ev.key==="Delete"||ev.key==="Backspace") && !G.divak && !G.konec) znicVybrane();
   });
   window.addEventListener("keyup", ev=>{ klavesy[ev.key.toLowerCase()]=false; });
 
@@ -4973,6 +4975,12 @@ const SYNC = {
         try{ cvicLokalne(b, m.kind); } finally { G.ja = puvodJa; }
       }
     }
+    /* Na přání "kliknu na jednotku/budovu a delete ji znici" – stejný
+       vzor jako ostatní příkazy: klient jen pošle ID hostiteli (`moje`
+       výš už hlídá, že cizí ID nikdo neukradne – filtruje o.side===side). */
+    if(m.cmd==="znic"){
+      for(const e of moje) zabij(e);
+    }
   }
 };
 
@@ -5008,6 +5016,21 @@ cvic = function(b, kind){
   }
   cvicLokalne(b, kind);
 };
+/* Na přání "kliknu na jednotku/budovu a klávesou Delete ji zničí" – jen
+   VLASTNÍ věci (jeMuj), ať se nedá takhle mazat kamarádům ani botům.
+   Smazání krále/hlavní radnice svou vlastní hrou skutečně prohraje, stejně
+   jako když je zabije nepřítel – to je záměr, ne chyba. */
+function znicVybrane(){
+  const moje = G.sel.filter(e=>jeMuj(e.side) && !e.mrtvy);
+  if(!moje.length) return;
+  if(SYNC.jsemKlient()){
+    NET.posli({typ:"cmd", cmd:"znic", side:G.ja, ids: moje.map(e=>e.id)});
+    zvuk("bum");
+    return;
+  }
+  for(const e of moje) zabij(e);
+  vyber([]);
+}
 
 /* ---- smyčka: klient nepočítá hru, jen kreslí ---- */
 const tikLokalne = tik;
@@ -14046,8 +14069,16 @@ NET.posli = function(m){
    pár procent života.
    Cestou opravena i chyba, co tenhle balík (honička + královo vodítko)
    způsobil: dosahUtoku() spadla, když cíl neměl platný záznam v JED/BUD
-   – nová bezpečná obálka dosahUtokuBezp() to ošetří (vrátí 0 místo pádu). */
-VERZE = "v98";
+   – nová bezpečná obálka dosahUtokuBezp() to ošetří (vrátí 0 místo pádu).
+   v99 = na přání "kliknu na jednotku/budovu a delete ji znici": klávesa
+   Delete (i Backspace) teď zničí všechno, co máš aktuálně vybrané – ale
+   JEN vlastní věci (jeMuj), cizí/botovské se takhle smazat nedají.
+   Smazání vlastního krále nebo hlavní radnice = normální prohra, stejně
+   jako když padnou v boji. V multiplayeru jde přes stejný kanál jako
+   ostatní příkazy (rozkaz/postav/cvič) – klient pošle ID hostiteli, ten
+   to provede a rozešle dál, takže se to spolehlivě promítne všem
+   (p5.html – klávesa, p7.html – znicVybrane()+provedCizi()). */
+VERZE = "v99";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
