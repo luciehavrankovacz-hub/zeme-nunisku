@@ -9955,27 +9955,25 @@ if(typeof SYNC !== "undefined" && SYNC.vyrob){
    Když kamarád klikne na Připojit o chviličku dřív, než hostitel stihne
    otevřít lobby, majáku se kód ještě nezná a hra hlásí „Hru s kódem XYZ
    jsem nenašel". Dítě to čte jako „mám špatná písmenka" a opisuje kód
-   pořád dokola. Zkusíme to proto sami sami vícekrát – tolik hostiteli
-   obvykle stačí.
-   OPRAVA (Lucie: "kamarad se nepripoji, porad pise jeste to tam neni"):
-   3 pokusy po 2 s daly dohromady jen ~4-6 s, než se to vzdalo úplně – na
-   pomalejší mobilní síti (nebo když hostitel zrovna dokončuje TURN/STUN
-   handshake) to nestačilo. Teď 8 pokusů po 2,5 s (~20 s), ať má hostitelův
-   maják fakt čas se zapsat, i když je někdo z dvojice na horší síti. */
+   pořád dokola. Zkusíme to proto sami třikrát po dvou vteřinách – tolik
+   hostiteli obvykle stačí.
+   POZOR (vráceno zpátky): pokus prodloužit tohle na 8× po 2,5 s (v102)
+   spojení naopak POKAZIL – "kamarád se furt nemůže připojit". Každý
+   pokus totiž zřejmě zakládá NOVÉ spojení, a čím víc jich běží najednou,
+   tím větší nepořádek. Zpátky na původní 3×2s, které fungovalo. */
 if(typeof P2P !== "undefined" && P2P.pripojKodem){
   const pripojNaJeden = P2P.pripojKodem.bind(P2P);
   const jeToJenBrzy = e => /nenašel|nenasel/i.test((e && e.message) || "");
-  const NEJVIC_POKUSU = 8, PROSTOJ_MS = 2500;
   P2P.pripojKodem = async function(kod){
     let posledniChyba = null;
-    for(let pokus = 1; pokus <= NEJVIC_POKUSU; pokus++){
+    for(let pokus = 1; pokus <= 3; pokus++){
       try{ return await pripojNaJeden(kod); }
       catch(e){
         posledniChyba = e;
-        if(!jeToJenBrzy(e) || pokus === NEJVIC_POKUSU) throw e;
+        if(!jeToJenBrzy(e) || pokus === 3) throw e;
         if(typeof zprava === "function")
-          zprava("Ještě to tam není, zkouším znovu… (" + pokus + "/" + NEJVIC_POKUSU + ")", "info");
-        await new Promise(h => setTimeout(h, PROSTOJ_MS));
+          zprava("Ještě to tam není, zkouším znovu… (" + pokus + "/3)", "info");
+        await new Promise(h => setTimeout(h, 2000));
       }
     }
     throw posledniChyba;
@@ -14190,8 +14188,15 @@ NET.posli = function(m){
    místo toho ožil UŽ EXISTUJÍCÍ odkaz "Co je nového" v patičce menu
    (vedle "Jde to na Xboxu?" – p30.html), co dřív mířil na neexistující
    novinky.html. Teď otevře stejný panel #mNovinky/ukazNovinky() jako
-   předtím to tlačítko. */
-VERZE = "v103";
+   předtím to tlačítko.
+   v104 = "kamarad se furt nemuze pripojit, predtim to bylo v pohode ze
+   se mohl pripojit, ale nemohl hrat" – prodloužení pokusů o připojení
+   z v102 (8× po 2,5 s) věc naopak POKAZILO, kamarád se teď nepřipojil
+   vůbec. Každý pokus zřejmě zakládá nové spojení a čím víc jich běží
+   najednou, tím větší nepořádek. Vráceno zpátky na původní 3× po 2 s
+   (p24.html) – to fungovalo. v100 (start hry se nezasekne na "kamarád
+   se připojuje") zůstává beze změny, nic jiného se tímhle nemění. */
+VERZE = "v104";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
