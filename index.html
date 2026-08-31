@@ -412,7 +412,6 @@ body.mobil #tip{display:none !important}
       <button class="aoeBtn" id="bSingle">SINGLEPLAYER<span class="pod">Hraj sám proti počítačům</span></button>
       <button class="aoeBtn" id="bJoin">JOIN A GAME<span class="pod">Připoj se ke hře podle kódu</span></button>
       <button class="aoeBtn maly" id="bNapoveda">JAK SE HRAJE<span class="pod">Ovládání a rady do začátku</span></button>
-      <button class="aoeBtn maly" id="bNovinky">🆕 CO JE NOVÉHO<span class="pod">Poslední změny ve hře</span></button>
     </div>
   </div>
   <div id="menuPata">Sepsáno v Zemi Ňuňísků · kronika v5</div>
@@ -4442,7 +4441,6 @@ function postavMenu(){
     setTimeout(()=>document.getElementById("polePozvanka").focus(),120);
   };
   document.getElementById("bNapoveda").onclick = ()=>{ zvuk("klik"); ukazNapovedu(); };
-  document.getElementById("bNovinky").onclick = ()=>{ zvuk("klik"); ukazNovinky(); };
   /* ZPĚT musí zavřít i P2P a maják – jinak hostitel zůstane u ohlašovny
      zaregistrovaný pod svým kódem a kamarád se připojí do lobby, které už
      nikdo nemá otevřené. */
@@ -11083,7 +11081,7 @@ napisVerzi = function(){
   napisVerziPredOdkazy();
   const p = document.getElementById("menuPata");
   if(!p) return;
-  p.innerHTML += ' · <a href="novinky.html" style="color:#ffd47a">Co je nového</a>'
+  p.innerHTML += ' · <a href="#" onclick="ukazNovinky();return false;" style="color:#ffd47a">Co je nového</a>'
                + ' · <a href="xbox.html" style="color:#ffd47a">Jde to na Xboxu?</a>';
 };
 
@@ -14186,8 +14184,14 @@ NET.posli = function(m){
       kódem už zkoušelo znovu při "hru jsem nenašel" (kód se u majáku
       ještě nestihl zapsat), ale jen 3× po 2 s (~4-6 s celkem) – na
       pomalejší mobilní síti to nestačilo. Teď 8× po 2,5 s (~20 s
-      celkem), ať má hostitelův maják fakt čas (p24.html). */
-VERZE = "v102";
+      celkem), ať má hostitelův maják fakt čas (p24.html).
+   v103 = Lucie nechtěla "Co je nového" jako velké tlačítko mezi
+   MULTIPLAYER/SINGLEPLAYER (v102) – tlačítko pryč (p1.html, p6.html),
+   místo toho ožil UŽ EXISTUJÍCÍ odkaz "Co je nového" v patičce menu
+   (vedle "Jde to na Xboxu?" – p30.html), co dřív mířil na neexistující
+   novinky.html. Teď otevře stejný panel #mNovinky/ukazNovinky() jako
+   předtím to tlačítko. */
+VERZE = "v103";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
