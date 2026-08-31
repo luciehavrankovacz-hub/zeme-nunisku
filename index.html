@@ -4441,10 +4441,25 @@ function postavMenu(){
   document.getElementById("startHry").onclick = ()=>{
     if(G.rezim==="multi" && !NET.jsemHost){ zprava("Hru spouští ten, kdo ji vytvořil."); return; }
     /* Nespouštět, dokud je někdo připojený, ale ještě nezapsaný mezi hráče –
-       jinak by mu hra začala bez jeho místa v seznamu. */
+       jinak by mu hra začala bez jeho místa v seznamu.
+       OPRAVA (Lucie: "porad to pise ze se kamarad pripojuje", i když v
+       tabulce hráčů byl kamarád už dávno vidět se jménem i civilizací) –
+       tahle kontrola počítala VŠECHNA spojení bez hracId jako "ještě se
+       přihlašuje", ale nerozlišovala živé přihlašování od starého,
+       mrtvého pokusu o spojení (typicky na mobilu – výpadek sítě,
+       přepnutí aplikací uprostřed handshake), který se nikdy nedostane
+       ani do "spojeno", ani do "odpojeno", a tak blokoval start navěky.
+       Teď se každému takovému spojení při prvním nálezu poznamená čas a
+       po 7 vteřinách se přestane počítat – ať uvízlý duch nedrží
+       rukojmí celou lobby, i kdyby šlo o 1 kamaráda nebo všech 7. */
     if(G.rezim==="multi" && NET.jsemHost && typeof P2P!=="undefined"){
-      const ceka = P2P.spoje.filter(s=>s.stav!=="odpojeno"
-        && (!s.hracId || !lobbyHraci.some(h=>h.id===s.hracId)));
+      const ted = Date.now();
+      const ceka = P2P.spoje.filter(s=>{
+        if(s.stav==="odpojeno") return false;
+        if(s.hracId && lobbyHraci.some(h=>h.id===s.hracId)) return false;
+        if(!s._cekaOd) s._cekaOd = ted;
+        return (ted - s._cekaOd) < 7000;
+      });
       if(ceka.length){
         zprava("⏳ Ještě se " + ceka.length + (ceka.length===1?" kamarád přihlašuje":" kamarádi přihlašují")
              + ", počkej vteřinku a dej start znovu.","zle");
@@ -14077,8 +14092,18 @@ NET.posli = function(m){
    jako když padnou v boji. V multiplayeru jde přes stejný kanál jako
    ostatní příkazy (rozkaz/postav/cvič) – klient pošle ID hostiteli, ten
    to provede a rozešle dál, takže se to spolehlivě promítne všem
-   (p5.html – klávesa, p7.html – znicVybrane()+provedCizi()). */
-VERZE = "v99";
+   (p5.html – klávesa, p7.html – znicVybrane()+provedCizi()).
+   v100 = "vytvoril jsem hru pro kamarada, pripojil se, ale kdyz dam start
+   tak to porad pise ze se kamarad pripojuje" – i když byl kamarád v
+   tabulce hráčů dávno vidět se jménem i civilizací. Kontrola před startem
+   počítala VŠECHNA P2P spojení bez přiřazeného hráče jako "ještě se
+   přihlašuje", ale nerozlišovala živé přihlašování od starého mrtvého
+   pokusu o spojení (typicky na mobilu – výpadek sítě nebo přepnutí
+   aplikací uprostřed handshake), který se nikdy nedostane ani do
+   "spojeno", ani do "odpojeno" – takový duch blokoval start navěky, ať
+   šlo o 1 kamaráda nebo všech 7. Každému takovému spojení se teď při
+   prvním nálezu poznamená čas a po 7 vteřinách přestane start blokovat. */
+VERZE = "v100";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
