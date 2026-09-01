@@ -268,23 +268,50 @@ select.pole:disabled,input.pole:disabled{opacity:.55}
 .svetylko{position:absolute;left:50%;top:56%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;
   border-radius:50%;background:#ffe28a;box-shadow:0 0 10px 4px rgba(255,214,120,.85);
   opacity:0;pointer-events:none;z-index:5}
+/* Na přání "at je hezky videt na kratkou vzdalenost osvetleni kolem
+   svetylek" – měkká záře na zem u budovy. mix-blend-mode:screen, ať to
+   trávu opravdu ROZSVÍTÍ, ne jen nalepí žlutý flek přes ni. */
+.svetlokruh{position:absolute;left:50%;top:62%;width:150px;height:150px;margin:-75px 0 0 -75px;
+  border-radius:50%;pointer-events:none;z-index:3;mix-blend-mode:screen;
+  background:radial-gradient(circle, rgba(255,214,120,.9) 0%, rgba(255,196,90,.35) 45%, transparent 75%);
+  opacity:0}
 /* POČASÍ – "překvapení" navrch k noci a dni (viz updPocasi v p4a.html).
    Stejně jako #nocOverlay leží ve #svetOkno, ne uvnitř #svet, ať se
    nehýbe s kamerou. Kapky deště jsou jeden opakující se gradient s
    animovanou pozicí pozadí – žádné stovky DOM elementů navíc, ať to
    neseká, i když je na mapě hodně jednotek. */
 #pocasiOverlay{position:absolute;inset:0;pointer-events:none;z-index:4999;opacity:0;transition:opacity 1.2s linear}
+/* Na přání "strasne kapek, ale ne cele modre, jen v castech, ne tak
+   dlouhe, normalni kapky, plynuly dest" – žádný plošný modrý filtr přes
+   celou mapu. Místo toho dlaždice se spoustou KRÁTKÝCH kapiček (SVG,
+   ne lineární gradient – ten by vždycky vytáhl čáru přes celou dlaždici,
+   ne krátkou kapku) a přes ni maska ze tří měkkých oválů, takže prší jen
+   v pár místech na obrazovce, ne všude najednou. */
 #pocasiOverlay.dest{
-  background:
-    repeating-linear-gradient(115deg, rgba(215,232,255,.6) 0 2px, transparent 2px 26px),
-    linear-gradient(rgba(35,48,72,.2), rgba(35,48,72,.2));
-  background-size:140px 140px, 100% 100%;
-  animation:destPada .45s linear infinite}
-@keyframes destPada{from{background-position:0 0, 0 0}to{background-position:-38px 140px, 0 0}}
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg stroke='%23dbe9ff' stroke-width='2' stroke-linecap='round' opacity='.8'%3E%3Cline x1='10' y1='4' x2='16' y2='20'/%3E%3Cline x1='38' y1='14' x2='44' y2='30'/%3E%3Cline x1='70' y1='2' x2='76' y2='18'/%3E%3Cline x1='95' y1='10' x2='101' y2='26'/%3E%3Cline x1='5' y1='45' x2='11' y2='61'/%3E%3Cline x1='30' y1='55' x2='36' y2='71'/%3E%3Cline x1='58' y1='42' x2='64' y2='58'/%3E%3Cline x1='85' y1='50' x2='91' y2='66'/%3E%3Cline x1='110' y1='38' x2='116' y2='54'/%3E%3Cline x1='18' y1='80' x2='24' y2='96'/%3E%3Cline x1='48' y1='88' x2='54' y2='104'/%3E%3Cline x1='75' y1='78' x2='81' y2='94'/%3E%3Cline x1='100' y1='85' x2='106' y2='101'/%3E%3Cline x1='2' y1='100' x2='8' y2='116'/%3E%3Cline x1='60' y1='108' x2='66' y2='120'/%3E%3C/g%3E%3C/svg%3E");
+  background-size:120px 120px;
+  animation:destPada 1s linear infinite;
+  -webkit-mask-image:
+    radial-gradient(ellipse 120px 90px at 16% 26%, #000 45%, transparent 100%),
+    radial-gradient(ellipse 140px 100px at 80% 58%, #000 45%, transparent 100%),
+    radial-gradient(ellipse 100px 80px at 42% 88%, #000 45%, transparent 100%);
+  -webkit-mask-repeat:no-repeat;
+  mask-image:
+    radial-gradient(ellipse 120px 90px at 16% 26%, #000 45%, transparent 100%),
+    radial-gradient(ellipse 140px 100px at 80% 58%, #000 45%, transparent 100%),
+    radial-gradient(ellipse 100px 80px at 42% 88%, #000 45%, transparent 100%);
+  mask-repeat:no-repeat}
+@keyframes destPada{from{background-position:0 0}to{background-position:0 120px}}
 #pocasiOverlay.mlha{
-  background:radial-gradient(ellipse at 50% 42%, rgba(255,255,255,.32), rgba(225,228,235,.58));
-  animation:mlhaPlyn 16s ease-in-out infinite alternate}
-@keyframes mlhaPlyn{from{opacity:.85}to{opacity:1}}
+  background:radial-gradient(ellipse at 50% 40%, rgba(255,255,255,.22), rgba(205,210,220,.46));
+  background-size:160% 160%;
+  animation:mlhaPlyn 18s ease-in-out infinite alternate}
+/* Pozor: animace smí hýbat jen polohou přechodu, NE opacity – tu si
+   hlídá JS podle sily (updPocasi) kvůli plynulému najíždění/mizení.
+   Kdyby tu opacity animovalo i CSS, přebilo by to JS a mlha by vždycky
+   naskočila rovnou na plno – přesně tohle byla ta chyba "moc světlý
+   den", co nahlásila Lucka. */
+@keyframes mlhaPlyn{from{background-position:44% 38%}to{background-position:56% 46%}}
 .strela{position:absolute;width:14px;height:5px;border-radius:3px;background:linear-gradient(90deg,#fff,#c9a15a);pointer-events:none;z-index:9000}
 .jiskra{position:absolute;pointer-events:none;font-size:15px;font-weight:bold;z-index:9500;
   text-shadow:0 2px 3px #000;animation:let 1s forwards}
@@ -3441,18 +3468,36 @@ function zajistiSvetylko(b){
   d.className = "svetylko";
   b.el.appendChild(d);
   b.svetylkoEl = d;
+  // na přání "at je hezky videt na kratkou vzdalenost osvetleni" – vedle
+  // samotné žárovky ještě měkká záře na zem kolem budovy (screen blend,
+  // ať to nepůsobí jako nalepený žlutý flek, ale jako skutečné světlo)
+  const k = document.createElement("div");
+  k.className = "svetlokruh";
+  b.el.appendChild(k);
+  b.svetlokruhEl = k;
   return d;
 }
 const nocOverlayEl = document.getElementById("nocOverlay");
+/* Na přání "at vidis cas pri hre jak dlouho hraje, presne" – přesný
+   ukazatel odehraného herního času (stejné číslo, co se dřív ukázalo
+   jen na konci hry jako "Trvalo to X min Y s"), teď vidět pořád v horní
+   liště vedle Den/Noc. */
+function formatCas(s){
+  const m = Math.floor(s/60), sec = Math.floor(s%60);
+  return m+":"+(sec<10?"0":"")+sec;
+}
 function updDenNoc(){
   const f = nocFaktor();
   if(nocOverlayEl) nocOverlayEl.style.opacity = (f*0.55).toFixed(2);
   for(const b of G.budovy){
     if(b.mrtvy || !b.hotova) continue;
-    zajistiSvetylko(b).style.opacity = f>0.03 ? Math.min(1,f*1.3).toFixed(2) : 0;
+    zajistiSvetylko(b);
+    const svit = f>0.03 ? Math.min(1,f*1.3).toFixed(2) : 0;
+    b.svetylkoEl.style.opacity = svit;
+    b.svetlokruhEl.style.opacity = svit;
   }
   const ik = document.getElementById("ik_pocasi"), v = document.getElementById("v_pocasi");
-  if(v) v.textContent = f>0.5 ? "Noc" : "Den";
+  if(v) v.textContent = (f>0.5 ? "Noc" : "Den")+" · "+formatCas(G.cas);
   if(ik && (!G.pocasi || G.pocasi==="jasno")) ik.textContent = f>0.5 ? "🌙" : "☀️";
 }
 /* POČASÍ – překvapení navrch k noci a dni: čas od času (každá "okna" 240 s)
@@ -3463,12 +3508,21 @@ function updDenNoc(){
    uhasí ohýnky" – malý bonus, nikdy ne postih. */
 function hash01(n){ const x = Math.sin(n*12.9898)*43758.5453; return x-Math.floor(x); }
 const POCASI_OKNO = 240, POCASI_PRECHOD = 15;
-function pocasiTyp(i){
+function pocasiTypSurovy(i){
   if(i<=0) return "jasno";
   const r = hash01(i*7.31+1000);
   if(r<0.55) return "jasno";
   if(r<0.8) return "dest";
   return "mlha";
+}
+/* Na přání "at je dest/mlha max pet minut" – jedno okno má 240 s (4 min),
+   ale kdyby náhoda dvakrát za sebou padla na stejné počasí, natáhlo by se
+   to na dvojnásobek. Když druhé okno v kuse vyjde stejně jako předchozí,
+   radši se vynutí jasno – žádné počasí tak nikdy nepřesáhne jedno okno. */
+function pocasiTyp(i){
+  const typ = pocasiTypSurovy(i);
+  if(typ!=="jasno" && typ===pocasiTypSurovy(i-1)) return "jasno";
+  return typ;
 }
 const pocasiOverlayEl = document.getElementById("pocasiOverlay");
 function updPocasi(){
@@ -3479,7 +3533,7 @@ function updPocasi(){
   G.pocasi = typ;
   if(pocasiOverlayEl){
     if(typ==="jasno"){ pocasiOverlayEl.className=""; pocasiOverlayEl.style.opacity=0; }
-    else{ pocasiOverlayEl.className = typ; pocasiOverlayEl.style.opacity = (typ==="dest"?0.8:0.85)*sila; }
+    else{ pocasiOverlayEl.className = typ; pocasiOverlayEl.style.opacity = (typ==="dest"?0.95:0.4)*sila; }
   }
   const ik = document.getElementById("ik_pocasi");
   if(ik && typ!=="jasno") ik.textContent = typ==="dest" ? "🌧️" : "🌫️";
@@ -14674,7 +14728,22 @@ NET.posli = function(m){
       (p4a.html – nocFaktor/updDenNoc/zajistiSvetylko, p1.html –
       #nocOverlay a .svetylko). Obě počasí i denní dobu navíc ukazuje
       malá ikonka v horní liště vedle zdrojů. */
-VERZE = "v111";
+/* v112 = na přání opravy k v111 (den/noc a počasí).
+   1) "at vidis cas pri hre presne" – vedle Den/Noc je teď i přesný
+      odehraný čas M:SS (formatCas, p4a.html – updDenNoc).
+   2) Mlha byla bug – .mlha měla v CSS animaci, co přebíjela JS opacity
+      (najela vždycky rovnou na plno), proto "moc světlý den". Animace
+      teď hýbe jen pozicí přechodu, ne opacity (p1.html).
+   3) Déšť byl úplně přepracovaný – žádný plošný modrý filtr přes celou
+      mapu. Teď SVG dlaždice se spoustou krátkých kapiček + maska ze tří
+      měkkých skvrn, takže prší jen v pár místech na obrazovce, ne
+      všude (p1.html – #pocasiOverlay.dest).
+   4) Žádné počasí netrvá déle než jedno okno (240 s / 4 min, pod
+      požadovaným stropem 5 min) – když by náhoda hodila stejné počasí
+      dvakrát za sebou, radši se vynutí jasno (p4a.html – pocasiTyp).
+   5) Světýlka v noci teď kolem budovy hezky osvítí i kus země (nová
+      měkká záře .svetlokruh, mix-blend-mode:screen, p1.html+p4a.html). */
+VERZE = "v112";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
