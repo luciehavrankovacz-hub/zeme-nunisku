@@ -12253,9 +12253,13 @@ kresliMinimapu = function(){
   if(typeof pingy !== "undefined" && pingy.length){
     const ted = Date.now();
     pingy = pingy.filter(p => ted - p.cas < 10000);
+    /* Na přání "krizek at blika, nekdy bile a nekdy barvou hrace, co ho
+       poslal, vyrazne se to strida" – přepíná se každých 250 ms, ať je
+       to fakt vidět, ne skoro nepostřehnutelné mrknutí. */
     for(const p of pingy){
       const px = p.x*sx, py = p.y*sy;
-      MMX.strokeStyle = p.barva; MMX.lineWidth = 2.4;
+      const bila = Math.floor((ted - p.cas)/250) % 2 === 0;
+      MMX.strokeStyle = bila ? "#ffffff" : p.barva; MMX.lineWidth = 2.6;
       MMX.beginPath();
       MMX.moveTo(px-5, py-5); MMX.lineTo(px+5, py+5);
       MMX.moveTo(px+5, py-5); MMX.lineTo(px-5, py+5);
@@ -14370,8 +14374,11 @@ NET.posli = function(m){
       sám zmizí po 10 vteřinách (p1.html – tlačítko a jeho vzhled,
       p5.html – posliPing()/pridejPing(), p36.html – kreslení do
       minimapy, p7.html – síťové doručení kamarádům přes hostitele,
-      který to jako jediný vidí od všech a rozešle to dál). */
-VERZE = "v107";
+      který to jako jediný vidí od všech a rozešle to dál).
+   v108 = na přání "krizek at blika, nekdy bile a nekdy barvou hrace" –
+   ping na minimapě teď každých 250 ms přepíná mezi bílou a barvou
+   odesílatele, výrazně, dokud po 10 s nezmizí (p36.html). */
+VERZE = "v108";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
