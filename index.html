@@ -1897,11 +1897,16 @@ const BUD = {
     popis:"Cvičí bojovníky a lučištníky – ti jsou levní, dá se jich mít hodně.", cvici:["vojak","lukostrelec"]},
   staj:{jm:"Stáj", hp:680, r:46, vel:108, cena:{drevo:130,zelezo:40,zlato:60}, cas:20,
     popis:"Cvičí JEZDCE NA KONI a levné KOPIJNÍKY proti slonům.", cvici:["jezdec","kopijnik"]},
-  vez:{jm:"Věž", hp:700, r:28, vel:94, cena:{drevo:60,zelezo:45}, cas:14, dostrel:250, utok:15, rychUtoku:1.1, strela:1,
+  /* Na přání "zdraž věže" – dřevo 60→90, železo 45→70 (asi o polovinu dráž). */
+  vez:{jm:"Věž", hp:700, r:28, vel:94, cena:{drevo:90,zelezo:70}, cas:14, dostrel:250, utok:15, rychUtoku:1.1, strela:1,
     popis:"Sama střílí po nepřátelích, co přijdou blízko.", cvici:[]},
+  /* Na přání "hrad at ma silnou strelu jako tri veze najednou": věž dává
+     DPS (poškození za vteřinu) 15×1,1=16,5, takže tři věže dohromady
+     49,5 – zaokrouhleno na 50 (rychUtoku zůstává 1,0, ať pořád střílí
+     stejně často jako dřív, jen mnohem víc bolí). */
   hrad:{jm:"Hrad", hp:2200, r:64, vel:152, cena:{drevo:320,zelezo:160,zlato:260}, cas:40, popPlus:5,
-    dostrel:280, utok:24, rychUtoku:1.0, strela:1,
-    popis:"Obrovská pevnost. Cvičí HRDINU a JEZDCE NA SLONU a sama střílí!", cvici:["hrdina","slon"]},
+    dostrel:280, utok:50, rychUtoku:1.0, strela:1,
+    popis:"Obrovská pevnost. Cvičí HRDINU a JEZDCE NA SLONU a sama střílí silou tří věží!", cvici:["hrdina","slon"]},
   dilna:{jm:"Dílna na stroje", hp:640, r:46, vel:110, cena:{drevo:150,zelezo:70}, cas:22,
     popis:"Staví BERANIDLO a TREBUCHET – stroje, které boří nepřátelské budovy.",
     cvici:["beranidlo","trebuchet"]},
@@ -3188,7 +3193,12 @@ function updJednotku(e, dt){
 
     case "stav": {
       const b = e.cilE;
-      if(!b || b.mrtvy || b.hotova){ e.stav="stoj"; e.cilE=null; break; }
+      /* Na přání "vesnicani muzou opravovat budovy" – tenhle stav teď
+         slouží i opravě HOTOVÉ budovy (updBudovu, p4a.html to pozná
+         podle b.hotova a jen léčí místo stavění). Zastavit se smí, až
+         když už fakt není co dělat – budova neexistuje, nebo je hotová
+         A plné zdraví. */
+      if(!b || b.mrtvy || (b.hotova && b.hp>=b.maxHp)){ e.stav="stoj"; e.cilE=null; e.kotva=false; break; }
       if(e.slotBId!==b.id){ e.slotB = slotBod(e, b, e.r + b.r + 8); e.slotBId = b.id; }
       if(jdiKZdi(e, e.slotB.x, e.slotB.y, dt, 7) || dist(e,b) <= e.r + b.r + 16){
         b.stavitele = (b.stavitele||0) + 1;
@@ -3197,6 +3207,37 @@ function updJednotku(e, dt){
         e.swing = Math.sin(e.swingT)*16;
         e.tezAnim = (e.tezAnim||0)+dt;
         if(e.tezAnim>0.5){ e.tezAnim=0; castice(b.x+nah(-24,24), b.y-b.vel*0.3, "#e0c89a", 4); if(jeMuj(e.side)) zvuk("stavba"); }
+      }
+      break;
+    }
+
+    /* Na přání "vesnicani muzou opravovat stroje... ale neco to stoji" –
+       beranidlo/trebuchet jsou JEDNOTKA, ne budova, takže nemají
+       updBudovu() – léčení i cena za ni se proto počítá rovnou tady,
+       stejná myšlenka jako u oprav budov výš (polovina ceny na plnou
+       opravu, platí se průběžně, bez peněz oprava jen počká). */
+    case "opravJed": {
+      const c = e.cilE;
+      if(!c || c.mrtvy || c.hp>=c.maxHp){ e.stav="stoj"; e.cilE=null; e.kotva=false; break; }
+      if(e.slotBId!==c.id){ e.slotB = slotBod(e, c, e.r + c.r + 8); e.slotBId = c.id; }
+      if(jdiKZdi(e, e.slotB.x, e.slotB.y, dt, 7) || dist(e,c) <= e.r + c.r + 16){
+        e.kotva = true;
+        e.swingT = (e.swingT||0) + dt*10;
+        e.swing = Math.sin(e.swingT)*16;
+        const rychlost = (1/JED[c.kind].cas) * M(c.side,"stavba") * silaHrace(c.side);
+        const hpZisk = Math.min(c.maxHp-c.hp, c.maxHp*rychlost*dt*0.7);
+        if(hpZisk>0){
+          const podil = hpZisk/c.maxHp, cena = cenaJednotky(c.kind, c.side), H = G.hraci[c.side];
+          const naTik = {}; let mam = true;
+          for(const k in cena){ naTik[k] = cena[k]*0.5*podil; if(H.res[k] < naTik[k]) mam = false; }
+          if(mam){
+            for(const k in naTik) H.res[k] -= naTik[k];
+            c.hp += hpZisk;
+            if(jeMuj(c.side)) obnovHud();
+          }
+        }
+        e.tezAnim = (e.tezAnim||0)+dt;
+        if(e.tezAnim>0.5){ e.tezAnim=0; castice(c.x+nah(-24,24), c.y-c.vel*0.3, "#e0c89a", 4); if(jeMuj(e.side)) zvuk("stavba"); }
       }
       break;
     }
@@ -3362,6 +3403,28 @@ function updBudovu(b, dt){
     }
     b.stavitele = 0;
   }else{
+    /* Na přání "vesnicani muzou opravovat budovy, ale neco to stoji" –
+       stejný stav "stav" (chození/animace sekyrou), co dřív fungoval
+       jen na rozestavěné budovy, teď funguje i na hotové poškozené
+       (rozkaz() v p5.html to teď povolí). Cena: aby oprava z 0 na 100 %
+       stála polovinu ceny nové budovy (běžná RTS konvence), platí se
+       průběžně podle toho, kolik % života se zrovna doopraví – když
+       dojdou suroviny, oprava se jen zastaví, nic se neztratí. */
+    if(b.stavitele>0 && b.hp<b.maxHp){
+      const rychlost = (1/BUD[b.kind].cas) * M(b.side,"stavba") * silaHrace(b.side) * (1+(b.stavitele-1)*0.6);
+      const hpZisk = Math.min(b.maxHp-b.hp, b.maxHp*rychlost*dt*0.7);
+      if(hpZisk>0){
+        const podil = hpZisk/b.maxHp, cena = cenaBudovy(b.kind, b.side), H = G.hraci[b.side];
+        const naTik = {}; let mam = true;
+        for(const k in cena){ naTik[k] = cena[k]*0.5*podil; if(H.res[k] < naTik[k]) mam = false; }
+        if(mam){
+          for(const k in naTik) H.res[k] -= naTik[k];
+          b.hp += hpZisk;
+          if(jeMuj(b.side)) obnovHud();
+        }
+      }
+    }
+    b.stavitele = 0;
     // střelba
     const def = BUD[b.kind];
     if(def.dostrel){
@@ -3671,10 +3734,22 @@ function rozkaz(x,y){
     for(const u of moji){ u.stav="utok"; u.cilE=cil; u.hlidka=null; u.tezar=false; }
     jiskra(cil.x, cil.y-cil.vel*0.6, "⚔️", "#ff9a8a"); zvuk("klik"); return;
   }
-  if(cil && jeMuj(cil.side) && cil.druh==="budova" && !cil.hotova){
+  /* Na přání "vesnicani muzou opravovat stroje a budovy, ale neco to
+     stoji" – rozestavěná (!hotova) i hotová, ale poškozená (hp<maxHp)
+     budova jdou opravit stejným "postav se ke zdi a mlať" stavem – cena
+     a léčení jsou v updBudovu() (p4a.html). */
+  if(cil && jeMuj(cil.side) && cil.druh==="budova" && (!cil.hotova || cil.hp<cil.maxHp)){
     for(const u of vesnicani){ u.stav="stav"; u.cilE=cil; u.hlidka=null; u.tezar=false; u.slotBId=null; }
     for(const u of vojaci){ u.stav="jdi"; u.cil={x,y}; }
     jiskra(cil.x, cil.y-cil.vel*0.6, "🔨", "#ffe08a"); zvuk("klik"); return;
+  }
+  /* Stroje (beranidlo/trebuchet) jsou JEDNOTKA, ne budova – vlastní stav
+     "opravJed" (case v p4a.html), stejná myšlenka i cena, jen se počítá
+     rovnou v updJednotku(), protože stroje nemají updBudovu(). */
+  if(cil && jeMuj(cil.side) && cil.druh==="jednotka" && JED[cil.kind].stroj && cil.hp<cil.maxHp){
+    for(const u of vesnicani){ u.stav="opravJed"; u.cilE=cil; u.hlidka=null; u.tezar=false; u.slotBId=null; }
+    for(const u of vojaci){ u.stav="jdi"; u.cil={x,y}; }
+    jiskra(cil.x, cil.y-cil.vel*0.6, "🔧", "#ffe08a"); zvuk("klik"); return;
   }
   const n = moji.length, sl = Math.ceil(Math.sqrt(n));
   moji.forEach((u,i)=>{
@@ -14377,8 +14452,22 @@ NET.posli = function(m){
       který to jako jediný vidí od všech a rozešle to dál).
    v108 = na přání "krizek at blika, nekdy bile a nekdy barvou hrace" –
    ping na minimapě teď každých 250 ms přepíná mezi bílou a barvou
-   odesílatele, výrazně, dokud po 10 s nezmizí (p36.html). */
-VERZE = "v108";
+   odesílatele, výrazně, dokud po 10 s nezmizí (p36.html).
+   v109 = na přání "hrad at ma silnou strelu jako tri veze najednou" –
+   věž dává DPS 15×1,1=16,5, tři věže dohromady 49,5 → hrad utok
+   zvednutý z 24 na 50 (rychUtoku beze změny 1,0), takže hrad teď
+   střílí přesně 3× silněji než jedna věž (p3.html).
+   v110 = dvě další věci.
+   1) "vesnicani muzou opravovat stroje a budovy, ale neco to stoji" –
+      stav "stav" (dřív jen pro rozestavěné budovy) teď funguje i na
+      HOTOVÉ poškozené budovy – opraví je, ale stojí to (polovina ceny
+      budovy na plnou opravu, platí se průběžně podle % vráceného
+      života, bez peněz oprava jen počká). Stroje (beranidlo/trebuchet)
+      jsou JEDNOTKA, ne budova, takže mají vlastní nový stav "opravJed"
+      se stejnou myšlenkou (p4a.html – updBudovu()+case opravJed,
+      p5.html – rozkaz() pozná cíl a přidělí vesničany).
+   2) "zdraž věže" – dřevo 60→90, železo 45→70 (p3.html). */
+VERZE = "v110";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
