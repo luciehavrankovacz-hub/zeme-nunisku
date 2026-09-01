@@ -259,6 +259,32 @@ select.pole:disabled,input.pole:disabled{opacity:.55}
   background:radial-gradient(circle,rgba(90,90,90,.55),rgba(90,90,90,0) 70%);
   animation:koureni 2.2s ease-out infinite}
 @keyframes koureni{0%{transform:translate(-50%,0) scale(.5);opacity:.55}100%{transform:translate(-50%,-34px) scale(1.5);opacity:0}}
+/* DEN A NOC (na přání "hra zacina dnem, deset minut den, deset minut noc,
+   pri noci se budovy hezky rozsviti"). Přetmavení leží ve #svetOkno (ne
+   uvnitř #svet), takže se NEHÝBE s kamerou/zoomem a vždycky zakryje celé
+   viditelné okno mapy – ale je to jen potomek #svetOkno, takže panel/hud
+   mimo #hra zůstávají nad ním úplně bez řešení z-indexů mezi sebou. */
+#nocOverlay{position:absolute;inset:0;background:#0a1236;opacity:0;pointer-events:none;z-index:5000}
+.svetylko{position:absolute;left:50%;top:56%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;
+  border-radius:50%;background:#ffe28a;box-shadow:0 0 10px 4px rgba(255,214,120,.85);
+  opacity:0;pointer-events:none;z-index:5}
+/* POČASÍ – "překvapení" navrch k noci a dni (viz updPocasi v p4a.html).
+   Stejně jako #nocOverlay leží ve #svetOkno, ne uvnitř #svet, ať se
+   nehýbe s kamerou. Kapky deště jsou jeden opakující se gradient s
+   animovanou pozicí pozadí – žádné stovky DOM elementů navíc, ať to
+   neseká, i když je na mapě hodně jednotek. */
+#pocasiOverlay{position:absolute;inset:0;pointer-events:none;z-index:4999;opacity:0;transition:opacity 1.2s linear}
+#pocasiOverlay.dest{
+  background:
+    repeating-linear-gradient(115deg, rgba(215,232,255,.6) 0 2px, transparent 2px 26px),
+    linear-gradient(rgba(35,48,72,.2), rgba(35,48,72,.2));
+  background-size:140px 140px, 100% 100%;
+  animation:destPada .45s linear infinite}
+@keyframes destPada{from{background-position:0 0, 0 0}to{background-position:-38px 140px, 0 0}}
+#pocasiOverlay.mlha{
+  background:radial-gradient(ellipse at 50% 42%, rgba(255,255,255,.32), rgba(225,228,235,.58));
+  animation:mlhaPlyn 16s ease-in-out infinite alternate}
+@keyframes mlhaPlyn{from{opacity:.85}to{opacity:1}}
 .strela{position:absolute;width:14px;height:5px;border-radius:3px;background:linear-gradient(90deg,#fff,#c9a15a);pointer-events:none;z-index:9000}
 .jiskra{position:absolute;pointer-events:none;font-size:15px;font-weight:bold;z-index:9500;
   text-shadow:0 2px 3px #000;animation:let 1s forwards}
@@ -567,7 +593,7 @@ body.mobil #tip{display:none !important}
 
 <!-- ================= HRA ================= -->
 <div id="hra">
-  <div id="svetOkno"><div id="svet"></div></div>
+  <div id="svetOkno"><div id="svet"></div><div id="nocOverlay"></div><div id="pocasiOverlay"></div></div>
   <div id="vinjeta"></div>
   <div id="vyber"></div>
 
@@ -576,6 +602,7 @@ body.mobil #tip{display:none !important}
     <div class="zdroj" id="z_zelezo"><span>⛏️</span><i id="v_zelezo">0</i></div>
     <div class="zdroj" id="z_zlato"><span>🪙</span><i id="v_zlato">0</i></div>
     <div class="zdroj" id="z_pop"><span>🏠</span><i id="v_pop">0/10</i></div>
+    <div class="zdroj" id="z_pocasi" title="Počasí a denní doba"><span id="ik_pocasi">☀️</span><i id="v_pocasi">Den</i></div>
     <button class="hbtn" id="b_pauza">⏸</button>
     <button class="hbtn" id="b_skore">📊</button>
     <button class="hbtn" id="b_chat">💬</button>
@@ -1525,6 +1552,25 @@ function budovaSVG(kind, civK, barva, otevrena){
     ${ozdobaSVG(s, a, 22, 82, 0.8)}
     ${travaSVG(24, 78, 94)}`);
 
+  /* Na přání "tržiště" – jednoduchý stánek s barevnou plachtou a
+     pultem plným zboží, ať jde na první pohled poznat od domečku. */
+  if(kind==="trziste") return svgObal(`
+    <ellipse cx="50" cy="94" rx="38" ry="7" fill="rgba(0,0,0,.24)"/>
+    <rect x="18" y="70" width="64" height="24" rx="3" fill="${s.zaklad}"/>
+    <rect x="18" y="70" width="64" height="6" rx="3" fill="${svetlej(s.zaklad,0.18)}"/>
+    <path d="M10 46 L50 30 L90 46 L84 50 L50 38 L16 50 Z" fill="${a}" stroke="${tmavej(a,0.25)}" stroke-width="1.5"/>
+    <path d="M18 48 L50 36 L82 48 L82 70 L18 70 Z" fill="${svetlej(a,0.14)}" opacity=".92"/>
+    <rect x="30" y="76" width="10" height="10" rx="2" fill="#e6c489"/>
+    <circle cx="35" cy="79" r="2.6" fill="#c94b3a"/>
+    <circle cx="38.5" cy="80.5" r="2.2" fill="#e0a83a"/>
+    <rect x="52" y="76" width="16" height="10" rx="2" fill="#7a5230"/>
+    <circle cx="56" cy="80" r="2.4" fill="#9dcf6a"/>
+    <circle cx="60" cy="81" r="2.4" fill="#f2d24a"/>
+    <circle cx="64" cy="79.5" r="2.2" fill="#c94b3a"/>
+    ${dvereSVG(s, 50, 89, 13, 22)}
+    ${vlajkaSVG(a, 84, 36, 20)}
+    ${travaSVG(14, 86, 94)}`);
+
   if(kind==="radnice") return svgObal(`
     <ellipse cx="50" cy="95" rx="44" ry="8" fill="rgba(0,0,0,.26)"/>
     <rect x="16" y="86" width="68" height="9" rx="4" fill="${s.zaklad}"/>
@@ -1910,6 +1956,11 @@ const BUD = {
   dilna:{jm:"Dílna na stroje", hp:640, r:46, vel:110, cena:{drevo:150,zelezo:70}, cas:22,
     popis:"Staví BERANIDLO a TREBUCHET – stroje, které boří nepřátelské budovy.",
     cvici:["beranidlo","trebuchet"]},
+  /* Na přání "tržiště – směna surovin jako v AoE". Žádné jednotky necvičí
+     (cvici:[]), obchodní tlačítka řeší obnovPanel() (p5.html) a obchod()
+     (p4a.html). */
+  trziste:{jm:"Tržiště", hp:600, r:44, vel:106, cena:{drevo:100,zelezo:30}, cas:18,
+    popis:"Směníš tu dřevo nebo železo za zlato, i naopak – když ti něco chybí.", cvici:[]},
   /* zed:1 = hradba/brána. Vydrží mnohem víc než ostatní budovy a staví se do řady tažením. */
   hradba:{jm:"Hradba", hp:1300, r:26, vel:64, cena:{drevo:12,zelezo:3}, cas:5, zed:1,
     popis:"Pevná zeď. Vydrží mnohem víc než ostatní budovy a nepřátele zdrží.", cvici:[]},
@@ -1985,7 +2036,7 @@ const ZDROJE = {
 };
 const IKONA = {drevo:"🌲", zelezo:"⛏️", zlato:"🪙"};
 const IKONA_BUDOVY = {radnice:"🏛️", domek:"🏠", kasarna:"⚔️", staj:"🐴", vez:"🗼", hrad:"🏰",
-                      dilna:"🛠️", hradba:"🧱", brana:"🚪"};
+                      dilna:"🛠️", hradba:"🧱", brana:"🚪", trziste:"💰"};
 const NAZEV = {drevo:"dřevo", zelezo:"železo", zlato:"zlato"};
 
 /* ---- 10 barev hráčů (jako v Age of Empires) ---- */
@@ -3371,6 +3422,68 @@ function zajistiOhen(b){
   b.kourEl = k;
   return d;
 }
+/* DEN A NOC – na přání "hra zacina dnem, den 10 minut, pak noc 10 minut,
+   pri noci se vsechny budovy hezky rozsviti svetylka". Počítá se čistě
+   z G.cas (to má i klient ze snímků od hostitele), takže svítí VŠEM
+   stejně, i tomu, kdo hru nezaložil. Přechod netrhá – 25 s plynulé
+   stmívání/rozednívání na obou koncích, ne "cvak a je tma". */
+const DEN_S = 600, NOC_S = 600, CYKLUS_DN = DEN_S + NOC_S, PRECHOD_DN = 25;
+function nocFaktor(){
+  const t = G.cas % CYKLUS_DN;
+  if(t < DEN_S - PRECHOD_DN) return 0;
+  if(t < DEN_S) return (t - (DEN_S - PRECHOD_DN)) / PRECHOD_DN;
+  if(t < CYKLUS_DN - PRECHOD_DN) return 1;
+  return 1 - (t - (CYKLUS_DN - PRECHOD_DN)) / PRECHOD_DN;
+}
+function zajistiSvetylko(b){
+  if(b.svetylkoEl) return b.svetylkoEl;
+  const d = document.createElement("div");
+  d.className = "svetylko";
+  b.el.appendChild(d);
+  b.svetylkoEl = d;
+  return d;
+}
+const nocOverlayEl = document.getElementById("nocOverlay");
+function updDenNoc(){
+  const f = nocFaktor();
+  if(nocOverlayEl) nocOverlayEl.style.opacity = (f*0.55).toFixed(2);
+  for(const b of G.budovy){
+    if(b.mrtvy || !b.hotova) continue;
+    zajistiSvetylko(b).style.opacity = f>0.03 ? Math.min(1,f*1.3).toFixed(2) : 0;
+  }
+  const ik = document.getElementById("ik_pocasi"), v = document.getElementById("v_pocasi");
+  if(v) v.textContent = f>0.5 ? "Noc" : "Den";
+  if(ik && (!G.pocasi || G.pocasi==="jasno")) ik.textContent = f>0.5 ? "🌙" : "☀️";
+}
+/* POČASÍ – překvapení navrch k noci a dni: čas od času (každá "okna" 240 s)
+   padne kostkou jasno / déšť / mlha, vždycky stejně na hostiteli i
+   klientovi (deterministický hash z G.cas, žádné posílání po síti navíc
+   netřeba). Poslední okno hry vždycky začíná jasno, ať se hráč nejdřív
+   trochu rozkouká. Déšť navíc zvolna trochu léčí poškozené budovy – "voda
+   uhasí ohýnky" – malý bonus, nikdy ne postih. */
+function hash01(n){ const x = Math.sin(n*12.9898)*43758.5453; return x-Math.floor(x); }
+const POCASI_OKNO = 240, POCASI_PRECHOD = 15;
+function pocasiTyp(i){
+  if(i<=0) return "jasno";
+  const r = hash01(i*7.31+1000);
+  if(r<0.55) return "jasno";
+  if(r<0.8) return "dest";
+  return "mlha";
+}
+const pocasiOverlayEl = document.getElementById("pocasiOverlay");
+function updPocasi(){
+  const i = Math.floor(G.cas/POCASI_OKNO), typ = pocasiTyp(i), t = G.cas%POCASI_OKNO;
+  let sila = 1;
+  if(t<POCASI_PRECHOD) sila = t/POCASI_PRECHOD;
+  else if(t>POCASI_OKNO-POCASI_PRECHOD) sila = (POCASI_OKNO-t)/POCASI_PRECHOD;
+  G.pocasi = typ;
+  if(pocasiOverlayEl){
+    if(typ==="jasno"){ pocasiOverlayEl.className=""; pocasiOverlayEl.style.opacity=0; }
+    else{ pocasiOverlayEl.className = typ; pocasiOverlayEl.style.opacity = (typ==="dest"?0.8:0.85)*sila; }
+  }
+  const ik = document.getElementById("ik_pocasi");
+  if(ik && typ!=="jasno") ik.textContent = typ==="dest" ? "🌧️" : "🌫️";
+}
 function updBudovu(b, dt){
   if(b.zasah>0){ b.zasah-=dt; b.svgEl.style.filter="brightness(1.8)"; }
   else if(b.svgEl.style.filter) b.svgEl.style.filter="";
@@ -3425,6 +3538,11 @@ function updBudovu(b, dt){
       }
     }
     b.stavitele = 0;
+    /* Počasí – na přání "at je pocasi zajimave, prekvapeni": za deště se
+       poškozené budovy zvolna trochu samy hojí, i bez vesničana s
+       kladivem – "voda uhasí ohýnky". Malý a pomalý bonus (des. promile
+       maxHp/s), nikdy postih, takže to nikde nerozbije balanc. */
+    if(G.pocasi==="dest" && b.hp<b.maxHp) b.hp = Math.min(b.maxHp, b.hp + b.maxHp*0.004*dt);
     // střelba
     const def = BUD[b.kind];
     if(def.dostrel){
@@ -3873,6 +3991,25 @@ function cvic(b, kind){
   zvuk("klik"); obnovPanel();
 }
 
+/* Tržiště – na přání "podobne jako v age of empires": vždycky se mění
+   rovných 100 jednotek suroviny za jednou daný kurz 0,6 (tedy 100 dřeva
+   nebo železa = 60 zlata, a naopak). */
+const MNOZ_TRH = 100, KURZ_TRH = 0.6;
+function obchod(smer, surovina){
+  const H = MY();
+  if(smer==="prodej"){
+    if(H.res[surovina] < MNOZ_TRH){ zvuk("chyba"); zprava("Nemáš dost "+NAZEV[surovina]+" na prodej!","zle"); return; }
+    H.res[surovina] -= MNOZ_TRH;
+    H.res.zlato += Math.round(MNOZ_TRH*KURZ_TRH);
+  }else{
+    const cena = Math.round(MNOZ_TRH*KURZ_TRH);
+    if(H.res.zlato < cena){ zvuk("chyba"); zprava("Nemáš dost zlata na nákup!","zle"); return; }
+    H.res.zlato -= cena;
+    H.res[surovina] += MNOZ_TRH;
+  }
+  zvuk("klik"); obnovHud(); obnovPanel();
+}
+
 /* ============================================================
    18) PANEL A HUD
    ============================================================ */
@@ -3979,6 +4116,17 @@ function obnovPanel(){
       A.appendChild(tlacitko("🔨","Staví se…", Math.round(e.postup*100)+"%", true, ()=>{},
         "Pošli sem vesničany – čím víc jich staví, tím rychleji to bude."));
     }else{
+      if(e.kind==="trziste"){
+        const c = Math.round(MNOZ_TRH*KURZ_TRH), R = MY().res;
+        A.appendChild(tlacitko("🌲","Prodat dřevo","100🌲→"+c+"🪙", R.drevo>=MNOZ_TRH, ()=>obchod("prodej","drevo"),
+          "Prodáš 100 dřeva a dostaneš "+c+" zlata."));
+        A.appendChild(tlacitko("🪙","Koupit dřevo",c+"🪙→100🌲", R.zlato>=c, ()=>obchod("nakup","drevo"),
+          "Koupíš 100 dřeva za "+c+" zlata."));
+        A.appendChild(tlacitko("⛏️","Prodat železo","100⛏️→"+c+"🪙", R.zelezo>=MNOZ_TRH, ()=>obchod("prodej","zelezo"),
+          "Prodáš 100 železa a dostaneš "+c+" zlata."));
+        A.appendChild(tlacitko("🪙","Koupit železo",c+"🪙→100⛏️", R.zlato>=c, ()=>obchod("nakup","zelezo"),
+          "Koupíš 100 železa za "+c+" zlata."));
+      }
       for(const k of cvicitelne(G.ja, e.kind)){
         const c = cenaJednotky(k,G.ja), lze = lzeZaplatit(c) && MY().pop<MY().popMax;
         const hp = statJ(k,G.ja,"hp"), ut = Math.round(statJ(k,G.ja,"utok")), ry = Math.round(statJ(k,G.ja,"rychlost"));
@@ -4045,6 +4193,10 @@ let tahne=null, mys={x:0,y:0}, dotykRezim="posun";
    vůbec nedopočítá a propadne. `panelDrzi` = "právě se něčeho v panelu
    dotýkám" – dokud je true, pravidelné přemalování panelu se přeskočí. */
 let panelDrzi = false;
+/* Skupiny jednotek (Ctrl+1..9 uloží, 1..9 vybere) – na přání "skupiny
+   jednotek jako v Age of Empires". Osobní, nesynchronizuje se po síti,
+   každý hráč má svoje. */
+const skupinyJednotek = {};
 
 /* Na přání "tlacitko, kdyz kliknu na mapu tak vsem ukaze krizek, barvu
    ma podle toho, kdo ho poslal, a po 10 vterinach zmizi" – pingy se
@@ -4245,6 +4397,25 @@ function nastavOvladani(){
     if(ev.key==="-") nastavZoom(G.zoom*0.87, window.innerWidth/2, window.innerHeight/2);
     // Na přání "kliknu na jednotku/budovu a delete ji znici"
     if((ev.key==="Delete"||ev.key==="Backspace") && !G.divak && !G.konec) znicVybrane();
+    /* Na přání "skupiny jednotek (Ctrl+1, Ctrl+2…)" – Ctrl+číslo uloží
+       aktuální výběr vlastních jednotek pod tu číslici, samotná číslice
+       ho pak zase vybere (stejné jako v Age of Empires). */
+    if(/^[1-9]$/.test(ev.key)){
+      if(ev.ctrlKey || ev.metaKey){
+        ev.preventDefault();
+        const moje = G.sel.filter(e=>jeMuj(e.side) && e.druh==="jednotka" && !e.mrtvy);
+        if(moje.length){
+          skupinyJednotek[ev.key] = moje.map(u=>u.id);
+          zprava("🔢 Skupina "+ev.key+" uložena ("+moje.length+")","dobre");
+        }
+      }else if(!G.divak){
+        const ids = skupinyJednotek[ev.key];
+        if(ids){
+          const zive = ids.map(id=>G.ents.find(e=>e.id===id)).filter(e=>e && !e.mrtvy);
+          if(zive.length){ vyber(zive); zvuk("klik"); }
+        }
+      }
+    }
   });
   window.addEventListener("keyup", ev=>{ klavesy[ev.key.toLowerCase()]=false; });
 
@@ -4412,7 +4583,7 @@ function kameraKlavesy(dt){
    ============================================================ */
 /* posledniRAF píše JEN kreslicí smyčka. Podle ní pozná Web Worker (p13b),
    jestli kreslení opravdu stojí, nebo jen nestíhá – viz komentář tam. */
-let posledni = 0, posledniRAF = 0, mmCas = 0, panelCas = 0, kuliCas = 0;
+let posledni = 0, posledniRAF = 0, mmCas = 0, panelCas = 0, kuliCas = 0, nocCas = 0;
 function tik(t){
   requestAnimationFrame(tik);
   if(!G.bezi) return;
@@ -4675,16 +4846,15 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
-    • Klávesa <b>Delete</b> (nebo Backspace) smaže vybranou jednotku nebo budovu – ale jen tvoji vlastní<br>
-    • Král už zbytečně neumírá lučištníkovi, co před ním utíká<br>
-    • Dvě jednotky projdou branou najednou, ne že se tam zaseknou<br>
-    • Hradby jdou postavit fakt těsně vedle sebe, ne přes sebe<br>
-    • Vesničané si sami najdou bránu, když se vrací za hradbu do práce<br>
-    • Budovy hoří a kouří, čím víc jsou poškozené<br>
-    • Vidíš, jak se budova staví – roste odspoda nahoru, jak přibývá<br>
-    • Hustší lesy<br>
-    • Multiplayer: hra se už nezasekne navěky na „kamarád se připojuje"<br>
-    • Boti hrají poctivěji – nepodvádí rychlostí výcviku ani stavěním přes sebe<br><br>
+    • <b>Den a noc</b> – 10 minut je světlo, pak 10 minut tma a budovám se rozsvítí okýnka<br>
+    • <b>Počasí</b> – čas od času přijde déšť nebo mlha (a déšť trochu léčí poškozené budovy)<br>
+    • <b>Tržiště</b> – nová budova, kde směníš dřevo nebo železo za zlato, i naopak<br>
+    • <b>Skupiny jednotek</b> – Ctrl+1 až 9 uloží vybrané vojáky, číslo bez Ctrl je zase vybere (jako v Age of Empires)<br>
+    • Vesničané umí opravovat poškozené budovy i stroje (beranidlo, trebuchet) – jen to něco stojí<br>
+    • Tlačítko 🏳️ Vzdát se v pauze, ping 📍 na minimapě, křížek u rozkazu „jdi sem"<br>
+    • Hrad teď střílí silně jako tři věže dohromady<br>
+    • Klávesa <b>Delete</b> smaže vybranou jednotku nebo budovu – ale jen tvoji vlastní<br>
+    • Multiplayer: hra se už nezasekne navěky na „kamarád se připojuje"<br><br>
     Díky, že mi pořád píšeš, co spravit! 💛`;
   otevri("mNovinky");
 }
@@ -5203,6 +5373,12 @@ const SYNC = {
       const H = G.hraci[side];
       if(H && !H.porazen){ H.porazen = true; vyhodnotKonec(); }
     }
+    /* Tržiště – klient jen pošle "co chci směnit", hostitel to spočítá
+       nad SVÝMI daty hráče (G.hraci[side]), aby suroviny neujely. */
+    if(m.cmd==="obchod"){
+      const puvodJa = G.ja; G.ja = side;
+      try{ obchodLokalne(m.smer, m.surovina); } finally { G.ja = puvodJa; }
+    }
   }
 };
 
@@ -5237,6 +5413,15 @@ cvic = function(b, kind){
     return;
   }
   cvicLokalne(b, kind);
+};
+const obchodLokalne = obchod;
+obchod = function(smer, surovina){
+  if(SYNC.jsemKlient()){
+    NET.posli({typ:"cmd", cmd:"obchod", side:G.ja, smer, surovina});
+    zvuk("klik");
+    return;
+  }
+  obchodLokalne(smer, surovina);
 };
 /* Na přání "kliknu na jednotku/budovu a klávesou Delete ji zničí" – jen
    VLASTNÍ věci (jeMuj), ať se nedá takhle mazat kamarádům ani botům.
@@ -5283,6 +5468,7 @@ tik = function(t){
     mmCas += dt; if(mmCas>0.2){ mmCas=0; kresliMinimapu(); }
     panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
     kuliCas += dt; if(kuliCas>0.2){ kuliCas=0; kuliStatiku(); }
+    nocCas += dt; if(nocCas>0.5){ nocCas=0; updDenNoc(); updPocasi(); }
     return;
   }
 
@@ -5303,6 +5489,7 @@ tik = function(t){
   mmCas += dt; if(mmCas>0.2){ mmCas=0; kresliMinimapu(); }
   panelCas += dt; if(panelCas>0.4 && !panelDrzi){ panelCas=0; if(G.sel.length) obnovPanel(); obnovSkore(); }
   kuliCas += dt; if(kuliCas>0.2){ kuliCas=0; kuliStatiku(); }
+  nocCas += dt; if(nocCas>0.5){ nocCas=0; updDenNoc(); updPocasi(); }
 };
 
 /* ---- doplnění příjmu zpráv o herní část ---- */
@@ -14467,7 +14654,27 @@ NET.posli = function(m){
       se stejnou myšlenkou (p4a.html – updBudovu()+case opravJed,
       p5.html – rozkaz() pozná cíl a přidělí vesničany).
    2) "zdraž věže" – dřevo 60→90, železo 45→70 (p3.html). */
-VERZE = "v110";
+/* v111 = na přání "napady z Age of Empires + neco vlastniho, dej si
+   zálezet" – čtyři nové věci najednou.
+   1) Skupiny jednotek jako v AoE – Ctrl+1 až 9 uloží vybrané vojáky do
+      skupiny, samotné číslo je zase vybere (p5.html – skupinyJednotek).
+   2) Tržiště – nová budova, kde jde vždycky za rovných 100 kusů (kurz
+      0,6) směnit dřevo nebo železo za zlato, i naopak, tlačítky přímo
+      v panelu budovy (p2b.html – kresba, p3.html – BUD.trziste,
+      p5.html – obchod()+tlačítka v obnovPanel(), p7.html – síťový
+      příkaz "obchod" pro klienta, počítá se u hostitele).
+   3) Počasí (moje vlastní překvapení) – každá 4 minuty padne "kostka":
+      jasno, déšť nebo mlha, deterministicky ze samotného G.cas (stejně
+      hostiteli i klientovi, žádné nové posílání po síti). Déšť navíc
+      zvolna trochu léčí poškozené budovy (p4a.html – hash01/pocasiTyp/
+      updPocasi, p1.html – #pocasiOverlay a jeho vzhled).
+   4) Den a noc – den trvá přesně 10 minut při normálním jasu, pak
+      10 minut tma (plynulý 25s přechod na obou koncích, ne "cvak"), a
+      za tmy se všem hotovým budovám rozsvítí malé okýnko/světýlko
+      (p4a.html – nocFaktor/updDenNoc/zajistiSvetylko, p1.html –
+      #nocOverlay a .svetylko). Obě počasí i denní dobu navíc ukazuje
+      malá ikonka v horní liště vedle zdrojů. */
+VERZE = "v111";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
