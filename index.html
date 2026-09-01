@@ -1272,27 +1272,35 @@ function karavanSVG(civK, barva){
       <stop offset="0" stop-color="${sv}"/><stop offset="0.55" stop-color="${srst}"/><stop offset="1" stop-color="${tm}"/></linearGradient>
   </defs>
   <ellipse cx="52" cy="93" rx="48" ry="6.5" fill="rgba(0,0,0,.24)"/>
-  <!-- dvojitá oj – kůň jasně VEPŘEDU, táhne vůz na dvou tyčích spojených
-     obojkem, ne jednou tenkou čárou co skoro nebyla vidět -->
-  <path d="M74 68 Q57 62 45 58 M74 74 Q58 70 45 60" stroke="${drevoTm}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-  <circle cx="45" cy="59" r="3.4" fill="${drevo}" stroke="${drevoTm}" stroke-width="1"/>
-  <!-- vozík -->
-  ${kolo(80, 84, 7.5, drevoTm, drevoSv)}
-  ${kolo(94, 84, 7.5, drevoTm, drevoSv)}
-  <rect x="74" y="56" width="24" height="22" rx="4" fill="${bar}" stroke="${tmavej(bar,0.3)}" stroke-width="1.6"/>
-  <rect x="74" y="56" width="24" height="6" rx="4" fill="${svetlej(bar,0.22)}"/>
-  <path d="M79 60 V76 M84 60 V76 M89 60 V76 M93.5 60 V76" stroke="${tmavej(bar,0.28)}" stroke-width="1" opacity=".4"/>
-  <rect x="76" y="43" width="7" height="15" rx="2" fill="${drevo}"/>
-  <rect x="76" y="43" width="7" height="4" rx="2" fill="${drevoSv}"/>
-  <circle cx="90" cy="63" r="3.2" fill="#c94b3a"/>
+  <!-- Na přání "kun ma byt vepredu, at jde doleva nebo doprava" – kůň
+     (v kun) je nakreslený s čumákem doprava (viz hlava kolem x=99-101).
+     Hra jednotky při chůzi doleva přehazuje scaleX(-1) (p7.html), jinak
+     je nechá tak, jak jsou (výchozí = "jde doprava"). Aby kůň táhl a ne
+     jel pozadu, musí být vůz na OPAČNÉ straně, než kam čumák kouká –
+     tedy vlevo, za koněm, ne vpravo, kam se dívá. Bez přehození (jde
+     doprava): kůň vpravo, čumák vpravo, vůz vlevo vzadu – správně
+     vepředu. Po přehození (jde doleva): stejné, jen zrcadlené – kůň
+     zase vepředu, vůz vzadu. */
+  <!-- oj – dvě tyče spojené obojkem, ať je jasně vidět, že kůň táhne -->
+  <path d="M28 68 Q42 62 52 58 M28 74 Q40 70 52 60" stroke="${drevoTm}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  <circle cx="52" cy="59" r="3.4" fill="${drevo}" stroke="${drevoTm}" stroke-width="1"/>
+  <!-- vozík vzadu vlevo -->
+  ${kolo(10, 84, 7.5, drevoTm, drevoSv)}
+  ${kolo(24, 84, 7.5, drevoTm, drevoSv)}
+  <rect x="4" y="56" width="24" height="22" rx="4" fill="${bar}" stroke="${tmavej(bar,0.3)}" stroke-width="1.6"/>
+  <rect x="4" y="56" width="24" height="6" rx="4" fill="${svetlej(bar,0.22)}"/>
+  <path d="M9 60 V76 M14 60 V76 M19 60 V76 M23.5 60 V76" stroke="${tmavej(bar,0.28)}" stroke-width="1" opacity=".4"/>
+  <rect x="6" y="43" width="7" height="15" rx="2" fill="${drevo}"/>
+  <rect x="6" y="43" width="7" height="4" rx="2" fill="${drevoSv}"/>
+  <circle cx="20" cy="63" r="3.2" fill="#c94b3a"/>
   <!-- praporek vzadu na voze -->
-  <path d="M93 56 V44" stroke="${drevo}" stroke-width="2.2" stroke-linecap="round"/>
-  <circle cx="93" cy="44" r="1.6" fill="${svetlej(bar,0.4)}"/>
-  <path d="M94 45 q9 3 0 7 Z" fill="${bar}"/>
-  <!-- kůň vepředu, táhne -->
-  <g transform="translate(2,17) scale(0.75)">${kun}</g>
+  <path d="M7 56 V44" stroke="${drevo}" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="7" cy="44" r="1.6" fill="${svetlej(bar,0.4)}"/>
+  <path d="M6 45 q-9 3 0 7 Z" fill="${bar}"/>
+  <!-- kůň vepředu vpravo, táhne -->
+  <g transform="translate(21,17) scale(0.75)">${kun}</g>
   <!-- vozka sedí na voze -->
-  <g transform="translate(73,33) scale(0.34)">${voznik}</g>`;
+  <g transform="translate(4,33) scale(0.34)">${voznik}</g>`;
 }
 
 /* jedna funkce pro všechny jednotky (barva = barva hráče) */
@@ -14941,7 +14949,13 @@ NET.posli = function(m){
       obzvlášť na desítkách budov celou noc. Nahrazeno obyčejným
       radiálním gradientem, vypadá skoro stejně, ale nekreslí se tak
       draze (p1.html – .svetylko, .svetlokruh). */
-VERZE = "v114";
+/* v115 = oprava karavanu – "kun ma byt vepredu, at jde doleva nebo
+   doprava". Vůz byl na STEJNÉ straně, kam kůň koukal (místo za ním),
+   takže to při chůzi doprava vypadalo, že kůň jede pozadu za vozem.
+   Vůz je teď vzadu za koněm z obou stran (p2a3.html – karavanSVG,
+   přehozené pozice koně/vozu, ne celá scéna zrcadlená – to by
+   problém neopravilo, jen prohodilo, na kterou stranu je to špatně). */
+VERZE = "v115";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
