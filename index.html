@@ -265,15 +265,22 @@ select.pole:disabled,input.pole:disabled{opacity:.55}
    viditelné okno mapy – ale je to jen potomek #svetOkno, takže panel/hud
    mimo #hra zůstávají nad ním úplně bez řešení z-indexů mezi sebou. */
 #nocOverlay{position:absolute;inset:0;background:#0a1236;opacity:0;pointer-events:none;z-index:5000}
-.svetylko{position:absolute;left:50%;top:56%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;
-  border-radius:50%;background:#ffe28a;box-shadow:0 0 10px 4px rgba(255,214,120,.85);
+/* Na přání "at se to nesek i pri hodne jednotkach" – box-shadow s blur
+   a mix-blend-mode (o kousek níž) jsou obě notoricky drahé na vykreslení,
+   protože nutí prohlížeč místo obyčejného vybarvení počítat samostatný
+   rozostřovací/míchací průchod – a tohle svítí na KAŽDÉ budově celou noc.
+   Stejný měkký zář efekt jde levněji přes obyčejný radiální gradient. */
+.svetylko{position:absolute;left:50%;top:56%;width:16px;height:16px;margin:-8px 0 0 -8px;
+  border-radius:50%;
+  background:radial-gradient(circle, #fff6d0 0%, #ffe28a 45%, rgba(255,214,120,0) 75%);
   opacity:0;pointer-events:none;z-index:5}
 /* Na přání "at je hezky videt na kratkou vzdalenost osvetleni kolem
-   svetylek" – měkká záře na zem u budovy. mix-blend-mode:screen, ať to
-   trávu opravdu ROZSVÍTÍ, ne jen nalepí žlutý flek přes ni. */
+   svetylek" – měkká záře na zem u budovy. Bez mix-blend-mode (drahé na
+   vykreslení u DESÍTEK budov najednou celou noc) – jen obyčejný
+   poloprůhledný gradient, který zmizí do trávy, skoro stejně hezké. */
 .svetlokruh{position:absolute;left:50%;top:62%;width:150px;height:150px;margin:-75px 0 0 -75px;
-  border-radius:50%;pointer-events:none;z-index:3;mix-blend-mode:screen;
-  background:radial-gradient(circle, rgba(255,214,120,.9) 0%, rgba(255,196,90,.35) 45%, transparent 75%);
+  border-radius:50%;pointer-events:none;z-index:3;
+  background:radial-gradient(circle, rgba(255,214,120,.55) 0%, rgba(255,196,90,.22) 45%, transparent 75%);
   opacity:0}
 /* POČASÍ – "překvapení" navrch k noci a dni (viz updPocasi v p4a.html).
    Stejně jako #nocOverlay leží ve #svetOkno, ne uvnitř #svet, ať se
@@ -1007,15 +1014,6 @@ function plysak(civK, role, opt){
       <path d="M-3 -26 q14 -6 13 5 q-1 9 -13 5 Z" fill="#dbe4ef" stroke="#8d97a8" stroke-width="1.6"/>
       <path d="M-3 -23 q8 -2 8 3" fill="none" stroke="#fff" stroke-width="1.3" opacity=".7"/></g>`);
   }
-  /* Na přání "karavan" – pytel se zbožím na boku, ať jde na první pohled
-     poznat od ostatních panáčků, bez nutnosti kreslit celý nový vozík. */
-  if(role==="karavan"){
-    v.push(`<g transform="translate(26,60)">
-      <ellipse cx="0" cy="18" rx="13" ry="15" fill="#8a5a2c" stroke="#5c3a1a" stroke-width="1.6"/>
-      <path d="M-9 8 Q0 2 9 8" fill="none" stroke="#5c3a1a" stroke-width="1.6"/>
-      <circle cx="-4" cy="18" r="2.6" fill="#e0a83a"/>
-      <circle cx="5" cy="21" r="2.6" fill="#c94b3a"/></g>`);
-  }
   return v.join("");
 }
 
@@ -1231,12 +1229,79 @@ function trebuchetSVG(civK, barva){
   <path d="M69 64 q9 3 0 7 Z" fill="${bar}"/>`;
 }
 
+/* ---------- KARAVAN – kůň táhne vozík se zbožím, panáček sedí na voze
+   (na přání "at je to karavan kterej tahne kun, vuz kterej tahne kun a
+   na tom vozu sedi tenhle" – žádný pytel na zádech chodícího panáčka,
+   skutečný kůň + dvoukolý vozík, panáček sedí nahoře). Kůň je zmenšená
+   a stranou posunutá verze koně z konSVG (bez sedla/jezdce), vozík
+   používá stejné kolo() jako beranidlo/trebuchet, ať to ladí. ---------- */
+function karavanSVG(civK, barva){
+  const c = CIVS[civK], s = STYLY[civK], gid = "kv"+(++__gid);
+  const srst = c.telo, tm = tmavej(c.telo,0.22), sv = svetlej(c.telo,0.20), kopyto = tmavej(c.telo,0.55);
+  const hriva = tmavej(c.telo,0.38);
+  const bar = barva || c.akcent;
+  const voznik = plysak(civK, "vesnican", {bezStinu:1, bezOcasu:1, bezPraporku:1, barva:bar});
+  const drevo = s.ram, drevoSv = svetlej(s.ram,0.28), drevoTm = tmavej(s.ram,0.3);
+  const noha = (x,y,h,ba,ohnuta)=>`
+    <path d="M${x} ${y} q${ohnuta?4:0} ${h*0.5} 0 ${h}" stroke="${ba}" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <ellipse cx="${x+(ohnuta?2:0)}" cy="${y+h+2}" rx="4.5" ry="3" fill="${kopyto}"/>`;
+  const kun = `
+    <path d="M17 52 q-13 10 -10 24 q1 6 5 5 q3 -1 1 -6 q-3 -11 6 -18 Z" fill="${hriva}"/>
+    ${noha(26,64,26,tm,0)}
+    ${noha(38,66,24,tm,1)}
+    <ellipse cx="47" cy="60" rx="30" ry="18" fill="url(#${gid})"/>
+    <ellipse cx="42" cy="53" rx="20" ry="9" fill="${sv}" opacity=".45"/>
+    <path d="M22 66 q14 9 30 5" stroke="${tm}" stroke-width="2" fill="none" opacity=".45"/>
+    ${noha(60,64,26,srst,0)}
+    ${noha(72,62,28,sv,1)}
+    <path d="M62 52 q8 -18 18 -25 q8 -5 11 2 q-6 8 -8 19 q-7 10 -21 12 Z" fill="url(#${gid})"/>
+    <g transform="translate(-7,1) rotate(-16 88 32)">
+      <path d="M76 34 q0 -11 10 -13 q12 -2 16 4 q4 5 -2 9 q-9 5 -16 5 q-8 0 -8 -5 Z" fill="${srst}"/>
+      <ellipse cx="99" cy="34" rx="6" ry="5" fill="${sv}"/>
+      <ellipse cx="101" cy="34" rx="2.4" ry="1.7" fill="${c.nos}"/>
+      <circle cx="86" cy="29" r="2.9" fill="#17121a"/><circle cx="85" cy="28" r="1.1" fill="#fff"/>
+      <path d="M78 24 l-2 -11 l8 6 Z" fill="${srst}"/>
+      <path d="M78.5 23 l-1 -7 l4.5 3.5 Z" fill="${c.usiIn}"/>
+    </g>
+    <path d="M62 32 q7 -13 16 -19 q-3 9 -4 13 q5 -7 10 -9 q-5 9 -6 15 q-9 3 -16 0 Z" fill="${hriva}"/>
+    <path d="M64 40 q6 -6 12 -8 q-4 6 -5 11 q-5 0 -7 -3 Z" fill="${hriva}"/>
+    <path d="M50 44 q7 13 3 26" stroke="#5c3a1a" stroke-width="3.2" fill="none" stroke-linecap="round"/>`;
+  return `
+  <defs>
+    <linearGradient id="${gid}" x1="0.2" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="${sv}"/><stop offset="0.55" stop-color="${srst}"/><stop offset="1" stop-color="${tm}"/></linearGradient>
+  </defs>
+  <ellipse cx="52" cy="93" rx="48" ry="6.5" fill="rgba(0,0,0,.24)"/>
+  <!-- dvojitá oj – kůň jasně VEPŘEDU, táhne vůz na dvou tyčích spojených
+     obojkem, ne jednou tenkou čárou co skoro nebyla vidět -->
+  <path d="M74 68 Q57 62 45 58 M74 74 Q58 70 45 60" stroke="${drevoTm}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  <circle cx="45" cy="59" r="3.4" fill="${drevo}" stroke="${drevoTm}" stroke-width="1"/>
+  <!-- vozík -->
+  ${kolo(80, 84, 7.5, drevoTm, drevoSv)}
+  ${kolo(94, 84, 7.5, drevoTm, drevoSv)}
+  <rect x="74" y="56" width="24" height="22" rx="4" fill="${bar}" stroke="${tmavej(bar,0.3)}" stroke-width="1.6"/>
+  <rect x="74" y="56" width="24" height="6" rx="4" fill="${svetlej(bar,0.22)}"/>
+  <path d="M79 60 V76 M84 60 V76 M89 60 V76 M93.5 60 V76" stroke="${tmavej(bar,0.28)}" stroke-width="1" opacity=".4"/>
+  <rect x="76" y="43" width="7" height="15" rx="2" fill="${drevo}"/>
+  <rect x="76" y="43" width="7" height="4" rx="2" fill="${drevoSv}"/>
+  <circle cx="90" cy="63" r="3.2" fill="#c94b3a"/>
+  <!-- praporek vzadu na voze -->
+  <path d="M93 56 V44" stroke="${drevo}" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="93" cy="44" r="1.6" fill="${svetlej(bar,0.4)}"/>
+  <path d="M94 45 q9 3 0 7 Z" fill="${bar}"/>
+  <!-- kůň vepředu, táhne -->
+  <g transform="translate(2,17) scale(0.75)">${kun}</g>
+  <!-- vozka sedí na voze -->
+  <g transform="translate(73,33) scale(0.34)">${voznik}</g>`;
+}
+
 /* jedna funkce pro všechny jednotky (barva = barva hráče) */
 function jednotkaSVG(civK, kind, barva){
   if(kind==="jezdec")    return konSVG(civK, barva);
   if(kind==="slon")      return slonSVG(civK, barva);
   if(kind==="beranidlo") return beranidloSVG(civK, barva);
   if(kind==="trebuchet") return trebuchetSVG(civK, barva);
+  if(kind==="karavan")   return karavanSVG(civK, barva);
   return plysak(civK, kind, {barva:barva});
 }
 
@@ -2060,7 +2125,7 @@ const JED = {
      sám navěky chodí tam a zpátky a vydělává zlato (case "obchod",
      p4a.html). Je to investice s rizikem – bez obrany, dá se cestou
      zabít, tak radši af po bezpečné trase. */
-  karavan:{jm:"Karavan", ik:"🐫", hp:130, r:17, vel:60, rychlost:92, utok:0, dostrel:0, rychUtoku:1,
+  karavan:{jm:"Karavan", ik:"🐫", hp:130, r:22, vel:108, rychlost:92, utok:0, dostrel:0, rychUtoku:1,
     cena:{zlato:70,drevo:50}, cas:14,
     popis:"Pošli ho na spojencovo tržiště – bude tam a zpátky vozit zboží a vydělávat zlato. Neumí se bránit!"},
 
@@ -5724,7 +5789,8 @@ async function rozbal(kod){
 const KINDY = ["vesnican","vojak","lukostrelec","jezdec","slon","hrdina",
                "radnice","domek","kasarna","staj","vez","hrad",
                "beranidlo","trebuchet","dilna","hradba","brana","kral",
-               "pristav","galeona","prevoz","kopijnik"];
+               "pristav","galeona","prevoz","kopijnik",
+               "trziste","sklad","karavan"];
 function kindIdx(k){ return KINDY.indexOf(k); }
 
 const P2P = {
@@ -9352,7 +9418,11 @@ updAI = function(dt){
         let kind = "domek";
         if(vezi < O.veze && Math.random()<0.4) kind = "vez";
         else if(!moje.some(b=>b.kind==="kasarna")) kind = "kasarna";
+        /* Na přání "pocitac neumi stavet nove budovy, najdi si jake" –
+           sklad a tržiště tu chyběly úplně, bot je nikdy nestavěl. */
+        else if(!moje.some(b=>b.kind==="sklad") && Math.random()<0.5) kind = "sklad";
         else if(G.obt>=3 && !moje.some(b=>b.kind==="staj") && maBudovu(si,"staj") && Math.random()<0.4) kind = "staj";
+        else if(!moje.some(b=>b.kind==="trziste") && Math.random()<0.35) kind = "trziste";
         else if(G.obt>=4 && !moje.some(b=>b.kind==="hrad") && Math.random()<0.3) kind = "hrad";
         /* Na přání "at botak nestavi uplne random ty budovy a plati to i
            pro nej ze je nemuze stavet pres sebe": dřív bot budovu prostě
@@ -14852,7 +14922,26 @@ NET.posli = function(m){
       zabít. Vlastní ani nepřátelské tržiště nefunguje, jen SPOJENCOVO
       (rozkaz() v p5.html to hlídá přes jeNepritel/vlastnictví). Tržiště
       moc blízko sebe (pod 150) karavan odmítne, ať to nejde zneužít. */
-VERZE = "v113";
+/* v114 = opravy a vylepšení k v113 podle zpětné vazby.
+   1) Karavan vypadal jako panáček s pytlem na zádech, teď je to
+      doopravdy kůň, co táhne vozík se zbožím (dvojitá oj + obojek, ať
+      je jasně vidět, že kůň táhne), panáček sedí na voze. Skoro
+      dvojnásobně větší, ať to není drobotina (p2a3.html – karavanSVG,
+      p3.html – vel 60→108).
+   2) DŮLEŽITÁ OPRAVA: tržiště, sklad a karavan chyběly v KINDY (p8.html)
+      – seznamu druhů pro binární síťový přenos v multiplayeru. Bez
+      tohle by kamarádovi po síti přišel neplatný index a klientovi by
+      to spadlo, jakmile by se taková budova/jednotka objevila. Nové
+      druhy se PŘIDÁVAJÍ JEN NA KONEC seznamu (jinak by se přeházely
+      všechny ostatní).
+   3) "pocitac neumi stavet nove budovy" – bot v AI teď staví i sklad a
+      tržiště, ne jen domeček/kasárnu/stáj/hrad (p21.html).
+   4) Světýlka v noci používala box-shadow s rozostřením a
+      mix-blend-mode – oboje je pro prohlížeč drahé na vykreslení,
+      obzvlášť na desítkách budov celou noc. Nahrazeno obyčejným
+      radiálním gradientem, vypadá skoro stejně, ale nekreslí se tak
+      draze (p1.html – .svetylko, .svetlokruh). */
+VERZE = "v114";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
