@@ -1007,6 +1007,15 @@ function plysak(civK, role, opt){
       <path d="M-3 -26 q14 -6 13 5 q-1 9 -13 5 Z" fill="#dbe4ef" stroke="#8d97a8" stroke-width="1.6"/>
       <path d="M-3 -23 q8 -2 8 3" fill="none" stroke="#fff" stroke-width="1.3" opacity=".7"/></g>`);
   }
+  /* Na přání "karavan" – pytel se zbožím na boku, ať jde na první pohled
+     poznat od ostatních panáčků, bez nutnosti kreslit celý nový vozík. */
+  if(role==="karavan"){
+    v.push(`<g transform="translate(26,60)">
+      <ellipse cx="0" cy="18" rx="13" ry="15" fill="#8a5a2c" stroke="#5c3a1a" stroke-width="1.6"/>
+      <path d="M-9 8 Q0 2 9 8" fill="none" stroke="#5c3a1a" stroke-width="1.6"/>
+      <circle cx="-4" cy="18" r="2.6" fill="#e0a83a"/>
+      <circle cx="5" cy="21" r="2.6" fill="#c94b3a"/></g>`);
+  }
   return v.join("");
 }
 
@@ -1579,6 +1588,22 @@ function budovaSVG(kind, civK, barva, otevrena){
     ${ozdobaSVG(s, a, 22, 82, 0.8)}
     ${travaSVG(24, 78, 94)}`);
 
+  /* Na přání "levny mensi sklad, podobne jak dum trochu drazsi, kde se
+     taky daji nosit suroviny" – menší kůlna než domeček, s bedýnkami u
+     vchodu, ať je na první pohled jasné, že je to sklad, ne bydlení. */
+  if(kind==="sklad") return svgObal(`
+    <ellipse cx="50" cy="93" rx="26" ry="6" fill="rgba(0,0,0,.24)"/>
+    <rect x="32" y="88" width="36" height="6" rx="3" fill="${s.zaklad}"/>
+    ${zedSVG(s, 34, 61, 32, 27)}
+    ${strechaSVG(s, 22, 76, 62, 22, a)}
+    ${oknoSVG(s, 39, 68, 9, 9)}
+    ${dvereSVG(s, 57, 89, 11, 18)}
+    <rect x="16" y="76" width="13" height="13" rx="2" fill="#8a6435"/>
+    <rect x="16" y="76" width="13" height="4" rx="2" fill="${svetlej("#8a6435",0.22)}"/>
+    <rect x="70" y="80" width="11" height="11" rx="2" fill="#7a5230"/>
+    <circle cx="75.5" cy="78" r="2.8" fill="#e0a83a"/>
+    ${travaSVG(12, 82, 94)}`);
+
   /* Na přání "tržiště" – jednoduchý stánek s barevnou plachtou a
      pultem plným zboží, ať jde na první pohled poznat od domečku. */
   if(kind==="trziste") return svgObal(`
@@ -1966,6 +1991,12 @@ const BUD = {
     popis:"Tady cvičíš vesničany. Suroviny se sem nosí.", cvici:["vesnican"]},
   domek:{jm:"Domeček", hp:320, r:32, vel:80, cena:{drevo:40}, cas:8, popPlus:6,
     popis:"Každý domeček ubytuje 6 dalších Ňuňísků.", cvici:[]},
+  /* Na přání "levny mensi sklad, podobne jak dum trochu drazsi, kam se
+     daji taky nosit suroviny" – druhé odevzdávací místo blízko těžby, ať
+     vesničané nemusí chodit s nákladem přes celou mapu do radnice. Sama
+     necvičí nic, jen rozšiřuje sklad() (p4a.html) o svůj kind. */
+  sklad:{jm:"Sklad", hp:240, r:26, vel:64, cena:{drevo:60}, cas:9,
+    popis:"Malý sklad blízko těžby – suroviny se dají odevzdat i sem, ne jen do radnice nebo hradu.", cvici:[]},
   kasarna:{jm:"Kasárna", hp:620, r:46, vel:106, cena:{drevo:90,zelezo:25}, cas:16,
     popis:"Cvičí bojovníky a lučištníky – ti jsou levní, dá se jich mít hodně.", cvici:["vojak","lukostrelec"]},
   staj:{jm:"Stáj", hp:680, r:46, vel:108, cena:{drevo:130,zelezo:40,zlato:60}, cas:20,
@@ -1987,7 +2018,8 @@ const BUD = {
      (cvici:[]), obchodní tlačítka řeší obnovPanel() (p5.html) a obchod()
      (p4a.html). */
   trziste:{jm:"Tržiště", hp:600, r:44, vel:106, cena:{drevo:100,zelezo:30}, cas:18,
-    popis:"Směníš tu dřevo nebo železo za zlato, i naopak – když ti něco chybí.", cvici:[]},
+    popis:"Směníš tu dřevo nebo železo za zlato, i naopak – když ti něco chybí. Cvičí i KARAVAN.",
+    cvici:["karavan"]},
   /* zed:1 = hradba/brána. Vydrží mnohem víc než ostatní budovy a staví se do řady tažením. */
   hradba:{jm:"Hradba", hp:1300, r:26, vel:64, cena:{drevo:12,zelezo:3}, cas:5, zed:1,
     popis:"Pevná zeď. Vydrží mnohem víc než ostatní budovy a nepřátele zdrží.", cvici:[]},
@@ -2020,6 +2052,17 @@ const JED = {
     cena:{zelezo:200,zlato:260}, cas:30, popis:"Chodící pevnost. Boří budovy jako nic, ale je pomalý a hodně drahý."},
   hrdina:{jm:"Hrdina", ik:"👑", hp:480, r:20, vel:64, rychlost:84, utok:42, dostrel:34, rychUtoku:0.9,
     cena:{zelezo:170,zlato:270}, cas:24, popis:"Legenda tvé civilizace. Nezastavitelný!", limit:1},
+
+  /* KARAVAN – na přání "v trzisti pridat karavan, kterej muze obchodovat
+     v spojencova karavanu... obchoduje jenom u spojencova trziste".
+     Necvičí se bojovat (utok:0) – klikneš na jeho ikonu, pošleš ho na
+     SPOJENCOVO tržiště (rozkaz() v p5.html to pozná a hlídá), a pak už
+     sám navěky chodí tam a zpátky a vydělává zlato (case "obchod",
+     p4a.html). Je to investice s rizikem – bez obrany, dá se cestou
+     zabít, tak radši af po bezpečné trase. */
+  karavan:{jm:"Karavan", ik:"🐫", hp:130, r:17, vel:60, rychlost:92, utok:0, dostrel:0, rychUtoku:1,
+    cena:{zlato:70,drevo:50}, cas:14,
+    popis:"Pošli ho na spojencovo tržiště – bude tam a zpátky vozit zboží a vydělávat zlato. Neumí se bránit!"},
 
   /* PŘEVOZNÍ LOĎ – veze panáčky přes moře. Neumí střílet vůbec, zato je
      rychlejší než galeona. Naloď: vyber panáčky a klikni na loď. Vylož:
@@ -2063,7 +2106,7 @@ const ZDROJE = {
 };
 const IKONA = {drevo:"🌲", zelezo:"⛏️", zlato:"🪙"};
 const IKONA_BUDOVY = {radnice:"🏛️", domek:"🏠", kasarna:"⚔️", staj:"🐴", vez:"🗼", hrad:"🏰",
-                      dilna:"🛠️", hradba:"🧱", brana:"🚪", trziste:"💰"};
+                      dilna:"🛠️", hradba:"🧱", brana:"🚪", trziste:"💰", sklad:"📦"};
 const NAZEV = {drevo:"dřevo", zelezo:"železo", zlato:"zlato"};
 
 /* ---- 10 barev hráčů (jako v Age of Empires) ---- */
@@ -2757,7 +2800,7 @@ function nejbliz(pole, x, y, filtr, maxD){
   return nej;
 }
 function sklad(side, x, y){
-  return nejbliz(G.budovy, x, y, b=>b.side===side && b.hotova && (b.kind==="radnice"||b.kind==="hrad"));
+  return nejbliz(G.budovy, x, y, b=>b.side===side && b.hotova && (b.kind==="radnice"||b.kind==="hrad"||b.kind==="sklad"));
 }
 /* POZOR: dřív se sem počítaly i budovy – nehlídaný panáček tak sám od
    sebe odešel bourat nepřátelskou budovu, i když poblíž nebyl žádný
@@ -3316,6 +3359,34 @@ function updJednotku(e, dt){
         }
         e.tezAnim = (e.tezAnim||0)+dt;
         if(e.tezAnim>0.5){ e.tezAnim=0; castice(c.x+nah(-24,24), c.y-c.vel*0.3, "#e0c89a", 4); if(jeMuj(e.side)) zvuk("stavba"); }
+      }
+      break;
+    }
+
+    /* Karavan – na přání "posles ho na spojencovo trziste, bude chodit
+       tam a zpatky a vydelavat". e.trhDomov je moje nejbližší tržiště
+       v okamžiku rozkazu, e.trhCil je spojencovo tržiště, na které se
+       kliklo (rozkaz() v p5.html to obojí přiřadí a hlídá, že cíl je
+       fakt SPOJENEC, ne já ani nepřítel). Karavan chodí věčně mezi
+       oběma konci, po každém doražení na kterýkoli konec vydělá zlato
+       podle vzdálenosti trasy – delší cesta, víc peněz, ale i víc
+       rizika (karavan se dá po cestě zabít). */
+    case "obchod": {
+      const cil = e.cilE;
+      if(!cil || cil.mrtvy || !cil.hotova){ e.stav="stoj"; e.cilE=null; e.trhDomov=null; e.trhCil=null; break; }
+      const dosah = e.r + cil.r + 12;
+      if(e.slotOId!==cil.id){ e.slotO = slotBod(e, cil, dosah-2); e.slotOId = cil.id; }
+      if(jdiKZdi(e, e.slotO.x, e.slotO.y, dt, 7) || dist(e,cil) <= dosah){
+        const H = G.hraci[e.side];
+        if(H){
+          const vzdal = dist(e.trhDomov, e.trhCil);
+          const zisk = Math.min(60, Math.round(vzdal*0.05));
+          H.res.zlato += zisk;
+          if(jeMuj(e.side)){ jiskra(e.x, e.y-e.vel*0.6, "+"+zisk+" 🪙", "#ffe08a"); zvuk("mince"); obnovHud(); }
+        }
+        const dalsi = (cil===e.trhCil) ? e.trhDomov : e.trhCil;
+        if(dalsi && !dalsi.mrtvy && dalsi.hotova){ e.cilE = dalsi; e.slotOId = null; }
+        else { e.stav="stoj"; e.cilE=null; e.trhDomov=null; e.trhCil=null; }
       }
       break;
     }
@@ -3923,6 +3994,28 @@ function rozkaz(x,y){
     for(const u of vojaci){ u.stav="jdi"; u.cil={x,y}; }
     jiskra(cil.x, cil.y-cil.vel*0.6, "🔧", "#ffe08a"); zvuk("klik"); return;
   }
+  /* Karavan – na přání "posles ho na spojencovo trziste... obchoduje
+     jenom u spojencova trziste": cíl musí být HOTOVÉ tržiště, patřit
+     SPOJENCI (stejný tým, jiná strana – ne moje vlastní, ne nepřítel).
+     Ostatní vybrané jednotky (kdyby byly ve stejném výběru) dostanou
+     obyčejný rozkaz jít tam, jako by karavan vybraný vůbec nebyl. */
+  if(cil && cil.druh==="budova" && cil.kind==="trziste" && cil.hotova
+     && cil.side!==G.ja && !jeNepritel(G.ja, cil.side)){
+    const karavany = moji.filter(u=>u.kind==="karavan");
+    if(karavany.length){
+      let poslan = false;
+      for(const u of karavany){
+        const domov = nejbliz(G.budovy, u.x, u.y, b=>b.side===u.side && b.hotova && b.kind==="trziste");
+        if(!domov || dist(domov, cil) < 150) continue;
+        u.trhDomov = domov; u.trhCil = cil; u.cilE = cil; u.stav = "obchod"; u.hlidka = null;
+        poslan = true;
+      }
+      if(!poslan){ zvuk("chyba"); zprava("Tržiště jsou na sebe moc blízko, karavan by nevydělal nic.","zle"); }
+      else { jiskra(cil.x, cil.y-cil.vel*0.6, "🐫", "#ffe08a"); zvuk("klik"); }
+      for(const u of moji) if(u.kind!=="karavan"){ u.stav="jdi"; u.cil={x,y}; u.cilE=null; }
+      return;
+    }
+  }
   const n = moji.length, sl = Math.ceil(Math.sqrt(n));
   moji.forEach((u,i)=>{
     const ox = (i%sl - (sl-1)/2) * 42, oy = (Math.floor(i/sl) - (sl-1)/2) * 34;
@@ -4128,6 +4221,8 @@ function obnovPanel(){
     if(e.druh==="budova" && !e.hotova){
       stav = "staví se "+Math.round(e.postup*100)+"%";
     /* na přání – ať je vidět i síla (útok) a rychlost, ne jen životy */
+    }else if(jeJed && e.kind==="karavan"){
+      stav += e.stav==="obchod" ? " · 🐫 obchoduje" : " · 🐫 nečinný, pošli ho na spojencovo tržiště";
     }else if(jeJed && def.utok>0){
       stav += " · ⚔"+Math.round(statJ(e.kind,e.side,"utok"))+" · 🏃"+Math.round(statJ(e.kind,e.side,"rychlost"));
     }else if(e.druh==="budova" && def.utok>0){
@@ -4900,6 +4995,8 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
+    • <b>Karavan</b> – vycvič ho v tržišti a pošli na SPOJENCOVO tržiště – bude jezdit tam a zpátky a vydělávat zlato<br>
+    • <b>Sklad</b> – levná menší budova, kam vesničané taky můžou nosit suroviny, ne jen do radnice<br>
     • <b>Den a noc</b> – 10 minut je světlo, pak 10 minut tma a budovám se rozsvítí okýnka<br>
     • <b>Počasí</b> – čas od času přijde déšť nebo mlha (a déšť trochu léčí poškozené budovy)<br>
     • <b>Tržiště</b> – nová budova, kde směníš dřevo nebo železo za zlato, i naopak<br>
@@ -14743,7 +14840,19 @@ NET.posli = function(m){
       dvakrát za sebou, radši se vynutí jasno (p4a.html – pocasiTyp).
    5) Světýlka v noci teď kolem budovy hezky osvítí i kus země (nová
       měkká záře .svetlokruh, mix-blend-mode:screen, p1.html+p4a.html). */
-VERZE = "v112";
+/* v113 = dvě nové věci k tržišti.
+   1) Sklad – levná menší budova (jen 60 dřeva) podobná domečku, ale i
+      sem můžou vesničané nosit suroviny, ne jen do radnice/hradu –
+      šetří cestu, když se těží daleko (p3.html – BUD.sklad, p2b.html –
+      kresba, p4a.html – sklad() rozšířený o kind "sklad").
+   2) Karavan – nová jednotka, cvičí se v tržišti. Pošleš ho na
+      SPOJENCOVO tržiště (klikneš na něj, stejně jako na cíl pohybu) a
+      od teď navěky jezdí tam a zpátky a vydělává zlato podle vzdálenosti
+      trasy (case "obchod" v p4a.html) – ale je bez obrany, dá se cestou
+      zabít. Vlastní ani nepřátelské tržiště nefunguje, jen SPOJENCOVO
+      (rozkaz() v p5.html to hlídá přes jeNepritel/vlastnictví). Tržiště
+      moc blízko sebe (pod 150) karavan odmítne, ať to nejde zneužít. */
+VERZE = "v113";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
