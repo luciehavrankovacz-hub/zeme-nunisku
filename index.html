@@ -3210,10 +3210,29 @@ function jdiKZdi(e, tx, ty, dt, odstup){
 const NAKLAD_MAX = 12;
 /* Každý panáček dostane svoje vlastní místečko kolem stromu / skladu,
    aby se navzájem neodstrkávali a nepodupávali na místě. */
+/* Na přání "kdyz je jich u tezeni hodne tak se postrkujou a bugujou se
+   pres sebe" – dřív měl každý těžař/stavitel místo jen podle SVÉHO id,
+   bez ohledu na to, kolik dalších už na tentýž cíl míří. Na jeden tenký
+   kruh kolem stromu/rudy se ale vejde jen pár panáčků – zbytek dostal
+   místo, co se s někým překrývalo, a protože "uCile" panáčky ukotví
+   (rozestup() se jich pak nedotkne, ať netřesou animací těžby), zůstali
+   takhle napůl přes sebe navždycky. Teď se spočítá, KOLIKÁTÝ je tenhle
+   panáček mezi všemi, co míří na stejný cíl (cilE), a přebytek se
+   rozmístí do dalších, o kus vzdálenějších prstenců. */
 function slotBod(e, cil, odstup){
-  const a = (e.id * 2.3999632) % (Math.PI*2);
-  return {x: klam(cil.x + Math.cos(a)*odstup, 20, SVET_W-20),
-          y: klam(cil.y + Math.sin(a)*odstup*0.72, 20, SVET_H-20)};
+  let poradi = 0;
+  for(const j of G.jednotky){
+    if(j===e || j.mrtvy || j.cilE!==cil) continue;
+    if(j.id < e.id) poradi++;
+  }
+  const obvod = Math.max(4, Math.floor((Math.PI*2*odstup) / (e.r*2+6)));
+  const prstenec = Math.floor(poradi / obvod);
+  const pozice = poradi % obvod;
+  const posun = (e.id * 2.3999632) % (Math.PI*2);
+  const a = (Math.PI*2*pozice/obvod) + prstenec*0.7 + posun*0.05;
+  const r = odstup + prstenec*(e.r*2+8);
+  return {x: klam(cil.x + Math.cos(a)*r, 20, SVET_W-20),
+          y: klam(cil.y + Math.sin(a)*r*0.72, 20, SVET_H-20)};
 }
 function tezRychlost(e){
   let r = 1.6;
@@ -14955,7 +14974,17 @@ NET.posli = function(m){
    Vůz je teď vzadu za koněm z obou stran (p2a3.html – karavanSVG,
    přehozené pozice koně/vozu, ne celá scéna zrcadlená – to by
    problém neopravilo, jen prohodilo, na kterou stranu je to špatně). */
-VERZE = "v115";
+/* v116 = na přání "kdyz je jich u tezeni hodne tak se postrkujou a
+   bugujou se pres sebe" – slotBod() (p4a.html) dřív dávala každému
+   těžaři/staviteli místo jen podle JEHO VLASTNÍHO id, na jediný tenký
+   kruh kolem stromu/rudy/budovy – bez ohledu na to, kolik dalších už na
+   tentýž cíl mířilo. Na jeden kruh se ale vejde jen pár panáčků; zbytek
+   dostal místo, co se s někým překrývalo, a protože "uCile" panáčky
+   ukotví (rozestup() se jich pak nedotkne), zůstali takhle napůl přes
+   sebe navždycky. Teď se spočítá, KOLIKÁTÝ je panáček mezi všemi, co
+   míří na stejný cíl, a přebytek se rozmístí do dalších prstenců o kus
+   dál – ověřeno na 20 těžařích u jedné hroudy zlata, žádný překryv. */
+VERZE = "v116";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
