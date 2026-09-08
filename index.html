@@ -3083,6 +3083,14 @@ function vystrel(od, cil, dmg, kosmet){
   if(od.druh==="budova") d.style.background="linear-gradient(90deg,#fff,#8ecaff)";
   SVET.appendChild(d);
   G.strely.push({x:x0,y:y0,x0,y0,cil,dmg,el:d,t:0,dur:Math.max(0.18,dist2(x0,y0,cil.x,cil.y)/620),od,kosmet:!!kosmet});
+  /* Na přání "chci aby to ubralo hned, co ji to hitne, ne az po chvili" –
+     dřív se škoda počítala, až šíp/koule doletí (s.t>=1 v updStrely),
+     takže hlavně na velké vzdálenosti (lodě na moři) uběhla než HP klesla
+     hezká chvilka. Teď se škoda strhne HNED při výstřelu – šíp/koule pak
+     jen doletí naoko, ať ta hezká animace zůstane, ale životy klesnou
+     okamžitě. kosmet (jen u kamaráda v multiplayeru) má dmg=0 vždycky,
+     takže tady žádnou skutečnou škodu nikdy nezpůsobí. */
+  if(!kosmet && !cil.mrtvy) ubliz(cil, dmg, od);
   zvuk("luk");
 }
 function updStrely(dt){
@@ -3096,9 +3104,8 @@ function updStrely(dt){
     s.el.style.transform = `translate(${x}px,${y}px) rotate(${uh}deg)`;
     s.el.style.zIndex = 9000;
     if(s.t>=1){
-      /* kosmet = jen u kamaráda: šíp letí naoko, škodu počítá jen hostitel */
-      if(s.kosmet) castice(tx,ty,"#ffd76e",3);
-      else if(!s.cil.mrtvy){ ubliz(s.cil, s.dmg, s.od); castice(tx,ty,"#ffd76e",5); }
+      // škoda se strhla už při výstřelu (viz vystrel) – tady zbyl jen dopad naoko
+      castice(tx,ty,"#ffd76e", s.kosmet?3:5);
       s.el.remove(); G.strely.splice(i,1);
     }
   }
@@ -7876,6 +7883,43 @@ const TEREN = {
   sucho(x, y){ return this.co(x, y) === 0; },
   voda(x, y){  return this.co(x, y) === 1; },
   skala(x, y){ return this.co(x, y) === 2; },
+  /* Na přání "pruzkumnik kdyz automaticky zkouma tak se zasekne u more" –
+     dřív si vybíral nejbližší neprozkoumaný bod jen podle toho, jestli je
+     to souš (viz sucho()), bez ohledu na to, jestli se tam pěšky vůbec DÁ
+     dojít. Na mapě s ostrovy tak mířil klidně na jinou pevninu přes moře,
+     došel na břeh a zůstal tam trčet navěky. Tohle spočítá, které kusy
+     souše jsou navzájem propojené (jednoduché prohledávání do šířky přes
+     sousední políčka), a oblast() pak řekne, do kterého "ostrova" který
+     bod patří – nejblizsiNeznamo() pak vybírá jen ze stejného ostrova. */
+  oblast: null,
+  spocitejOblasti(){
+    const n = this.sl*this.ra;
+    if(!this.oblast || this.oblast.length < n) this.oblast = new Int32Array(n);
+    this.oblast.fill(-1, 0, n);
+    if(!this._oblFronta || this._oblFronta.length < n) this._oblFronta = new Int32Array(n);
+    const fronta = this._oblFronta;
+    let dalsiId = 0;
+    for(let start = 0; start < n; start++){
+      if(this.bunky[start] !== 0 || this.oblast[start] !== -1) continue;
+      let hlava = 0, ocas = 0;
+      fronta[ocas++] = start;
+      this.oblast[start] = dalsiId;
+      while(hlava < ocas){
+        const i = fronta[hlava++];
+        const cx = i % this.sl, cy = (i / this.sl) | 0;
+        if(cx > 0){ const j = i-1; if(this.bunky[j]===0 && this.oblast[j]===-1){ this.oblast[j]=dalsiId; fronta[ocas++]=j; } }
+        if(cx < this.sl-1){ const j = i+1; if(this.bunky[j]===0 && this.oblast[j]===-1){ this.oblast[j]=dalsiId; fronta[ocas++]=j; } }
+        if(cy > 0){ const j = i-this.sl; if(this.bunky[j]===0 && this.oblast[j]===-1){ this.oblast[j]=dalsiId; fronta[ocas++]=j; } }
+        if(cy < this.ra-1){ const j = i+this.sl; if(this.bunky[j]===0 && this.oblast[j]===-1){ this.oblast[j]=dalsiId; fronta[ocas++]=j; } }
+      }
+      dalsiId++;
+    }
+  },
+  oblastBodu(x, y){
+    if(!this.pripraven || !this.oblast) return -1;
+    const i = this.index(x, y);
+    return (i < 0 || this.bunky[i] !== 0) ? -1 : this.oblast[i];
+  },
   /* Smí tam tahle jednotka? Loď po vodě, ostatní po zemi, skála pro nikoho. */
   smiTam(e, x, y){
     if(!this.pripraven) return true;
@@ -7989,6 +8033,7 @@ const TEREN = {
        nebo v kameni. Tohle jde vždycky až nakonec a přebije všechno ostatní. */
     ZAKL.forEach(z => kruh(z.x, z.y, Math.min(SVET_W, SVET_H) * 0.135, 0));
 
+    this.spocitejOblasti();
     this.vykresliVrstvu();
   },
 
@@ -8928,6 +8973,13 @@ function nejblizsiNeznamo(e){
   if(!e.navstiveno) e.navstiveno = new Set();
   const sl = Math.max(1, Math.ceil(SVET_W/krok)), ra = Math.max(1, Math.ceil(SVET_H/krok));
   e.navstiveno.add(Math.floor(e.x/krok) + "," + Math.floor(e.y/krok));
+  /* Na přání "pruzkumnik kdyz automaticky zkouma tak se zasekne u more" –
+     nestačí, že je cílový bod souš (viz sucho() níž) – pěšák se tam musí
+     umět i DOJÍT. Bez týhle podmínky si klidně vybral bod na jiném
+     ostrově přes moře, došel na břeh a zůstal tam navěky trčet. Teď se
+     bere jen totéž propojené kus souše, na kterém zvěd zrovna stojí
+     (TEREN.oblastBodu – p18.html). */
+  const mojeOblast = (typeof TEREN !== "undefined" && TEREN.pripraven) ? TEREN.oblastBodu(e.x, e.y) : -1;
   let nej = null, nd = Infinity;
   for(let gy = 0; gy < ra; gy++){
     for(let gx = 0; gx < sl; gx++){
@@ -8935,6 +8987,7 @@ function nejblizsiNeznamo(e){
       if(e.navstiveno.has(key)) continue;
       const sx = gx*krok + krok/2, sy = gy*krok + krok/2;
       if(typeof TEREN !== "undefined" && TEREN.pripraven && !TEREN.sucho(sx, sy)) continue;
+      if(mojeOblast>=0 && TEREN.oblastBodu(sx, sy) !== mojeOblast) continue;
       const d = dist2(e.x, e.y, sx, sy);
       if(d < nd){ nd = d; nej = {x:sx, y:sy}; }
     }
@@ -10450,9 +10503,14 @@ function mmZavoj(){
     MMLHA.sl = MLHA.sl; MMLHA.ra = MLHA.ra;
   }
   const d = MMLHA.img.data, z = MLHA.znam;
+  /* Na přání "kdyz to neni prozkoumany tak vidis sedou ty ostrovy, to ma
+     byt vse cerne" – 209/255 (~82 %) nechávalo neprozkoumané ostrovy
+     prosvítat skrz závoj, takže šel na minimapě poznat tvar pevniny, i
+     kam hráč ještě vůbec nedohlédl. Neprozkoumané teď kryje NAPLNO
+     (255 = úplně černá), ať minimapa nic nezradí předem. */
   for(let i = 0, j = 0; i < z.length; i++, j += 4){
     d[j] = 0; d[j+1] = 0; d[j+2] = 0;
-    d[j+3] = z[i] ? 0 : 209;          // 209/255 ≈ původních rgba(0,0,0,.82)
+    d[j+3] = z[i] ? 0 : 255;
   }
   MMLHA.ctx.putImageData(MMLHA.img, 0, 0);
   return MMLHA.platno;
@@ -14984,7 +15042,20 @@ NET.posli = function(m){
    sebe navždycky. Teď se spočítá, KOLIKÁTÝ je panáček mezi všemi, co
    míří na stejný cíl, a přebytek se rozmístí do dalších prstenců o kus
    dál – ověřeno na 20 těžařích u jedné hroudy zlata, žádný překryv. */
-VERZE = "v116";
+/* v117 = tři opravy podle zpětné vazby.
+   1) "pruzkumnik kdyz automaticky zkouma tak se zasekne u more" – TEREN
+      teď navíc spočítá, které kusy souše jsou navzájem propojené
+      (spocitejOblasti/oblastBodu, p18.html), a zvěd (p20.html) si
+      vybírá jen z toho, kam se dá po svém ostrově opravdu dojít – jinak
+      končí hezky ("obhlédl, co se dalo"), místo aby trčel na břehu.
+   2) "kdyz to neni prozkoumany tak vidis sedou ty ostrovy, to ma byt
+      vse cerne" – závoj na minimapě kryl neprozkoumané jen z 82 %
+      (209/255), takže skrz něj prosvítal tvar ostrovů. Teď 100 % (255).
+   3) "chci aby to ubralo hned, co ji to hitne, ne az po chvili" – šíp/
+      koule dřív strhly škodu, až doletí (hlavně na moři citelná chvilka
+      navíc). Teď se škoda počítá hned při výstřelu, animace doletu
+      zůstala jen jako pěkná ozdoba (p4a.html – vystrel/updStrely). */
+VERZE = "v117";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
