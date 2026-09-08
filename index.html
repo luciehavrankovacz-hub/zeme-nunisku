@@ -2287,7 +2287,18 @@ const MAPY = [
   {jm:"Poslední hvozd",  popis:"Obří mapa, hluboké lesy a daleko k sobě",
     zeme:"#4f9a44", lesy:1.8, zlato:1.1, zelezo:1.1, sirka:4800, vyska:3400},
   {jm:"Železné srdce",   popis:"Uprostřed hora železa – kdo ji udrží, má armádu",
-    zeme:"#7d8a7a", lesy:0.9, zlato:0.9, zelezo:1.7, sirka:3800, vyska:2700, stred:"zelezo"}
+    zeme:"#7d8a7a", lesy:0.9, zlato:0.9, zelezo:1.7, sirka:3800, vyska:2700, stred:"zelezo"},
+
+  /* ---- CELÁ ZEMĚKOULE – na přání "nejlepsi mapa podle realneho sveta,
+     cela zemekoule, presne podle zeme, tak velka ze jde hrat jenom na
+     ludicrous". Sedm světadílů (voda:"svet", tvary v TEREN.postav(),
+     p18.html) rozmístěných zhruba jako na skutečné mapě světa – Severní
+     a Jižní Amerika vlevo, Evropa/Afrika/Asie/Austrálie vpravo, oceány
+     mezi nimi. Bez lodí se mezi světadíly nikam nedostaneš, přesně jako
+     doopravdy. Mapa je násobně větší než ostatní – i na nejmenší
+     velikosti je pořád obří, na Ludicrous teprve doopravdy vynikne. */
+  {jm:"Celá Zeměkoule", popis:"Sedm světadílů jako v opravdovém světě – bez lodí se mezi nimi nikam nedostaneš!",
+    zeme:"#5f9e4f", lesy:1, zlato:1, zelezo:1, sirka:7000, vyska:4800, voda:"svet", hory:4}
 ];
 
 /* ---- ikony hráče (obrázek u jména) ---- */
@@ -5094,6 +5105,7 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
+    • <b>🌍 Celá Zeměkoule</b> – nová obří mapa, sedm světadílů jako v opravdovém světě, mezi nimi jen moře – bez lodí nikam!<br>
     • <b>Karavan</b> – vycvič ho v tržišti a pošli na SPOJENCOVO tržiště – bude jezdit tam a zpátky a vydělávat zlato<br>
     • <b>Sklad</b> – levná menší budova, kam vesničané taky můžou nosit suroviny, ne jen do radnice<br>
     • <b>Den a noc</b> – 10 minut je světlo, pak 10 minut tma a budovám se rozsvítí okýnka<br>
@@ -8014,6 +8026,39 @@ const TEREN = {
          POZOR: boti zatím lodě neumí, takže na mapách bez šíje si s nimi
          moc nezahraješ – tam ať hrajou lidi proti lidem. */
       if(mapa.sije) this.sije(nastav);
+    }
+    /* ---- CELÁ ZEMĚKOULE – na přání "nejlepsi mapa podle realneho sveta,
+       presne podle zeme". Sedm světadílů rozmístěných zhruba jako na
+       skutečné mapě světa (rovnoběžková/poledníková mřížka: x = 0..W
+       jako zeměpisná délka, y = 0..H jako šířka), poskládaných z pár
+       přeložených elips – žádné přesné pobřeží, ale na první pohled je
+       jasné, co je co. Bez lodí (voda:true) se mezi světadíly nikam
+       nedostaneš, přesně jako doopravdy. */
+    else if(typ === "svet"){
+      this.jeVoda = true;
+      this.bunky.fill(1);                                  // celý svět je nejdřív oceán
+      const pevnina = (cx,cy,rx,ry) => elipsa(W*cx, H*cy, W*rx, H*ry, 0);
+      // Severní Amerika
+      pevnina(0.14,0.22, 0.11,0.13);
+      pevnina(0.10,0.34, 0.08,0.09);
+      pevnina(0.17,0.36, 0.07,0.08);
+      // Jižní Amerika
+      pevnina(0.22,0.52, 0.055,0.10);
+      pevnina(0.24,0.68, 0.045,0.12);
+      // Evropa
+      pevnina(0.47,0.20, 0.06,0.07);
+      // Afrika
+      pevnina(0.48,0.42, 0.09,0.10);
+      pevnina(0.49,0.58, 0.065,0.12);
+      // Asie (včetně Ruska a jihovýchodní Asie)
+      pevnina(0.62,0.18, 0.13,0.10);
+      pevnina(0.72,0.28, 0.14,0.14);
+      pevnina(0.66,0.40, 0.09,0.09);
+      // Austrálie
+      pevnina(0.83,0.68, 0.07,0.06);
+      // Antarktida – úzký pruh úplně dole přes celou šířku
+      for(let x = 0; x < W; x += this.krok)
+        for(let y = H*0.93; y < H; y += this.krok) nastav(x, y, 0);
     }
 
     // skály (jdou i na mapy bez vody)
@@ -11945,7 +11990,7 @@ kresliMapy = function(){
   }
   const mp = MAPY[G.mapa];
   if(!mp) return;
-  const znak = mp.voda ? (mp.voda==="ostrovy"?"🏝️" : mp.voda==="tymove"?"🏝️🤝"
+  const znak = mp.voda ? (mp.voda==="svet"?"🌍" : mp.voda==="ostrovy"?"🏝️" : mp.voda==="tymove"?"🏝️🤝"
                 : mp.voda==="rec"?"🌊" : mp.voda==="okraj"?"⛵" : "💧") : "🌿";
   vel.innerHTML =
     `<canvas width="300" height="150" style="border-radius:5px;border:1.5px solid rgba(90,60,20,.4);flex:none"></canvas>
@@ -15055,7 +15100,18 @@ NET.posli = function(m){
       koule dřív strhly škodu, až doletí (hlavně na moři citelná chvilka
       navíc). Teď se škoda počítá hned při výstřelu, animace doletu
       zůstala jen jako pěkná ozdoba (p4a.html – vystrel/updStrely). */
-VERZE = "v117";
+/* v118 = na přání "nejlepsi mapa podle realneho sveta, cela zemekoule,
+   presne podle zeme, tak velka ze jde hrat jenom na ludicrous". Nová
+   mapa "Celá Zeměkoule" – sedm světadílů (Severní a Jižní Amerika,
+   Evropa, Afrika, Asie, Austrálie, Antarktida) rozmístěných zhruba jako
+   na skutečné mapě světa, s oceány mezi nimi – bez lodí se mezi nimi
+   nikam nedostaneš, přesně jako doopravdy (p18.html – TEREN.postav(),
+   nový typ vody "svet"; p3.html – nová mapa, základ 7000×4800, na
+   Ludicrous přes 23000×15800). Využívá i opravu z v117 – zvěd na téhle
+   mapě pozná, že je na jiném světadílu, a nezasekne se na břehu.
+   Ověřeno se 3 boty na plné Ludicrous velikosti (žádná chyba, ~6,5 ms
+   na herní krok – zvladatelné). */
+VERZE = "v118";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
