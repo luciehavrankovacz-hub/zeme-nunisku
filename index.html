@@ -9387,7 +9387,7 @@ kresliMapy = function(){
     cv.width = 104; cv.height = 52;
     nakresliNahled(cv, mp, i);
     d.appendChild(cv);
-    const znak = mp.voda ? (mp.voda === "ostrovy" ? "🏝️" : mp.voda === "tymove" ? "🏝️🤝"
+    const znak = mp.voda ? (mp.voda === "svet" ? "🌍" : mp.voda === "ostrovy" ? "🏝️" : mp.voda === "tymove" ? "🏝️🤝"
                   : mp.voda === "rec" ? "🌊" : mp.voda === "okraj" ? "⛵" : "💧") : "";
     const hory = mp.hory ? "⛰️" : "";
     d.insertAdjacentHTML("beforeend",
@@ -9436,6 +9436,29 @@ function nakresliNahled(cv, mp, idx){
     x.fillStyle = mp.zeme;
     if(mp.voda === "tymove"){ elipsa(W*0.26, H*0.5, W*0.19, H*0.30); elipsa(W*0.74, H*0.5, W*0.19, H*0.30); }
     else { const n = 5; for(let i = 0; i < n; i++) elipsa(nah(W*0.15, W*0.85), nah(H*0.2, H*0.8), W*0.12, H*0.17); }
+  }else if(mp.voda === "svet"){
+    /* Na přání "ta mapa neni stejna jako kdyz ji hraju, tam je more a
+       tam to neni vyznaceny" – tenhle náhled dřív "svet" vůbec neznal,
+       takže se ukázala jen zelená placka s tečkami, bez moře. Teď
+       kreslí stejných sedm světadílů na stejných místech jako
+       TEREN.postav() (p18.html) – souhlasí to se skutečnou mapou. */
+    morem(() => x.fillRect(0, 0, W, H));
+    x.fillStyle = mp.zeme;
+    const pevnina = (cx,cy,rx,ry) => elipsa(W*cx, H*cy, W*rx, H*ry);
+    // Severní Amerika
+    pevnina(0.14,0.22, 0.11,0.13); pevnina(0.10,0.34, 0.08,0.09); pevnina(0.17,0.36, 0.07,0.08);
+    // Jižní Amerika
+    pevnina(0.22,0.52, 0.055,0.10); pevnina(0.24,0.68, 0.045,0.12);
+    // Evropa
+    pevnina(0.47,0.20, 0.06,0.07);
+    // Afrika
+    pevnina(0.48,0.42, 0.09,0.10); pevnina(0.49,0.58, 0.065,0.12);
+    // Asie
+    pevnina(0.62,0.18, 0.13,0.10); pevnina(0.72,0.28, 0.14,0.14); pevnina(0.66,0.40, 0.09,0.09);
+    // Austrálie
+    pevnina(0.83,0.68, 0.07,0.06);
+    // Antarktida
+    x.fillRect(0, H*0.93, W, H*0.07);
   }
 
   if(mp.hory){
@@ -15113,7 +15136,15 @@ NET.posli = function(m){
    výstřelu, ale to bylo moc brzo. Vráceno zpátky, jak to bylo původně:
    škoda se strhne přesně, když šíp/koule doletí (p4a.html –
    vystrel/updStrely), ne dřív. */
-VERZE = "v119";
+/* v120 = oprava k Celé Zeměkouli – "ta mapa neni stejna jako kdyz ji
+   hraju, tam je more a tam to neni vyznaceny". Náhled mapy (malá dlaždice
+   v lobby i velký náhled po kliknutí, oboje kreslí nakresliNahled() v
+   p20.html) vůbec neznal nový typ vody "svet" – ukázala se jen zelená
+   placka s tečkami, žádné moře. Teď kreslí stejných sedm světadílů na
+   stejných místech, jako doopravdy generuje TEREN.postav() (p18.html),
+   takže náhled konečně sedí s tím, co se pak fakt hraje. Ikonka mapy
+   je teď taky 🌍 místo obecné kapky. */
+VERZE = "v120";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
