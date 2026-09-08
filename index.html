@@ -3094,14 +3094,6 @@ function vystrel(od, cil, dmg, kosmet){
   if(od.druh==="budova") d.style.background="linear-gradient(90deg,#fff,#8ecaff)";
   SVET.appendChild(d);
   G.strely.push({x:x0,y:y0,x0,y0,cil,dmg,el:d,t:0,dur:Math.max(0.18,dist2(x0,y0,cil.x,cil.y)/620),od,kosmet:!!kosmet});
-  /* Na přání "chci aby to ubralo hned, co ji to hitne, ne az po chvili" –
-     dřív se škoda počítala, až šíp/koule doletí (s.t>=1 v updStrely),
-     takže hlavně na velké vzdálenosti (lodě na moři) uběhla než HP klesla
-     hezká chvilka. Teď se škoda strhne HNED při výstřelu – šíp/koule pak
-     jen doletí naoko, ať ta hezká animace zůstane, ale životy klesnou
-     okamžitě. kosmet (jen u kamaráda v multiplayeru) má dmg=0 vždycky,
-     takže tady žádnou skutečnou škodu nikdy nezpůsobí. */
-  if(!kosmet && !cil.mrtvy) ubliz(cil, dmg, od);
   zvuk("luk");
 }
 function updStrely(dt){
@@ -3115,8 +3107,13 @@ function updStrely(dt){
     s.el.style.transform = `translate(${x}px,${y}px) rotate(${uh}deg)`;
     s.el.style.zIndex = 9000;
     if(s.t>=1){
-      // škoda se strhla už při výstřelu (viz vystrel) – tady zbyl jen dopad naoko
-      castice(tx,ty,"#ffd76e", s.kosmet?3:5);
+      /* Na přání "ma to ubrat presne v tu chvili co to dopadne na
+         nepritele" – škoda se počítá tady, přesně když šíp/koule
+         doletí (ne dřív při výstřelu – to jsem zkusila, ale bylo to
+         moc brzo). kosmet = jen u kamaráda v multiplayeru, škodu
+         nepočítá, tu má jen hostitel. */
+      if(s.kosmet) castice(tx,ty,"#ffd76e",3);
+      else if(!s.cil.mrtvy){ ubliz(s.cil, s.dmg, s.od); castice(tx,ty,"#ffd76e",5); }
       s.el.remove(); G.strely.splice(i,1);
     }
   }
@@ -15111,7 +15108,12 @@ NET.posli = function(m){
    mapě pozná, že je na jiném světadílu, a nezasekne se na břehu.
    Ověřeno se 3 boty na plné Ludicrous velikosti (žádná chyba, ~6,5 ms
    na herní krok – zvladatelné). */
-VERZE = "v118";
+/* v119 = oprava k v117 – "ty streli ubiraji moc brzo, ma to ubrat presne
+   v tu chvili co to dopadne na nepritele". v117 dala škodu HNED při
+   výstřelu, ale to bylo moc brzo. Vráceno zpátky, jak to bylo původně:
+   škoda se strhne přesně, když šíp/koule doletí (p4a.html –
+   vystrel/updStrely), ne dřív. */
+VERZE = "v119";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
