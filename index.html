@@ -2298,7 +2298,7 @@ const MAPY = [
      doopravdy. Mapa je násobně větší než ostatní – i na nejmenší
      velikosti je pořád obří, na Ludicrous teprve doopravdy vynikne. */
   {jm:"Celá Zeměkoule", popis:"Sedm světadílů jako v opravdovém světě – bez lodí se mezi nimi nikam nedostaneš!",
-    zeme:"#5f9e4f", lesy:1, zlato:1, zelezo:1, sirka:7000, vyska:4800, voda:"svet", hory:4}
+    zeme:"#5f9e4f", lesy:1, zlato:1, zelezo:1, sirka:11000, vyska:7600, voda:"svet", hory:4}
 ];
 
 /* ---- KONTINENTY PRO MAPU "CELÁ ZEMĚKOULE" ----
@@ -2356,7 +2356,21 @@ const SVET_KONTINENTY = [
    [0.77,0.655]],
   // Antarktida – široký pás úplně dole
   [[0.05,0.95],[0.15,0.92],[0.30,0.905],[0.45,0.90],[0.55,0.90],[0.65,0.905],[0.80,0.92],[0.92,0.95],
-   [0.85,0.975],[0.65,0.99],[0.45,0.995],[0.30,0.99],[0.15,0.975]]
+   [0.85,0.975],[0.65,0.99],[0.45,0.995],[0.30,0.99],[0.15,0.975]],
+  // Grónsko – velký ostrov severovýchodně od Severní Ameriky
+  [[0.365,0.17],[0.355,0.12],[0.36,0.08],[0.375,0.045],[0.395,0.03],[0.415,0.045],
+   [0.425,0.08],[0.415,0.125],[0.40,0.16],[0.385,0.18]],
+  // Britské ostrovy
+  [[0.385,0.185],[0.393,0.178],[0.398,0.19],[0.392,0.20],[0.384,0.195]],
+  // Japonsko – tenký oblouk u východní Asie
+  [[0.865,0.205],[0.875,0.215],[0.878,0.235],[0.87,0.255],[0.862,0.27],[0.855,0.25],[0.858,0.225]],
+  // Madagaskar u jihovýchodní Afriky
+  [[0.59,0.495],[0.60,0.51],[0.598,0.535],[0.588,0.548],[0.582,0.53],[0.583,0.51]],
+  // Sumatra a Jáva – jihovýchodní Asie
+  [[0.72,0.445],[0.74,0.45],[0.745,0.465],[0.725,0.462]],
+  [[0.755,0.455],[0.775,0.458],[0.778,0.472],[0.758,0.47]],
+  // Nový Zéland u Austrálie
+  [[0.90,0.705],[0.908,0.71],[0.912,0.725],[0.905,0.73],[0.898,0.72]]
 ];
 /* Nakreslí všechny kontinenty vyplněné aktuální fillStyle do libovolného
    plátna W×H – používá se pro doopravdy generovanou mapu i pro náhled. */
@@ -8130,8 +8144,17 @@ const TEREN = {
     if(this.brod){ this.sije(nastav); this.brod = false; }
 
     /* Kolem každé základny MUSÍ být pevná zem, jinak by hráč začínal ve vodě
-       nebo v kameni. Tohle jde vždycky až nakonec a přebije všechno ostatní. */
-    ZAKL.forEach(z => kruh(z.x, z.y, Math.min(SVET_W, SVET_H) * 0.135, 0));
+       nebo v kameni. Tohle jde vždycky až nakonec a přebije všechno ostatní.
+       Na přání "ty ostrovy jsou vzdycky propojeny" – na Celé Zeměkouli je
+       tenhle kruh (13,5 % kratší strany mapy – na velké mapě klidně
+       přes 2000 světových jednotek) často širší než úzké moře mezi
+       světadíly, takže základna hráče uprostřed ho prostě "zazdila"
+       souší. Na "svet" mapě proto pevná pojistka kolem základny zůstává
+       jen malá, pevná (nezávislá na velikosti mapy) – dost na to, aby
+       tam hráč nezačínal ve vodě, ale málo na to, aby to protrhlo celý
+       oceán mezi kontinenty. */
+    const zakladRadius = (typ === "svet") ? 420 : Math.min(SVET_W, SVET_H) * 0.135;
+    ZAKL.forEach(z => kruh(z.x, z.y, zakladRadius, 0));
 
     this.spocitejOblasti();
     this.vykresliVrstvu();
@@ -15199,7 +15222,23 @@ NET.posli = function(m){
    data (SVET_KONTINENTY + kresliKontinenty(), p3.html) teď kreslí
    skutečná mapa (TEREN.postav, p18.html) i náhled v lobby
    (nakresliNahled, p20.html) – vždycky vypadají stejně. */
-VERZE = "v121";
+/* v122 = na přání "ty ostrovy jsou vzdycky propojeny a ta mapa ma byt
+   mnohem vetsi a zkus to udelat jeste vic podle realneho sveta".
+   1) SKUTEČNÁ PŘÍČINA propojených světadílů: kolem KAŽDÉ základny hry
+      vždycky garantuje kus pevné země (jinak by hráč začínal ve vodě) –
+      ale ten kruh měl poloměr 13,5 % kratší strany mapy, na velké mapě
+      klidně přes 2000 jednotek, tedy často ŠIRŠÍ než úzké moře mezi
+      světadíly. Základna uprostřed pak souší "prorazila" oceán a
+      spojila kontinenty dohromady. Na mapě "svet" má ten kruh teď
+      pevných 420 jednotek bez ohledu na velikost mapy (p18.html).
+      Ověřeno: 5 základen na 5 různých ostrovech/světadílech, 19
+      oddělených kusů souše (dřív se slily na 4–5).
+   2) Mapa zvětšená ze 7000×4800 na 11000×7600 (na Ludicrous teď přes
+      36 000×25 000).
+   3) Přibylo Grónsko, Britské ostrovy, Japonsko, Madagaskar,
+      Sumatra/Jáva a Nový Zéland jako samostatné ostrovy vedle
+      hlavních sedmi světadílů (p3.html – SVET_KONTINENTY). */
+VERZE = "v122";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
