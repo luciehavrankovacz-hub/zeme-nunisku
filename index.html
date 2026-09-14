@@ -2301,6 +2301,75 @@ const MAPY = [
     zeme:"#5f9e4f", lesy:1, zlato:1, zelezo:1, sirka:7000, vyska:4800, voda:"svet", hory:4}
 ];
 
+/* ---- KONTINENTY PRO MAPU "CELÁ ZEMĚKOULE" ----
+   Na přání "chci aby to vypadalo jako realna mapa sveta... dej si
+   zalezet" – místo pár překrytých elips (kulaté, nepoznáš od sebe)
+   teď každý světadíl kreslí opravdový obrys (desítky bodů), ať je na
+   první pohled poznat Aljaška, Florida, roh Afriky, Indie, Skandinávie...
+   Souřadnice jsou zlomky mapy (0–1, x=0 vlevo/západ, y=0 nahoře/sever) –
+   NEJSOU to skutečná zeměpisná data (na to by bylo potřeba opravdovou
+   mapu pobřeží), jen ručně namalovaný tvar podle toho, jak si člověk
+   kontinenty pamatuje z atlasu. Stejná data kreslí jak doopravdy
+   vygenerovaná mapa (TEREN.postav, p18.html), tak náhled v lobby
+   (nakresliNahled, p20.html) – přes kresliKontinenty() níž – takže
+   náhled a hraná mapa VŽDYCKY vypadají stejně. */
+const SVET_KONTINENTY = [
+  // Severní Amerika – Aljaška, Hudsonův záliv (velký vkus nahoře), Florida
+  [[0.03,0.15],[0.06,0.08],[0.13,0.05],[0.22,0.045],[0.30,0.06],[0.33,0.10],
+   [0.29,0.13],[0.245,0.155],[0.285,0.145],[0.32,0.165],[0.335,0.20],
+   [0.315,0.225],[0.335,0.245],[0.30,0.28],[0.29,0.32],[0.283,0.36],
+   [0.29,0.385],[0.283,0.405],[0.265,0.385],[0.235,0.375],[0.20,0.365],
+   [0.21,0.40],[0.24,0.42],[0.235,0.44],[0.21,0.425],[0.185,0.435],
+   [0.165,0.46],[0.16,0.478],[0.14,0.465],[0.145,0.44],[0.155,0.415],
+   [0.165,0.39],[0.14,0.30],[0.10,0.24],[0.07,0.19],[0.045,0.16]],
+  // Baja California – tenký poloostrov oddělený od pevniny
+  [[0.135,0.375],[0.148,0.363],[0.158,0.385],[0.162,0.415],[0.152,0.44],[0.138,0.42],[0.128,0.395]],
+  // Jižní Amerika – široko nahoře (Brazílie), úzko dole (Patagonie)
+  [[0.20,0.485],[0.24,0.47],[0.27,0.475],[0.285,0.50],[0.28,0.54],[0.27,0.58],[0.275,0.62],
+   [0.265,0.66],[0.25,0.70],[0.235,0.74],[0.22,0.78],[0.205,0.82],[0.195,0.855],[0.20,0.87],
+   [0.185,0.855],[0.175,0.82],[0.17,0.78],[0.175,0.74],[0.16,0.70],[0.155,0.65],[0.165,0.60],
+   [0.17,0.555],[0.18,0.52],[0.19,0.50]],
+  // Evropa – Skandinávie, Itálie
+  [[0.40,0.235],[0.395,0.21],[0.41,0.195],[0.43,0.19],[0.44,0.175],[0.46,0.17],[0.475,0.155],
+   [0.49,0.14],[0.51,0.135],[0.525,0.145],[0.545,0.15],[0.555,0.17],[0.55,0.19],[0.53,0.205],
+   [0.545,0.22],[0.53,0.235],[0.51,0.225],[0.495,0.235],[0.475,0.245],[0.455,0.25],[0.435,0.255],
+   [0.415,0.25]],
+  // Afrika – roh na východě, úzký mys na jihu
+  [[0.42,0.265],[0.445,0.255],[0.475,0.26],[0.50,0.253],[0.525,0.26],[0.545,0.275],
+   [0.565,0.27],[0.585,0.285],[0.575,0.30],[0.55,0.305],[0.545,0.32],[0.555,0.34],
+   [0.565,0.365],[0.575,0.395],[0.583,0.425],[0.57,0.455],[0.552,0.478],
+   [0.535,0.505],[0.515,0.53],[0.498,0.552],[0.483,0.573],[0.472,0.593],
+   [0.463,0.573],[0.457,0.548],[0.452,0.518],[0.438,0.49],[0.423,0.462],
+   [0.413,0.432],[0.403,0.40],[0.397,0.368],[0.393,0.335],[0.398,0.305],
+   [0.405,0.283]],
+  // Asie – Sibiř nahoře, Indie klínem dole
+  [[0.555,0.195],[0.58,0.178],[0.615,0.165],[0.655,0.15],[0.695,0.133],[0.735,0.115],
+   [0.775,0.10],[0.815,0.093],[0.855,0.098],[0.885,0.115],[0.90,0.145],[0.885,0.175],
+   [0.86,0.185],[0.875,0.21],[0.865,0.24],[0.84,0.25],[0.815,0.24],
+   [0.80,0.265],[0.775,0.28],[0.755,0.275],[0.735,0.29],
+   [0.72,0.315],[0.70,0.335],[0.685,0.36],[0.665,0.385],[0.655,0.41],
+   [0.643,0.425],[0.633,0.405],[0.635,0.38],[0.625,0.355],[0.612,0.33],
+   [0.60,0.305],[0.59,0.275],[0.578,0.245],[0.57,0.22]],
+  // Austrálie
+  [[0.78,0.635],[0.795,0.615],[0.815,0.605],[0.835,0.61],[0.85,0.625],[0.865,0.645],[0.87,0.665],
+   [0.865,0.685],[0.85,0.70],[0.835,0.715],[0.815,0.72],[0.795,0.715],[0.78,0.70],[0.77,0.68],
+   [0.77,0.655]],
+  // Antarktida – široký pás úplně dole
+  [[0.05,0.95],[0.15,0.92],[0.30,0.905],[0.45,0.90],[0.55,0.90],[0.65,0.905],[0.80,0.92],[0.92,0.95],
+   [0.85,0.975],[0.65,0.99],[0.45,0.995],[0.30,0.99],[0.15,0.975]]
+];
+/* Nakreslí všechny kontinenty vyplněné aktuální fillStyle do libovolného
+   plátna W×H – používá se pro doopravdy generovanou mapu i pro náhled. */
+function kresliKontinenty(ctx, W, H){
+  ctx.beginPath();
+  for(const tvar of SVET_KONTINENTY){
+    ctx.moveTo(tvar[0][0]*W, tvar[0][1]*H);
+    for(let i=1;i<tvar.length;i++) ctx.lineTo(tvar[i][0]*W, tvar[i][1]*H);
+    ctx.closePath();
+  }
+  ctx.fill();
+}
+
 /* ---- ikony hráče (obrázek u jména) ---- */
 const IKONY = CIVKEYS.slice();
 
@@ -8024,38 +8093,27 @@ const TEREN = {
          moc nezahraješ – tam ať hrajou lidi proti lidem. */
       if(mapa.sije) this.sije(nastav);
     }
-    /* ---- CELÁ ZEMĚKOULE – na přání "nejlepsi mapa podle realneho sveta,
-       presne podle zeme". Sedm světadílů rozmístěných zhruba jako na
-       skutečné mapě světa (rovnoběžková/poledníková mřížka: x = 0..W
-       jako zeměpisná délka, y = 0..H jako šířka), poskládaných z pár
-       přeložených elips – žádné přesné pobřeží, ale na první pohled je
-       jasné, co je co. Bez lodí (voda:true) se mezi světadíly nikam
+    /* ---- CELÁ ZEMĚKOULE – na přání "chci aby to vypadalo jako realna
+       mapa sveta... dej si zalezet". Dřív pár překrytých elips (kulaté,
+       nepoznáš od sebe), teď doopravdy namalované obrysy světadílů
+       (SVET_KONTINENTY, p3.html) – vykreslí se přes offscreen plátno o
+       velikosti mřížky (jeden pixel = jedno políčko terénu) a podle
+       barvy pixelu se rozhodne souš/moře. Stejná data kreslí i náhled
+       mapy v lobby (nakresliNahled, p20.html), takže náhled a hraná
+       mapa vypadají úplně stejně. Bez lodí se mezi světadíly nikam
        nedostaneš, přesně jako doopravdy. */
     else if(typ === "svet"){
       this.jeVoda = true;
       this.bunky.fill(1);                                  // celý svět je nejdřív oceán
-      const pevnina = (cx,cy,rx,ry) => elipsa(W*cx, H*cy, W*rx, H*ry, 0);
-      // Severní Amerika
-      pevnina(0.14,0.22, 0.11,0.13);
-      pevnina(0.10,0.34, 0.08,0.09);
-      pevnina(0.17,0.36, 0.07,0.08);
-      // Jižní Amerika
-      pevnina(0.22,0.52, 0.055,0.10);
-      pevnina(0.24,0.68, 0.045,0.12);
-      // Evropa
-      pevnina(0.47,0.20, 0.06,0.07);
-      // Afrika
-      pevnina(0.48,0.42, 0.09,0.10);
-      pevnina(0.49,0.58, 0.065,0.12);
-      // Asie (včetně Ruska a jihovýchodní Asie)
-      pevnina(0.62,0.18, 0.13,0.10);
-      pevnina(0.72,0.28, 0.14,0.14);
-      pevnina(0.66,0.40, 0.09,0.09);
-      // Austrálie
-      pevnina(0.83,0.68, 0.07,0.06);
-      // Antarktida – úzký pruh úplně dole přes celou šířku
-      for(let x = 0; x < W; x += this.krok)
-        for(let y = H*0.93; y < H; y += this.krok) nastav(x, y, 0);
+      const off = document.createElement("canvas");
+      off.width = this.sl; off.height = this.ra;
+      const octx = off.getContext("2d");
+      octx.fillStyle = "#fff";
+      kresliKontinenty(octx, this.sl, this.ra);
+      const data = octx.getImageData(0, 0, this.sl, this.ra).data;
+      for(let cy = 0; cy < this.ra; cy++)
+        for(let cx = 0; cx < this.sl; cx++)
+          if(data[(cy*this.sl+cx)*4] > 128) this.bunky[cy*this.sl+cx] = 0;
     }
 
     // skály (jdou i na mapy bez vody)
@@ -9437,28 +9495,14 @@ function nakresliNahled(cv, mp, idx){
     if(mp.voda === "tymove"){ elipsa(W*0.26, H*0.5, W*0.19, H*0.30); elipsa(W*0.74, H*0.5, W*0.19, H*0.30); }
     else { const n = 5; for(let i = 0; i < n; i++) elipsa(nah(W*0.15, W*0.85), nah(H*0.2, H*0.8), W*0.12, H*0.17); }
   }else if(mp.voda === "svet"){
-    /* Na přání "ta mapa neni stejna jako kdyz ji hraju, tam je more a
-       tam to neni vyznaceny" – tenhle náhled dřív "svet" vůbec neznal,
-       takže se ukázala jen zelená placka s tečkami, bez moře. Teď
-       kreslí stejných sedm světadílů na stejných místech jako
-       TEREN.postav() (p18.html) – souhlasí to se skutečnou mapou. */
+    /* Na přání "chci aby to vypadalo jako realna mapa sveta... dej si
+       zalezet" – náhled teď kreslí ty samé doopravdy namalované obrysy
+       světadílů (SVET_KONTINENTY + kresliKontinenty(), p3.html), co
+       používá skutečná mapa (TEREN.postav, p18.html), takže náhled a
+       hraná mapa vypadají úplně stejně. */
     morem(() => x.fillRect(0, 0, W, H));
     x.fillStyle = mp.zeme;
-    const pevnina = (cx,cy,rx,ry) => elipsa(W*cx, H*cy, W*rx, H*ry);
-    // Severní Amerika
-    pevnina(0.14,0.22, 0.11,0.13); pevnina(0.10,0.34, 0.08,0.09); pevnina(0.17,0.36, 0.07,0.08);
-    // Jižní Amerika
-    pevnina(0.22,0.52, 0.055,0.10); pevnina(0.24,0.68, 0.045,0.12);
-    // Evropa
-    pevnina(0.47,0.20, 0.06,0.07);
-    // Afrika
-    pevnina(0.48,0.42, 0.09,0.10); pevnina(0.49,0.58, 0.065,0.12);
-    // Asie
-    pevnina(0.62,0.18, 0.13,0.10); pevnina(0.72,0.28, 0.14,0.14); pevnina(0.66,0.40, 0.09,0.09);
-    // Austrálie
-    pevnina(0.83,0.68, 0.07,0.06);
-    // Antarktida
-    x.fillRect(0, H*0.93, W, H*0.07);
+    kresliKontinenty(x, W, H);
   }
 
   if(mp.hory){
@@ -15144,7 +15188,18 @@ NET.posli = function(m){
    stejných místech, jako doopravdy generuje TEREN.postav() (p18.html),
    takže náhled konečně sedí s tím, co se pak fakt hraje. Ikonka mapy
    je teď taky 🌍 místo obecné kapky. */
-VERZE = "v120";
+/* v121 = na přání "chci aby to vypadalo jako realna mapa sveta... dej
+   si zalezet" (s obrázkem skutečné mapy světa jako vzorem). Sedm
+   světadílů kreslených pár překrytými elipsami nešlo od sebe skoro
+   rozeznat. Nahrazeno doopravdy namalovanými obrysy (desítky bodů na
+   světadíl) – Severní Amerika má Hudsonův záliv a samostatný poloostrov
+   Baja California, Afrika roh na východě a úzký mys na jihu, Asie klín
+   Indie. Není to skutečná mapová data (na to by bylo potřeba opravdové
+   pobřeží), ale mnohem víc připomíná atlas než kulaté flíčky. Stejná
+   data (SVET_KONTINENTY + kresliKontinenty(), p3.html) teď kreslí
+   skutečná mapa (TEREN.postav, p18.html) i náhled v lobby
+   (nakresliNahled, p20.html) – vždycky vypadají stejně. */
+VERZE = "v121";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
