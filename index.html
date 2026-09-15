@@ -2808,7 +2808,18 @@ function postavSvet(){
                   Math.round(nahI(9, 17) * sila), nah(130, 215));
     }
   }
+  /* Na přání "furt jsou vsude i na tech ostrovech volne mista velke ma
+     tam byt co nejvic surovin... to plati i pro australii pro celou
+     mapu" – na Celé Zeměkouli se skoro nevynechávají "prázdné" mýtiny
+     (skoro každé políčko něco vyprodukuje). POZOR: zkoušelo se k tomu
+     i menší políčko (500 i 420px) – oboje na Ludicrous s 8 hráči
+     vygenerovalo přes 60-130 tisíc věcí a hra se s tolika entitami
+     citelně zadrhávala (ne jen při generování mapy, ale i při běžném
+     hraní). Velikost políčka proto zůstává stejná jako předtím (620px),
+     jen mýtiny jsou vzácnější. */
+  const jeSvetBunka = mapa.voda === "svet";
   const BUNKA = 620;
+  const mytinaVaha = jeSvetBunka ? 0.25 : 0.55;
   const sloupcu = Math.max(2, Math.round(SVET_W/BUNKA));
   const radku   = Math.max(2, Math.round(SVET_H/BUNKA));
   const dalekoOdZakladny = (x,y) => ZAKL.every(z => dist2(x, y, z.x, z.y) > 460);
@@ -2820,7 +2831,7 @@ function postavSvet(){
       if(!suchoNa(cx,cy) || !dalekoOdZakladny(cx,cy)) continue;
       /* co v tomhle políčku vyroste – podle toho, čeho má mapa hodně */
       const vahaLes = 3.2*mapa.lesy, vahaZl = 1.15*mapa.zlato, vahaZe = 1.15*mapa.zelezo;
-      const los = rnd() * (vahaLes + vahaZl + vahaZe + 0.55);   // 0.55 = občas mýtina
+      const los = rnd() * (vahaLes + vahaZl + vahaZe + mytinaVaha);
       if(los < vahaLes)                       hvozd(cx, cy, Math.min(1.4, mapa.lesy));
       else if(los < vahaLes + vahaZl)         zilaZdroje("zlato",  cx, cy, nahI(5,8));
       else if(los < vahaLes + vahaZl + vahaZe)zilaZdroje("zelezo", cx, cy, nahI(5,8));
@@ -2839,34 +2850,45 @@ function postavSvet(){
   }
 
   // základny hráčů
+  const jeSvet = mapa.voda === "svet";
   G.hraci.forEach((h,i)=>{
     const z = ZAKL[i];
     const dovnitrX = z.x < SVET_W/2 ? 1 : -1, dovnitrY = z.y < SVET_H/2 ? 1 : -1;
-    /* .pocatecni = tahle konkrétní radnice se počítá pro cíl "zničit hlavní
-       radnici" (viz p4a zabij() a wizard v p42) – další, později postavené
-       radnice se nepočítají. */
-    pridejBudovu("radnice", i, z.x, z.y, true).pocatecni = true;
-    pridejBudovu("domek", i, z.x - dovnitrX*170, z.y - dovnitrY*50, true);
-    pridejBudovu("domek", i, z.x + dovnitrX*40,  z.y - dovnitrY*175, true);
+    /* Na přání "v te antarktide nemas mit zadne budovy tam mas proste
+       prenaseci lod a jednotky" – na Celé Zeměkouli se na Antarktidě
+       vůbec nestaví (žádná radnice, domek, kasárna ani věž) – hráč tam
+       jen sedí s výpravou, nasedne na loď a vylodí se, kde chce. Radnici
+       a všechno ostatní si postaví, až přistane. */
+    if(!jeSvet){
+      /* .pocatecni = tahle konkrétní radnice se počítá pro cíl "zničit
+         hlavní radnici" (viz p4a zabij() a wizard v p42) – další, později
+         postavené radnice se nepočítají. */
+      pridejBudovu("radnice", i, z.x, z.y, true).pocatecni = true;
+      pridejBudovu("domek", i, z.x - dovnitrX*170, z.y - dovnitrY*50, true);
+      pridejBudovu("domek", i, z.x + dovnitrX*40,  z.y - dovnitrY*175, true);
+    }
     const O = OBTIZNOSTI[G.obt];
-    const jeSvet = mapa.voda === "svet";
     /* Na Celé Zeměkouli všichni startují stejně skromně na Antarktidě –
        král, jen 3 vesničané a k tomu (níž) i loď, ať má hráč čím doplout
        na svůj vysněný kontinent. */
     const vesnicanu = jeSvet ? 3 : (h.bot ? 4 : (G.obt<=1 ? 6 : 4));
     for(let k=0;k<vesnicanu;k++)
       pridejJednotku("vesnican", i, z.x+nah(-120,120), z.y+dovnitrY*nah(60,140));
-    /* Král stojí hned u radnice. O něj se hraje – když padne, hráč prohrál,
-       i kdyby mu zůstalo celé město. `straz` je jeho stanoviště: dál než
-       KRAL_VODIK od něj se nikdy nevzdálí (viz p4a), aby si sám nenabíhal
-       do bitvy a hra o něj neskončila hned. */
+    /* Král stojí hned u radnice (jinde) / u výpravy (na Antarktidě). O něj
+       se hraje – když padne, hráč prohrál, i kdyby mu zůstalo celé město.
+       `straz` je jeho stanoviště: dál než KRAL_VODIK od něj se nikdy
+       nevzdálí (viz p4a), aby si sám nenabíhal do bitvy a hra o něj
+       neskončila hned. */
     const kr = pridejJednotku("kral", i, z.x - dovnitrX*60, z.y + dovnitrY*70);
     kr.straz = {x:kr.x, y:kr.y};
     /* Převozní loď na start – pridejJednotku (p18.html) si pro "lod" sama
        najde nejbližší vodu kolem z.x/z.y, ať ji postavíme kamkoli. Hráč si
        s ní pak sám odpluje, kam chce (třeba do Afriky). */
     if(jeSvet) pridejJednotku("prevoz", i, z.x, z.y);
-    if(h.bot){
+    if(jeSvet){
+      /* žádná výhoda pro boty ani snadné obtížnosti tady – všichni na
+         Antarktidě začínají úplně stejně holí, jen s výpravou */
+    }else if(h.bot){
       h.res.drevo = Math.round(h.res.drevo * (0.9+O.tezba*0.3));
       pridejBudovu("kasarna", i, z.x + dovnitrX*190, z.y + dovnitrY*95, true);
       /* Na přání "plati to i pro nej ze je nemuze stavet pres sebe" – náhodná
@@ -5239,7 +5261,7 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
-    • <b>🌍 Celá Zeměkoule</b> – teď se na ní začíná úplně jinak: všichni startují na Antarktidě s králem, 3 vesničany, zvědem a lodí, na kterou hned nasedneš a doplavíš si, kam chceš (třeba do Afriky) – prvních 5 minut se navíc vůbec nedá bojovat. Zvěd si teď i mnohem líp poradí s obeplouváním moře. Mnohem víc zlata i železa na souši. A pořád platí: podle skutečné Země, jen moře mezi světadíly, bez lodí nikam!<br>
+    • <b>🌍 Celá Zeměkoule</b> – na Antarktidě teď vůbec nestavíš, jen sedíš s výpravou (král, 3 vesničané, zvěd, loď) a rovnou vyrazíš lodí, kam chceš (třeba do Afriky) – prvních 5 minut se navíc vůbec nedá bojovat. Opravena i "duchová" mlha – to, co jsi nikdy neobjevila, se ti už neukazuje samo od sebe. Zvěd si líp poradí s obeplouváním moře. Mnohem víc zlata i železa na souši. A pořád platí: podle skutečné Země, jen moře mezi světadíly, bez lodí nikam!<br>
     • <b>Karavan</b> – vycvič ho v tržišti a pošli na SPOJENCOVO tržiště – bude jezdit tam a zpátky a vydělávat zlato<br>
     • <b>Sklad</b> – levná menší budova, kam vesničané taky můžou nosit suroviny, ne jen do radnice<br>
     • <b>Den a noc</b> – 10 minut je světlo, pak 10 minut tma a budovám se rozsvítí okýnka<br>
@@ -9666,6 +9688,17 @@ updAI = function(dt){
 
   G.hraci.forEach((H, si)=>{
     if(!H.bot || H.porazen) return;
+    /* Na Celé Zeměkouli bot zatím neumí sám najít kontinent a přistát –
+       hned po startu nemá vůbec žádnou budovu (výprava na Antarktidě,
+       viz p3.html postavSvet). Beze zbytku téhle podmínky by si klidně
+       začal stavět domky/kasárna přímo na Antarktidě (kam nemají chodit
+       ŽÁDNÉ budovy) a hlavně by drahé "koho už znám" hledání (nejbliz
+       přes G.ents) běželo pořád dokola v nabité hromadě hráčů namačkaných
+       těsně vedle sebe – na Ludicrous to hru znatelně zpomalilo (naměřeno
+       přes 1 s na jediné volání updAI). Dokud bot nemá jedinou budovu,
+       radši nedělá vůbec nic. */
+    if(typeof jeSvetovaMapa === "function" && jeSvetovaMapa() &&
+       !G.budovy.some(b => b.side === si && !b.mrtvy)) return;
     const zakl = ZAKL[si];
     if(!H.nalezeno) H.nalezeno = {};
 
@@ -12443,17 +12476,32 @@ const KULISY = {
     if(!this.zap || !el) return;
     const i = this.index(x, y);
     if(i < 0) return;
-    (this.bunky[i] || (this.bunky[i] = [])).push(el);
+    (this.bunky[i] || (this.bunky[i] = [])).push({el, x, y});
     // co vzniklo mimo obrazovku, rovnou schováme
     if(!this.videne.has(i)) el.style.display = "none";
   },
 
+  /* POZOR (na přání "v antarktide... nejsou videt vsechny suroviny a
+     budovy" i když tam vůbec neni prozkoumáno): tahle mřížka schovává
+     a ukazuje věci JEN podle vzdálenosti od kamery, o mlze (MLHA) vůbec
+     nevěděla. Jakmile se kamera přiblížila k nepřítelově základně, co
+     jsi nikdy neviděla, tenhle kód ji klidně odkryl – a MLHA.uplatni()
+     (p16.html) na to pak nesáhla, protože z jejího pohledu se nic
+     nezměnilo (věc byla furt "neviděná", jen display se změnil kýmsi
+     jiným). Teď se PŘI ODKRÝVÁNÍ ještě zeptáme mlhy – co nebylo nikdy
+     prozkoumáno, se neukáže. Jakmile to hráč doopravdy prozkoumá,
+     odkryje to MLHA.uplatni() sama (běží nezávisle na kameře). Schovávání
+     (jak==="none") se mlhy neptá – schovat je vždycky bezpečné. */
   ukaz(i, jak){
     const pole = this.bunky[i];
     if(!pole) return;
+    const ptejSeMlhy = jak !== "none" && typeof MLHA !== "undefined" && MLHA.zap && MLHA.znam;
     for(let k = 0; k < pole.length; k++){
-      const el = pole[k];
-      if(el && el.style) el.style.display = jak;
+      const polozka = pole[k];
+      const el = polozka.el;
+      if(!el || !el.style) continue;
+      if(ptejSeMlhy && !MLHA.znamBod(polozka.x, polozka.y)) continue;
+      el.style.display = jak;
     }
   },
 
@@ -13314,6 +13362,13 @@ function odhalCelouMapu(){
   MLHA.uplatni();
   MLHA.vykresli();
   MLHA.konec();                       // zastaví přepočet, ať to nikdo nezatáhne zpátky
+  /* POZOR (na přání "kdyz zkonci hra tak vidis jenom na te male mapce
+     veci v antarktide ale ne jinde"): vrstva se surovinami na minimapě
+     (MMZDROJE, p36.html) si obrázek KEŠUJE a překresluje nejdřív po 1,2 s
+     – hned po konci hry to bylo skoro vždycky dřív, takže se stará
+     (jen-Antarktida) verze klidně vrátila znova. Vynutíme si okamžité
+     překreslení bez ohledu na kešku. */
+  if(typeof MMZDROJE !== "undefined") MMZDROJE.cas = -99;
   if(typeof kresliMinimapu === "function") kresliMinimapu();
 }
 
@@ -15395,7 +15450,34 @@ NET.posli = function(m){
    pobřeží bez zaseknutí, boj je přes zautoc() prokazatelně zablokovaný
    do 300 s a jde znovu po nich. Beze změny na ostatních mapách (znovu
    ověřeno headless regresí i ručně na jiné vodní mapě). */
-VERZE = "v126";
+/* v127 = tři opravy na Celou Zeměkouli:
+   1) "v te antarktide nemas mit zadne budovy tam mas proste prenaseci
+      lod a jednotky" (p3.html postavSvet) – na Antarktidě se teď vůbec
+      nestaví (žádná radnice/domek/kasárna/věž), jen výprava (král, 3
+      vesničané, zvěd, loď). Bot AI (p21.html updAI) je dokud nemá jedinou
+      budovu na téhle mapě úplně v klidu – jinak by si klidně stavěl
+      domky přímo na Antarktidě a hlavně drahé "koho už znám" hledání
+      (přes přeplněnou hromadu hráčů namačkaných těsně vedle sebe) hru
+      na Ludicrous s 8 hráči doslova zamrzlo (naměřeno přes 1 s na jedno
+      volání updAI – bot AI zatím neumí sama doplout na kontinent, tak
+      radši nedělá nic než aby dělala něco drahého a špatně).
+   2) "v antarktide jsou videt kdyz to ani neni prozkoumany... vsechny
+      suroviny a budovy" – KULISY (p33.html, schovává věci mimo dohled
+      kamery kvůli výkonu) a MLHA (p16.html, mlha války) si navzájem
+      přepisovaly display té samé věci a nevěděly o sobě. Jakmile
+      kamera přijela blíž k neprozkoumanému nepříteli, KULISY ho klidně
+      odkryla a mlha to už nikdy neopravila. KULISY se teď před
+      odkrytím zeptá mlhy.
+   3) "furt jsou vsude i na tech ostrovech volne mista... co nejvic
+      surovin... plati pro celou mapu" – na Celé Zeměkouli se teď skoro
+      nevynechávají "prázdné" mýtiny (zkoušelo se i menší políčko, ale
+      to už jednou hru zpomalilo, viz v126 – zůstává stejná velikost,
+      jen míň prázdna).
+   Ověřeno na Ludicrous velikosti s 8 hráči: 0 chyb, 0 budov po celou
+   hru, žádné zaseknutí (3000 kroků ~3,9 ms/krok), neprozkoumané věci
+   se přes KULISY neodkrývají. Beze změny na ostatních mapách (headless
+   regrese čisté). */
+VERZE = "v127";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
