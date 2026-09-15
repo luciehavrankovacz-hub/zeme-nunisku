@@ -2332,11 +2332,22 @@ const SVET_KONTINENTY = [
   // Panamská šíje – malé spojení Severní a Jižní Ameriky, přesně jako doopravdy
   [[0.16,0.478],[0.14,0.465],[0.155,0.452],[0.175,0.462],[0.195,0.478],
    [0.20,0.485],[0.19,0.50],[0.175,0.492],[0.163,0.485]],
-  // Evropa – Skandinávie, Itálie
-  [[0.40,0.235],[0.395,0.21],[0.41,0.195],[0.43,0.19],[0.44,0.175],[0.46,0.17],[0.475,0.155],
-   [0.49,0.14],[0.51,0.135],[0.525,0.145],[0.545,0.15],[0.555,0.17],[0.55,0.19],[0.53,0.205],
-   [0.545,0.22],[0.53,0.235],[0.51,0.225],[0.495,0.235],[0.475,0.245],[0.455,0.25],[0.435,0.255],
-   [0.415,0.25]],
+  // Evropa – na přání "presne takhle": mnohem větší (dřív byla proti
+  // Asii/Africe směšně malá), pořádná Skandinávie nahoře, Pyrenejský
+  // poloostrov (Španělsko) na jihozápadě. Itálie je schválně SAMOSTATNÝ
+  // tvar hned pod tímhle (tenká "bota" v jednom polygonu dělala ošklivý
+  // křížící se zlom).
+  [[0.46,0.10],[0.50,0.13],[0.545,0.165],[0.562,0.20],[0.52,0.205],[0.495,0.21],
+   [0.468,0.205],[0.44,0.202],[0.415,0.207],[0.395,0.198],
+   [0.385,0.19],[0.395,0.175],[0.42,0.16],[0.45,0.145],[0.47,0.125],[0.465,0.11]],
+  // Pyrenejský poloostrov (Španělsko + Portugalsko) – schválně vlastní
+  // tvar (stejný důvod jako u Itálie), kompaktní blok (ne dlouhý tenký
+  // hrot), krček pořádně zajíždí DO Evropy, ať jsou fakt spojené
+  [[0.42,0.19],[0.408,0.205],[0.395,0.23],[0.38,0.25],[0.36,0.265],[0.345,0.255],
+   [0.35,0.23],[0.365,0.205],[0.385,0.185],[0.405,0.178]],
+  // Itálie – tenká "bota" pod Evropou, schválně vlastní tvar. Krček
+  // pořádně zajíždí do Evropy, špička zůstává daleko od Afriky (Středozemní moře)
+  [[0.438,0.202],[0.452,0.198],[0.465,0.208],[0.468,0.225],[0.458,0.242],[0.448,0.228],[0.44,0.212]],
   // Afrika – na přání "afrika vubec nevypada jako afrika": nejpoznatelnější
   // rys je hluboký "zálив" Guinejského zálivu na západním pobřeží (ta
   // "podpaží" prohlubeň), k tomu roh na východě (Somálsko) a úzký mys na
@@ -2359,6 +2370,15 @@ const SVET_KONTINENTY = [
    [0.643,0.425],[0.633,0.405],[0.635,0.38],[0.625,0.355],[0.612,0.33],
    [0.622,0.348],[0.635,0.358],[0.645,0.348],[0.638,0.328],[0.625,0.313],
    [0.60,0.305],[0.59,0.275],[0.578,0.245],[0.57,0.22]],
+  // Zadní Indie (Indočína + Malajský poloostrov) – schválně vlastní tvar,
+  // visí na jih z Asie VÝCHODNĚ od Indie, ať mezi Asií a Austrálií není
+  // jedna velká prázdná díra moře
+  [[0.755,0.275],[0.745,0.30],[0.735,0.33],[0.73,0.36],[0.735,0.40],[0.74,0.44],
+   [0.745,0.48],[0.75,0.51],[0.758,0.49],[0.768,0.45],[0.778,0.41],[0.788,0.37],
+   [0.795,0.33],[0.79,0.29],[0.775,0.27]],
+  // Nová Guinea – severně od Austrálie (Torres Strait je jen úzká mezera)
+  [[0.795,0.565],[0.815,0.55],[0.835,0.545],[0.855,0.55],[0.87,0.565],[0.885,0.575],
+   [0.875,0.59],[0.855,0.585],[0.835,0.59],[0.815,0.595],[0.80,0.585]],
   // Austrálie – na přání "v australii je jenom kruh": teď má mys York
   // nahoře (trčí k Asii), plochý jih se zálivem (Velký australský záliv)
   // a je celkově pořádně větší, ne malé kolečko.
@@ -2372,15 +2392,17 @@ const SVET_KONTINENTY = [
   // Grónsko – velký ostrov severovýchodně od Severní Ameriky
   [[0.365,0.17],[0.355,0.12],[0.36,0.08],[0.375,0.045],[0.395,0.03],[0.415,0.045],
    [0.425,0.08],[0.415,0.125],[0.40,0.16],[0.385,0.18]],
-  // Britské ostrovy
-  [[0.385,0.185],[0.393,0.178],[0.398,0.19],[0.392,0.20],[0.384,0.195]],
+  // Britské ostrovy – v moři mezi Grónskem/Amerikou a (teď větší) Evropou
+  [[0.36,0.228],[0.373,0.222],[0.382,0.235],[0.374,0.252],[0.362,0.25],[0.354,0.238]],
   // Japonsko – tenký oblouk u východní Asie, kousek od pobřeží v moři
   [[0.895,0.205],[0.905,0.215],[0.908,0.235],[0.90,0.255],[0.892,0.27],[0.885,0.25],[0.888,0.225]],
   // Madagaskar u jihovýchodní Afriky
   [[0.59,0.495],[0.60,0.51],[0.598,0.535],[0.588,0.548],[0.582,0.53],[0.583,0.51]],
-  // Sumatra a Jáva – jihovýchodní Asie
-  [[0.72,0.445],[0.74,0.45],[0.745,0.465],[0.725,0.462]],
-  [[0.755,0.455],[0.775,0.458],[0.778,0.472],[0.758,0.47]],
+  // Indonéské ostrovy (Sumatra, Borneo, Jáva) – mezi Zadní Indií a
+  // Novou Guineou/Austrálií, ať to vypadá jako souostroví, ne 2 tečky
+  [[0.735,0.525],[0.75,0.518],[0.762,0.538],[0.758,0.568],[0.745,0.578],[0.73,0.558]],
+  [[0.775,0.50],[0.795,0.495],[0.815,0.505],[0.82,0.525],[0.808,0.545],[0.788,0.548],[0.775,0.53]],
+  [[0.765,0.565],[0.79,0.562],[0.81,0.568],[0.808,0.578],[0.785,0.582],[0.765,0.578]],
   // Nový Zéland – kus dál na východ od (teď větší) Austrálie
   [[0.935,0.705],[0.945,0.71],[0.95,0.725],[0.942,0.735],[0.933,0.72]]
 ];
@@ -5197,7 +5219,7 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
-    • <b>🌍 Celá Zeměkoule</b> – ještě větší obří mapa, sedm světadílů podle skutečné Země (Afrika teď fakt vypadá jako Afrika!), Amerika i Asie s Afrikou spojené malým kouskem pevniny, žádné ošklivé balvany a mnohem víc zlata i železa – jinak jen moře, bez lodí nikam!<br>
+    • <b>🌍 Celá Zeměkoule</b> – ještě víc podle skutečné Země: mnohem větší Evropa (se Španělskem a italskou "botou"), nové ostrovy Indonésie a Nová Guinea u Austrálie, Afrika teď fakt vypadá jako Afrika, Amerika i Asie s Afrikou spojené malým kouskem pevniny, žádné ošklivé balvany a mnohem víc zlata i železa – jinak jen moře, bez lodí nikam!<br>
     • <b>Karavan</b> – vycvič ho v tržišti a pošli na SPOJENCOVO tržiště – bude jezdit tam a zpátky a vydělávat zlato<br>
     • <b>Sklad</b> – levná menší budova, kam vesničané taky můžou nosit suroviny, ne jen do radnice<br>
     • <b>Den a noc</b> – 10 minut je světlo, pak 10 minut tma a budovám se rozsvítí okýnka<br>
@@ -15288,7 +15310,32 @@ NET.posli = function(m){
    ložisek zlata a přes 2000 ložisek železa, žádná chyba ani při běhu
    přes 2400 herních kroků, pevniny propojené/oddělené stejně správně
    jako ve v123. */
-VERZE = "v124";
+/* v125 = na přání "udelej to presne takhle" (s obrázkem skutečné mapy
+   světa jako vzorem), p3.html – SVET_KONTINENTY:
+   1) Evropa byla proti Asii/Africe směšně malá – teď je mnohem větší
+      a má samostatné Pyrenejský poloostrov (Španělsko) a italskou
+      "botu" (samostatné tvary, ne jeden dělaný polygon – tenké
+      poloostrovy v jednom kuse dělaly ošklivé křížící se zlomy).
+   2) Přidána Zadní Indie (Indočína + Malajský poloostrov) – visí z Asie
+      východně od Indie, takže mezi Asií a Austrálií není jedna velká
+      prázdná díra moře.
+   3) Přidána Nová Guinea (chyběla úplně) – hned severně od Austrálie,
+      Torres Strait je jen úzká mezera mezi nimi jako doopravdy.
+   4) Sumatra/Jáva přesunuty do souostroví mezi Zadní Indii a Novou
+      Guineou, přidáno Borneo – teď to vypadá jako indonéské ostrovy,
+      ne 2 osamocené tečky uprostřed oceánu.
+   Cestou se při ověřování (TEREN.oblastBodu) našly a opravily 2 skryté
+   chyby: větší Evropa se nožičkou svého pobřeží nechtěně dotýkala
+   Grónska (spojovalo je to v jeden kus pevniny – špatně, Grónsko má
+   být samostatný ostrov) a italská "bota" sahala až k Africe (mělo
+   zůstat jen přes Sinajský můstek). Obojí opraveno posunutím
+   příslušných bodů dál od sebe.
+   Ověřeno na Ludicrous velikosti (6 hráčů, 37 000+ jednotek a budov):
+   žádná chyba, 0 skal, Grónsko/Austrálie+Nová Guinea/Japonsko/
+   Madagaskar/Nový Zéland zůstávají oddělené ostrovy, Evropa+Afrika+
+   Asie (přes Sinaj) i Severní+Jižní Amerika (přes Panamu) propojené
+   jako má být. */
+VERZE = "v125";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
