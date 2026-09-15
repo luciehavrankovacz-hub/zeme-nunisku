@@ -2329,19 +2329,27 @@ const SVET_KONTINENTY = [
    [0.265,0.66],[0.25,0.70],[0.235,0.74],[0.22,0.78],[0.205,0.82],[0.195,0.855],[0.20,0.87],
    [0.185,0.855],[0.175,0.82],[0.17,0.78],[0.175,0.74],[0.16,0.70],[0.155,0.65],[0.165,0.60],
    [0.17,0.555],[0.18,0.52],[0.19,0.50]],
+  // Panamská šíje – malé spojení Severní a Jižní Ameriky, přesně jako doopravdy
+  [[0.16,0.478],[0.14,0.465],[0.155,0.452],[0.175,0.462],[0.195,0.478],
+   [0.20,0.485],[0.19,0.50],[0.175,0.492],[0.163,0.485]],
   // Evropa – Skandinávie, Itálie
   [[0.40,0.235],[0.395,0.21],[0.41,0.195],[0.43,0.19],[0.44,0.175],[0.46,0.17],[0.475,0.155],
    [0.49,0.14],[0.51,0.135],[0.525,0.145],[0.545,0.15],[0.555,0.17],[0.55,0.19],[0.53,0.205],
    [0.545,0.22],[0.53,0.235],[0.51,0.225],[0.495,0.235],[0.475,0.245],[0.455,0.25],[0.435,0.255],
    [0.415,0.25]],
-  // Afrika – roh na východě, úzký mys na jihu
-  [[0.42,0.265],[0.445,0.255],[0.475,0.26],[0.50,0.253],[0.525,0.26],[0.545,0.275],
-   [0.565,0.27],[0.585,0.285],[0.575,0.30],[0.55,0.305],[0.545,0.32],[0.555,0.34],
-   [0.565,0.365],[0.575,0.395],[0.583,0.425],[0.57,0.455],[0.552,0.478],
-   [0.535,0.505],[0.515,0.53],[0.498,0.552],[0.483,0.573],[0.472,0.593],
-   [0.463,0.573],[0.457,0.548],[0.452,0.518],[0.438,0.49],[0.423,0.462],
-   [0.413,0.432],[0.403,0.40],[0.397,0.368],[0.393,0.335],[0.398,0.305],
-   [0.405,0.283]],
+  // Afrika – na přání "afrika vubec nevypada jako afrika": nejpoznatelnější
+  // rys je hluboký "zálив" Guinejského zálivu na západním pobřeží (ta
+  // "podpaží" prohlubeň), k tomu roh na východě (Somálsko) a úzký mys na
+  // jihu (Mys Dobré naděje) – bez zálivu to byl jen vejčitý flek.
+  [[0.415,0.27],[0.44,0.258],[0.47,0.252],[0.50,0.248],[0.525,0.255],
+   [0.545,0.265],[0.558,0.285],[0.575,0.30],[0.595,0.31],[0.578,0.325],
+   [0.565,0.35],[0.558,0.38],[0.55,0.41],[0.545,0.44],[0.535,0.47],
+   [0.52,0.50],[0.505,0.53],[0.488,0.555],[0.475,0.575],[0.462,0.555],
+   [0.45,0.53],[0.44,0.50],[0.428,0.47],[0.415,0.44],[0.405,0.41],
+   [0.40,0.385],[0.415,0.375],[0.40,0.365],[0.385,0.36],[0.375,0.35],
+   [0.37,0.325],[0.375,0.30],[0.385,0.285],[0.40,0.275]],
+  // Sinajský můstek – malé spojení Afriky s Asií, přesně jako doopravdy
+  [[0.525,0.255],[0.545,0.24],[0.558,0.222],[0.557,0.197],[0.535,0.225],[0.518,0.245]],
   // Asie – Sibiř nahoře, Indie klínem dole
   [[0.555,0.195],[0.58,0.178],[0.615,0.165],[0.655,0.15],[0.695,0.133],[0.735,0.115],
    [0.775,0.10],[0.815,0.093],[0.855,0.098],[0.885,0.115],[0.90,0.145],[0.885,0.175],
@@ -2350,10 +2358,13 @@ const SVET_KONTINENTY = [
    [0.72,0.315],[0.70,0.335],[0.685,0.36],[0.665,0.385],[0.655,0.41],
    [0.643,0.425],[0.633,0.405],[0.635,0.38],[0.625,0.355],[0.612,0.33],
    [0.60,0.305],[0.59,0.275],[0.578,0.245],[0.57,0.22]],
-  // Austrálie
-  [[0.78,0.635],[0.795,0.615],[0.815,0.605],[0.835,0.61],[0.85,0.625],[0.865,0.645],[0.87,0.665],
-   [0.865,0.685],[0.85,0.70],[0.835,0.715],[0.815,0.72],[0.795,0.715],[0.78,0.70],[0.77,0.68],
-   [0.77,0.655]],
+  // Austrálie – na přání "v australii je jenom kruh": teď má mys York
+  // nahoře (trčí k Asii), plochý jih se zálivem (Velký australský záliv)
+  // a je celkově pořádně větší, ne malé kolečko.
+  [[0.775,0.615],[0.795,0.60],[0.825,0.593],[0.855,0.60],[0.88,0.62],
+   [0.895,0.645],[0.90,0.675],[0.892,0.70],[0.878,0.718],[0.85,0.725],
+   [0.822,0.73],[0.805,0.72],[0.795,0.695],[0.80,0.665],[0.81,0.645],
+   [0.795,0.63],[0.782,0.625]],
   // Antarktida – široký pás úplně dole
   [[0.05,0.95],[0.15,0.92],[0.30,0.905],[0.45,0.90],[0.55,0.90],[0.65,0.905],[0.80,0.92],[0.92,0.95],
    [0.85,0.975],[0.65,0.99],[0.45,0.995],[0.30,0.99],[0.15,0.975]],
@@ -2362,15 +2373,15 @@ const SVET_KONTINENTY = [
    [0.425,0.08],[0.415,0.125],[0.40,0.16],[0.385,0.18]],
   // Britské ostrovy
   [[0.385,0.185],[0.393,0.178],[0.398,0.19],[0.392,0.20],[0.384,0.195]],
-  // Japonsko – tenký oblouk u východní Asie
-  [[0.865,0.205],[0.875,0.215],[0.878,0.235],[0.87,0.255],[0.862,0.27],[0.855,0.25],[0.858,0.225]],
+  // Japonsko – tenký oblouk u východní Asie, kousek od pobřeží v moři
+  [[0.895,0.205],[0.905,0.215],[0.908,0.235],[0.90,0.255],[0.892,0.27],[0.885,0.25],[0.888,0.225]],
   // Madagaskar u jihovýchodní Afriky
   [[0.59,0.495],[0.60,0.51],[0.598,0.535],[0.588,0.548],[0.582,0.53],[0.583,0.51]],
   // Sumatra a Jáva – jihovýchodní Asie
   [[0.72,0.445],[0.74,0.45],[0.745,0.465],[0.725,0.462]],
   [[0.755,0.455],[0.775,0.458],[0.778,0.472],[0.758,0.47]],
-  // Nový Zéland u Austrálie
-  [[0.90,0.705],[0.908,0.71],[0.912,0.725],[0.905,0.73],[0.898,0.72]]
+  // Nový Zéland – kus dál na východ od (teď větší) Austrálie
+  [[0.935,0.705],[0.945,0.71],[0.95,0.725],[0.942,0.735],[0.933,0.72]]
 ];
 /* Nakreslí všechny kontinenty vyplněné aktuální fillStyle do libovolného
    plátna W×H – používá se pro doopravdy generovanou mapu i pro náhled. */
@@ -5185,7 +5196,7 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
-    • <b>🌍 Celá Zeměkoule</b> – nová obří mapa, sedm světadílů jako v opravdovém světě, mezi nimi jen moře – bez lodí nikam!<br>
+    • <b>🌍 Celá Zeměkoule</b> – obří mapa, sedm světadílů podle skutečné Země (Afrika teď fakt vypadá jako Afrika!), Amerika i Asie s Afrikou spojené malým kouskem pevniny, jinak jen moře – bez lodí nikam!<br>
     • <b>Karavan</b> – vycvič ho v tržišti a pošli na SPOJENCOVO tržiště – bude jezdit tam a zpátky a vydělávat zlato<br>
     • <b>Sklad</b> – levná menší budova, kam vesničané taky můžou nosit suroviny, ne jen do radnice<br>
     • <b>Den a noc</b> – 10 minut je světlo, pak 10 minut tma a budovám se rozsvítí okýnka<br>
@@ -15238,7 +15249,30 @@ NET.posli = function(m){
    3) Přibylo Grónsko, Britské ostrovy, Japonsko, Madagaskar,
       Sumatra/Jáva a Nový Zéland jako samostatné ostrovy vedle
       hlavních sedmi světadílů (p3.html – SVET_KONTINENTY). */
-VERZE = "v122";
+/* v123 = na přání "udelej ji jeste vic podle realneho sveta ty tvary tech
+   kontinentu... afrika vubec nevypada jako afrika... nekde maji byt ty
+   kontinenty spojeny jako jizni amerika se severni malim kouskem... dej
+   si co nejvic zalezet" (vše v p3.html – SVET_KONTINENTY):
+   1) Afrika – úplně nový obrys s Guinejským zálivem (ten typický "kousek
+      ukousnutý" na západním pobřeží), místo staré protáhlé placky.
+   2) Panamská šíje – malý nový kousek pevniny, co teď doopravdy spojuje
+      Severní a Jižní Ameriku, přesně jako ve skutečnosti.
+   3) Sinajský můstek – malý nový kousek pevniny mezi Afrikou a Asií,
+      taky přesně jako doopravdy.
+   4) Austrálie byla skoro kolečko – teď má nahoře mys York (špička k
+      Asii) a je celkově pořádně větší.
+   5) Nový Zéland posunutý o kousek dál na východ, aby se nepřekrýval s
+      tou větší Austrálií.
+   6) Při ověřování (TEREN.oblastBodu, spočítání souvislých kusů souše)
+      se navíc našlo, že Japonsko leželo tak těsně u pobřeží Asie, že se
+      s ním na mapě slilo v jeden kus – posunuto o kousek dál do moře, ať
+      je to doopravdy samostatný ostrov.
+   Ověřeno na plné Ludicrous velikosti (6 hráčů, 15 900+ jednotek a
+   budov, žádná chyba): Severní a Jižní Amerika jsou teď propojené přes
+   Panamskou šíji, Afrika+Evropa+Asie přes Sinajský můstek, zatímco
+   Japonsko, Madagaskar, Austrálie, Nový Zéland, Grónsko a Antarktida
+   zůstávají oddělené ostrovy/světadíly jako předtím. */
+VERZE = "v123";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
