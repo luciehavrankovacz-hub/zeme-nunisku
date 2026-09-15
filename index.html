@@ -2298,7 +2298,7 @@ const MAPY = [
      doopravdy. Mapa je násobně větší než ostatní – i na nejmenší
      velikosti je pořád obří, na Ludicrous teprve doopravdy vynikne. */
   {jm:"Celá Zeměkoule", popis:"Sedm světadílů jako v opravdovém světě – bez lodí se mezi nimi nikam nedostaneš!",
-    zeme:"#5f9e4f", lesy:1.3, zlato:1.8, zelezo:1.8, sirka:15000, vyska:10500, voda:"svet", hory:0}
+    zeme:"#5f9e4f", lesy:1.4, zlato:2.0, zelezo:2.0, sirka:15000, vyska:10500, voda:"svet", hory:0}
 ];
 
 /* ---- KONTINENTY PRO MAPU "CELÁ ZEMĚKOULE" ----
@@ -2681,6 +2681,14 @@ const POZICE = [
   {x:0.14, y:0.80}, {x:0.86, y:0.20}, {x:0.14, y:0.20}, {x:0.86, y:0.80},
   {x:0.50, y:0.90}, {x:0.50, y:0.10}, {x:0.09, y:0.50}, {x:0.91, y:0.50}
 ];
+/* Na přání "jenom u mapy sveta se vsichni na zacatku hry objevi ruzne po
+   antarktide" – rozmístění podél severního (ke světu obráceného) pobřeží
+   Antarktidy (SVET_KONTINENTY – Antarktida), s dostatečnou rezervou od
+   obou okrajů pásu, ať tam hráč nezačíná napůl v moři. */
+const ANTARKTIDA_POZICE = [
+  {x:0.10, y:0.945}, {x:0.22, y:0.925}, {x:0.35, y:0.915}, {x:0.47, y:0.913},
+  {x:0.59, y:0.915}, {x:0.71, y:0.923}, {x:0.80, y:0.933}, {x:0.85, y:0.945}
+];
 let ZAKL = [];
 
 /* Stromy ani rudy nesmí vyrůst v moři nebo ve skále. TEREN je v p18; dokud
@@ -2757,7 +2765,11 @@ function postavSvet(){
   SVET.style.width = SVET_W+"px"; SVET.style.height = SVET_H+"px";
   SVET.style.backgroundColor = mapa.zeme;
 
-  ZAKL = G.hraci.map((h,i)=>({x:POZICE[i].x*SVET_W, y:POZICE[i].y*SVET_H}));
+  /* Na Celé Zeměkouli všichni startují na Antarktidě (rozprostření podél
+     jejího pobřeží) a pak si sami lodí doplují, kam chtějí – jinde po
+     mapě zůstává generický seznam rohů/okrajů jako dřív. */
+  const pozice = (mapa.voda === "svet") ? ANTARKTIDA_POZICE : POZICE;
+  ZAKL = G.hraci.map((h,i)=>({x:pozice[i].x*SVET_W, y:pozice[i].y*SVET_H}));
 
   /* MOŘE A SKÁLY. Musí se udělat PRVNÍ, ať stromy ani rudy nevyrostou ve vodě.
      Počítá se to ze semínka, takže hostiteli i kamarádovi vyjde stejná mapa. */
@@ -2837,7 +2849,11 @@ function postavSvet(){
     pridejBudovu("domek", i, z.x - dovnitrX*170, z.y - dovnitrY*50, true);
     pridejBudovu("domek", i, z.x + dovnitrX*40,  z.y - dovnitrY*175, true);
     const O = OBTIZNOSTI[G.obt];
-    const vesnicanu = h.bot ? 4 : (G.obt<=1 ? 6 : 4);
+    const jeSvet = mapa.voda === "svet";
+    /* Na Celé Zeměkouli všichni startují stejně skromně na Antarktidě –
+       král, jen 3 vesničané a k tomu (níž) i loď, ať má hráč čím doplout
+       na svůj vysněný kontinent. */
+    const vesnicanu = jeSvet ? 3 : (h.bot ? 4 : (G.obt<=1 ? 6 : 4));
     for(let k=0;k<vesnicanu;k++)
       pridejJednotku("vesnican", i, z.x+nah(-120,120), z.y+dovnitrY*nah(60,140));
     /* Král stojí hned u radnice. O něj se hraje – když padne, hráč prohrál,
@@ -2846,6 +2862,10 @@ function postavSvet(){
        do bitvy a hra o něj neskončila hned. */
     const kr = pridejJednotku("kral", i, z.x - dovnitrX*60, z.y + dovnitrY*70);
     kr.straz = {x:kr.x, y:kr.y};
+    /* Převozní loď na start – pridejJednotku (p18.html) si pro "lod" sama
+       najde nejbližší vodu kolem z.x/z.y, ať ji postavíme kamkoli. Hráč si
+       s ní pak sám odpluje, kam chce (třeba do Afriky). */
+    if(jeSvet) pridejJednotku("prevoz", i, z.x, z.y);
     if(h.bot){
       h.res.drevo = Math.round(h.res.drevo * (0.9+O.tezba*0.3));
       pridejBudovu("kasarna", i, z.x + dovnitrX*190, z.y + dovnitrY*95, true);
@@ -5219,7 +5239,7 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
-    • <b>🌍 Celá Zeměkoule</b> – ještě víc podle skutečné Země: mnohem větší Evropa (se Španělskem a italskou "botou"), nové ostrovy Indonésie a Nová Guinea u Austrálie, Afrika teď fakt vypadá jako Afrika, Amerika i Asie s Afrikou spojené malým kouskem pevniny, žádné ošklivé balvany a mnohem víc zlata i železa – jinak jen moře, bez lodí nikam!<br>
+    • <b>🌍 Celá Zeměkoule</b> – teď se na ní začíná úplně jinak: všichni startují na Antarktidě s králem, 3 vesničany, zvědem a lodí, na kterou hned nasedneš a doplavíš si, kam chceš (třeba do Afriky) – prvních 5 minut se navíc vůbec nedá bojovat. Zvěd si teď i mnohem líp poradí s obeplouváním moře. Mnohem víc zlata i železa na souši. A pořád platí: podle skutečné Země, jen moře mezi světadíly, bez lodí nikam!<br>
     • <b>Karavan</b> – vycvič ho v tržišti a pošli na SPOJENCOVO tržiště – bude jezdit tam a zpátky a vydělávat zlato<br>
     • <b>Sklad</b> – levná menší budova, kam vesničané taky můžou nosit suroviny, ne jen do radnice<br>
     • <b>Den a noc</b> – 10 minut je světlo, pak 10 minut tma a budovám se rozsvítí okýnka<br>
@@ -9126,7 +9146,14 @@ zautoc = function(e, cil, dt){
    každý skaut vede VLASTNÍ seznam navštívených políček (na jednotce),
    nezávisle na tom, kdo ho zrovna počítá. */
 function nejblizsiNeznamo(e){
-  const krok = 480;
+  /* Na přání "kdyz prestane automaticky zkoumat tak neproskouma vsechno...
+     chybeji mu kusy pevniny" – 480px políčko bylo na velkých mapách (a
+     hlavně na členité Celé Zeměkouli, kde je souš plná zátok a poloostrovů)
+     moc hrubé: stačilo, aby vyšel přesný STŘED políčka do vody, a celé
+     celé políčko se přeskočilo jako "voda", i když kus z něj byla souš.
+     Jemnější síť tohle výrazně omezí (víc, menších políček = přesnější
+     odhad, kde ještě souš je). */
+  const krok = 260;
   if(!e.navstiveno) e.navstiveno = new Set();
   const sl = Math.max(1, Math.ceil(SVET_W/krok)), ra = Math.max(1, Math.ceil(SVET_H/krok));
   e.navstiveno.add(Math.floor(e.x/krok) + "," + Math.floor(e.y/krok));
@@ -9294,7 +9321,13 @@ if(typeof TEREN !== "undefined"){
       if(vBaldu[i]) continue;
       vBaldu[i] = 1;
       if(i === cil) break;
-      if(++kroku > 9000) break;                      // pojistka proti zamrznutí
+      /* Na přání "pruzkumnik... to more neumi jednoduse obejit furt se tam
+         zasekava" – pevný strop 9000 kroků stačil na starší menší mapy, ale
+         na obří "Celá Zeměkoule" (statisíce políček) se u velkého zálivu
+         nebo poloostrova vyčerpal dřív, než A* stihla najít cestu okolo –
+         cesta se tak vzdala (vrátila null) a jednotka jen znovu a znovu
+         vrazila rovnou do břehu. Strop teď roste s velikostí mřížky. */
+      if(++kroku > Math.max(9000, sl*ra*0.06)) break;  // pojistka proti zamrznutí
       const cx = i % sl, cy = (i / sl) | 0;
       for(let dy = -1; dy <= 1; dy++)
         for(let dx = -1; dx <= 1; dx++){
@@ -15335,7 +15368,34 @@ NET.posli = function(m){
    Madagaskar/Nový Zéland zůstávají oddělené ostrovy, Evropa+Afrika+
    Asie (přes Sinaj) i Severní+Jižní Amerika (přes Panamu) propojené
    jako má být. */
-VERZE = "v125";
+/* v126 = na přání ohledně Celé Zeměkoule:
+   1) "pruzkumnik... to more neumi jednoduse obejit furt se tam zasekava" –
+      A* hledání cesty (p20.html) mělo pevný strop 9000 kroků z dob menších
+      map; na obří Celé Zeměkouli se u většího zálivu/poloostrova vyčerpal
+      dřív, než našel cestu okolo, takže se vzdal a jednotka jen vrážela
+      do břehu. Strop teď roste s velikostí mřížky.
+   2) "kdyz prestane automaticky zkoumat tak neproskouma vsechno...
+      chybeji mu kusy pevniny" – síť pro hledání "kam se ještě podívat"
+      (p20.html – nejblizsiNeznamo) byla na členitém pobřeží Celé
+      Zeměkoule moc hrubá (480px políčko, jen střed se testoval) – zmenšeno
+      na 260px, ať se neztrácí kusy souše na zátokách a poloostrovech.
+   3) NOVĚ na Celé Zeměkouli: všichni startují rozeseti podél pobřeží
+      Antarktidy (ANTARKTIDA_POZICE, p3.html) s jen králem, 3 vesničany,
+      zdarma zvědem A jednou převozní lodí – tu si hráč hned pošle, kam
+      chce (třeba do Afriky). Prvních 5 minut ("Antarktický mír", níž) se
+      vůbec nedá bojovat – ani v sebeobraně – ať mají všichni čas doplout.
+   4) "vsude na sousi je vic stromu zlata a zeleza... je to velka mapa tak
+      at se vyuzije" – násobiče zlata/železa/lesa v MAPY[Celá Zeměkoule]
+      zvýšené (p3.html). (Zkoušen i menší grid políček pro ještě hustší
+      suroviny, ale to už na Ludicrous vygenerovalo přes 130 000 entit a
+      viditelně to zpomalovalo běh hry – vráceno zpátky na osvědčenou
+      velikost políčka, jen se zvýšenými násobiči.)
+   Ověřeno na Ludicrous velikosti s 8 hráči: 0 chyb, všech 8 základen na
+   suché zemi, všech 8 lodí rovnou na vodě, zvědi aktivně prozkoumávají
+   pobřeží bez zaseknutí, boj je přes zautoc() prokazatelně zablokovaný
+   do 300 s a jde znovu po nich. Beze změny na ostatních mapách (znovu
+   ověřeno headless regresí i ručně na jiné vodní mapě). */
+VERZE = "v126";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
@@ -15418,6 +15478,47 @@ updAI = function(dt){
   const r = updAIPredUvizlymi(dt);
   if(SYNC.jsemKlient && SYNC.jsemKlient()) return r;   // jen ten, kdo počítá svět
   prorazZdiUvizle(dt);
+  return r;
+};
+
+/* ============================================================
+   57) ANTARKTICKÝ MÍR
+   Na přání "prvnich pet minut se neda pojovat... s tim kralem a
+   tremi vesnicani a pruzkumnika budou mit vsichni i jednu
+   prenaseci lod" – na Celé Zeměkouli všichni startují namačkaní
+   vedle sebe na Antarktidě, tak ať mají prvních 5 minut klid
+   doplout lodí, kam chtějí, než se vůbec dá začít bojovat.
+   Na rozdíl od staršího „KLID“ (p31/p34 – jen boti se nesmí sami
+   od sebe vydat na výpravu, ale bránit se pořád smí) je tohle
+   tvrdší úplný zákaz – NIKDO (hráč ani bot) prvních 5 minut vůbec
+   nezaútočí, ani v sebeobraně. Platí to jen na mapě "Celá
+   Zeměkoule", jinde se nic nemění. */
+const MIR_ANTARKTIDA_DO = 300;   // 5 minut
+function jeSvetovaMapa(){
+  return !!(MAPY[G.mapa] && MAPY[G.mapa].voda === "svet");
+}
+const zautocPredMirem = zautoc;
+zautoc = function(e, cil, dt){
+  if(jeSvetovaMapa() && G.cas < MIR_ANTARKTIDA_DO && e && cil
+     && e.side >= 0 && cil.side >= 0 && jeNepritel(e.side, cil.side)) return false;
+  return zautocPredMirem(e, cil, dt);
+};
+let mirKonecOznamen = false;
+const spustHruPredMirem = spustHru;
+spustHru = function(){
+  mirKonecOznamen = false;
+  spustHruPredMirem.apply(this, arguments);
+  if(jeSvetovaMapa())
+    zprava("🕊️ Prvních 5 minut je mír – doplav si lodí, kam chceš, než se začne bojovat!", "dobre");
+};
+const tikPredMirem = tik;
+tik = function(t){
+  const r = tikPredMirem(t);
+  if(jeSvetovaMapa() && !mirKonecOznamen && G.cas >= MIR_ANTARKTIDA_DO){
+    mirKonecOznamen = true;
+    zprava("⚔️ Mír skončil – teď už se dá bojovat!", "zle");
+    zvuk("poplach");
+  }
   return r;
 };
 
