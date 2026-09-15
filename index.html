@@ -2298,7 +2298,7 @@ const MAPY = [
      doopravdy. Mapa je násobně větší než ostatní – i na nejmenší
      velikosti je pořád obří, na Ludicrous teprve doopravdy vynikne. */
   {jm:"Celá Zeměkoule", popis:"Sedm světadílů jako v opravdovém světě – bez lodí se mezi nimi nikam nedostaneš!",
-    zeme:"#5f9e4f", lesy:1, zlato:1, zelezo:1, sirka:11000, vyska:7600, voda:"svet", hory:4}
+    zeme:"#5f9e4f", lesy:1.3, zlato:1.8, zelezo:1.8, sirka:15000, vyska:10500, voda:"svet", hory:0}
 ];
 
 /* ---- KONTINENTY PRO MAPU "CELÁ ZEMĚKOULE" ----
@@ -2324,8 +2324,8 @@ const SVET_KONTINENTY = [
    [0.165,0.39],[0.14,0.30],[0.10,0.24],[0.07,0.19],[0.045,0.16]],
   // Baja California – tenký poloostrov oddělený od pevniny
   [[0.135,0.375],[0.148,0.363],[0.158,0.385],[0.162,0.415],[0.152,0.44],[0.138,0.42],[0.128,0.395]],
-  // Jižní Amerika – široko nahoře (Brazílie), úzko dole (Patagonie)
-  [[0.20,0.485],[0.24,0.47],[0.27,0.475],[0.285,0.50],[0.28,0.54],[0.27,0.58],[0.275,0.62],
+  // Jižní Amerika – výrazný brazilský výběžek na východě, úzko dole (Patagonie)
+  [[0.20,0.485],[0.24,0.47],[0.275,0.472],[0.305,0.492],[0.30,0.52],[0.285,0.55],[0.28,0.585],
    [0.265,0.66],[0.25,0.70],[0.235,0.74],[0.22,0.78],[0.205,0.82],[0.195,0.855],[0.20,0.87],
    [0.185,0.855],[0.175,0.82],[0.17,0.78],[0.175,0.74],[0.16,0.70],[0.155,0.65],[0.165,0.60],
    [0.17,0.555],[0.18,0.52],[0.19,0.50]],
@@ -2350,13 +2350,14 @@ const SVET_KONTINENTY = [
    [0.37,0.325],[0.375,0.30],[0.385,0.285],[0.40,0.275]],
   // Sinajský můstek – malé spojení Afriky s Asií, přesně jako doopravdy
   [[0.525,0.255],[0.545,0.24],[0.558,0.222],[0.557,0.197],[0.535,0.225],[0.518,0.245]],
-  // Asie – Sibiř nahoře, Indie klínem dole
+  // Asie – Sibiř nahoře, Arabský poloostrov a Indie klínem dole
   [[0.555,0.195],[0.58,0.178],[0.615,0.165],[0.655,0.15],[0.695,0.133],[0.735,0.115],
    [0.775,0.10],[0.815,0.093],[0.855,0.098],[0.885,0.115],[0.90,0.145],[0.885,0.175],
    [0.86,0.185],[0.875,0.21],[0.865,0.24],[0.84,0.25],[0.815,0.24],
    [0.80,0.265],[0.775,0.28],[0.755,0.275],[0.735,0.29],
    [0.72,0.315],[0.70,0.335],[0.685,0.36],[0.665,0.385],[0.655,0.41],
    [0.643,0.425],[0.633,0.405],[0.635,0.38],[0.625,0.355],[0.612,0.33],
+   [0.622,0.348],[0.635,0.358],[0.645,0.348],[0.638,0.328],[0.625,0.313],
    [0.60,0.305],[0.59,0.275],[0.578,0.245],[0.57,0.22]],
   // Austrálie – na přání "v australii je jenom kruh": teď má mys York
   // nahoře (trčí k Asii), plochý jih se zálivem (Velký australský záliv)
@@ -5196,7 +5197,7 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
-    • <b>🌍 Celá Zeměkoule</b> – obří mapa, sedm světadílů podle skutečné Země (Afrika teď fakt vypadá jako Afrika!), Amerika i Asie s Afrikou spojené malým kouskem pevniny, jinak jen moře – bez lodí nikam!<br>
+    • <b>🌍 Celá Zeměkoule</b> – ještě větší obří mapa, sedm světadílů podle skutečné Země (Afrika teď fakt vypadá jako Afrika!), Amerika i Asie s Afrikou spojené malým kouskem pevniny, žádné ošklivé balvany a mnohem víc zlata i železa – jinak jen moře, bez lodí nikam!<br>
     • <b>Karavan</b> – vycvič ho v tržišti a pošli na SPOJENCOVO tržiště – bude jezdit tam a zpátky a vydělávat zlato<br>
     • <b>Sklad</b> – levná menší budova, kam vesničané taky můžou nosit suroviny, ne jen do radnice<br>
     • <b>Den a noc</b> – 10 minut je světlo, pak 10 minut tma a budovám se rozsvítí okýnka<br>
@@ -15272,7 +15273,22 @@ NET.posli = function(m){
    Panamskou šíji, Afrika+Evropa+Asie přes Sinajský můstek, zatímco
    Japonsko, Madagaskar, Austrálie, Nový Zéland, Grónsko a Antarktida
    zůstávají oddělené ostrovy/světadíly jako předtím. */
-VERZE = "v123";
+/* v124 = na přání "udelej to presne takhle, jestli to nepujde tak ta mapa
+   musi byt vetsi... a ty balvany odstran... a ma byt vsude vic surovin"
+   (Celá Zeměkoule, p3.html):
+   1) Mapa ještě větší (11000×7600 → 15000×10500, na Ludicrous přes
+      49 000×34 000), ať se na ni vejde víc detailů pobřeží.
+   2) Přidán Arabský poloostrov mezi Afrikou a Indií (byl úplně vynechaný).
+   3) Jižní Amerika má výraznější brazilský výběžek na východě.
+   4) Skály (ty "balvany", co se povalovaly náhodně po celé mapě a jen
+      překážely) na Celé Zeměkouli úplně zmizely – hory:0.
+   5) Mnohem víc zlata a železa (násobič z 1 na 1.8×) – spolu s větší
+      mapou vychází zlata/železa skoro 3× víc než ve v123.
+   Ověřeno na Ludicrous velikosti (6 hráčů): 0 skal na mapě, přes 2100
+   ložisek zlata a přes 2000 ložisek železa, žádná chyba ani při běhu
+   přes 2400 herních kroků, pevniny propojené/oddělené stejně správně
+   jako ve v123. */
+VERZE = "v124";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
