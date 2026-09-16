@@ -2886,8 +2886,14 @@ function postavSvet(){
        s ní pak sám odpluje, kam chce (třeba do Afriky). */
     if(jeSvet) pridejJednotku("prevoz", i, z.x, z.y);
     if(jeSvet){
-      /* žádná výhoda pro boty ani snadné obtížnosti tady – všichni na
-         Antarktidě začínají úplně stejně holí, jen s výpravou */
+      /* Na přání "u mapy sveta musis mit na zacatku na radnici abys ji
+         mohl postavit" – normální výchozí zásoba (260 dřeva) na radnici
+         (280 dřeva + 130 zlata) ani nedosáhla, natož na první domek k
+         ní. Ať si hráč po vylodění může hned postavit radnici i domek
+         a ještě mu něco zůstane na rozjezd, ne že bude čekat, až mu to
+         doklátí vesničani. Stejná zásoba pro bota i hráče – žádná
+         výhoda tady, jen aby to vůbec šlo postavit. */
+      h.res.drevo += 200; h.res.zelezo += 40; h.res.zlato += 60;
     }else if(h.bot){
       h.res.drevo = Math.round(h.res.drevo * (0.9+O.tezba*0.3));
       pridejBudovu("kasarna", i, z.x + dovnitrX*190, z.y + dovnitrY*95, true);
@@ -5261,7 +5267,7 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
-    • <b>🌍 Celá Zeměkoule</b> – na Antarktidě teď vůbec nestavíš, jen sedíš s výpravou (král, 3 vesničané, zvěd, loď) a rovnou vyrazíš lodí, kam chceš (třeba do Afriky) – prvních 5 minut se navíc vůbec nedá bojovat. Opravena i "duchová" mlha – to, co jsi nikdy neobjevila, se ti už neukazuje samo od sebe. Zvěd si líp poradí s obeplouváním moře. Mnohem víc zlata i železa na souši. A pořád platí: podle skutečné Země, jen moře mezi světadíly, bez lodí nikam!<br>
+    • <b>🌍 Celá Zeměkoule</b> – opravena naložená loď, co po vyplutí najednou letěla šíleně rychle a bugovala se. Na Antarktidě vůbec nestavíš, jen sedíš s výpravou (král, 3 vesničané, zvěd, loď se zásobou dřeva i na radnici) a rovnou vyrazíš lodí, kam chceš (třeba do Afriky) – prvních 5 minut se navíc vůbec nedá bojovat. Opravena i "duchová" mlha – to, co jsi nikdy neobjevila, se ti už neukazuje samo od sebe. Zvěd si líp poradí s obeplouváním moře, mnohem víc zlata i železa na souši. A pořád platí: podle skutečné Země, jen moře mezi světadíly, bez lodí nikam!<br>
     • <b>Karavan</b> – vycvič ho v tržišti a pošli na SPOJENCOVO tržiště – bude jezdit tam a zpátky a vydělávat zlato<br>
     • <b>Sklad</b> – levná menší budova, kam vesničané taky můžou nosit suroviny, ne jen do radnice<br>
     • <b>Den a noc</b> – 10 minut je světlo, pak 10 minut tma a budovám se rozsvítí okýnka<br>
@@ -8453,7 +8459,14 @@ jdiK = function(e, tx, ty, dt, odstup){
   const posun = Math.abs(e.x - px) + Math.abs(e.y - py);
   if(zaraz || posun < 0.3){
     e.zasek = (e.zasek || 0) + dt;
-    if(e.zasek > ZASEK_DOBA){
+    /* Lodě na moři (na přání "loď se nekam posle a zacala se tam bugovat" –
+       při hledání příčiny se ukázalo, že se lodě u úzkých úžin/mělčin
+       vzdávaly stejně rychle jako pěšák u zdi) dostávají víc trpělivosti:
+       dlouhá plavba kolem členitého pobřeží může mít pár vteřin, kdy se
+       loď jen kouskuje podél břehu, než se prokličkuje dál – 2,5 s na to
+       často nestačí, ale 2,5 s je pořád správné pro pěšáka u zdi. */
+    const zasekLimit = (JED[e.kind] && JED[e.kind].lod) ? ZASEK_DOBA * 3 : ZASEK_DOBA;
+    if(e.zasek > zasekLimit){
       e.zasek = 0;
       /* Vzdáme to. Vesničana pustíme z těžby, ať si najde dosažitelný zdroj,
          ostatní jen zastavíme, aby netlačili do skály donekonečna. */
@@ -8832,14 +8845,47 @@ function vylod(lod, kamX, kamY){
 }
 
 /* ---------- plavba po trase ----------
-   Lodě jako jediné umí obeplouvat překážky (TEREN.cesta v p18). Bez toho by
-   narazily do ostrova nebo do šíje a náklad by nikdy nedoplul. Trasa se počítá
-   jednou na rozkaz, ne každý tik. */
+   Lodě jako jediné umí obeplouvat překážky (TEREN.cesta, hledání cesty
+   viz p20.html). Bez toho by narazily do ostrova nebo do šíje a náklad
+   by nikdy nedoplul.
+   POZOR (na přání "jak jsem prenaseci lod nalodil a nekam poslal tak
+   najednou sla strasne rychle a zacala se tam bugovat"): trasa se dřív
+   přepočítala VŽDYCKY HNED celá v jednom tiku, jakmile se změnil cíl –
+   na malé mapě to bylo v pohodě, ale na obří Celé Zeměkouli je to
+   hledání cesty přes statisíce až přes milion políček a spočítat ho
+   celé v jednom snímku hostitele hru na chvíli zaseklo. Hostitel pak
+   klientovi (SYNC.dokresli, p15.html) poslal polohu s velkým skokem, a
+   klient se to snažil "dohnat" za pár desetin vteřiny – vypadalo to,
+   že loď najednou letí mnohonásobně rychleji, než doopravdy má.
+   Teď se cesta počítá se stejným rozpočtem jako u panáčků (rozpoctuCest,
+   p20.html) – nejvýš pár hledání za snímek, ne všechny najednou – a než
+   je hotová, loď zatím pluje rovnou k cíli (stejně jako to dřív dělala
+   NEZNÁMO cesta – jen se teď dopočítá na pokračování, ne že by se
+   vzdala navěky). */
 function plujK(lod, tx, ty, dt){
   const klic = Math.round(tx) + "," + Math.round(ty);
   if(lod.trasaCil !== klic){
     lod.trasaCil = klic;
-    lod.trasa = TEREN.cesta(lod, lod.x, lod.y, tx, ty) || [{x:tx, y:ty}];
+    lod.trasa = null;
+    lod.trasaCas = 0;
+  }
+  if(!lod.trasa){
+    lod.trasaCas = (lod.trasaCas || 0) - dt;
+    if(lod.trasaCas <= 0 && rozpoctuCest < 3){
+      rozpoctuCest++;
+      lod.trasaCas = 1.2;
+      lod.trasa = TEREN.cesta(lod, lod.x, lod.y, tx, ty) || [{x:tx, y:ty}];
+    }
+  }
+  if(!lod.trasa){
+    /* Cesta se ještě počítá (rozpočet je plný – zkusí to zas příští snímek).
+       POZOR: tady se schválně NEHÝBAT rovnou k cíli přímou čarou – zkoušelo
+       se to, ale ta čára klidně vedla přes mělčinu/břeh, loď na ni najela,
+       "zaseklo" ji to (stejná pojistka jako u panáčků, p18.html) a dřív,
+       než se stihla spočítat ta skutečná trasa okolo, se to už vzdalo a
+       loď zůstala trčet. Pár desetin vteřiny počkat je mnohem bezpečnější
+       než riskovat najetí na břeh. */
+    return false;
   }
   // odbavené otočné body zahazujeme
   while(lod.trasa.length > 1 && dist2(lod.x, lod.y, lod.trasa[0].x, lod.trasa[0].y) < 46)
@@ -9304,7 +9350,14 @@ if(typeof TEREN !== "undefined"){
     if(!this.projde(e, cil)){                       // cíl je ve vodě → vezmi nejbližší souš
       let nej = -1, nd = 1e9;
       const cx = cil % sl, cy = (cil / sl) | 0;
-      for(let r = 1; r <= 6 && nej < 0; r++)
+      /* Na obří Celé Zeměkouli (na přání "loď se nekam posle" – při hledání
+         příčiny se ukázalo, že klik jen o kousek dál od pobřeží, než kam
+         tenhle "najdi nejbližší souš/vodu" dohlédl, cestu rovnou vzdal bez
+         jediného kroku A*) – poloměr 6 políček (240 jednotek) byl na malé
+         mapy, na mapě, kde je jedno políčko trochu nic, to bylo příliš
+         přísné. 20 políček (800 jednotek) je pořád levné (nejvýš pár tisíc
+         kroků), ale odpouští to nepřesný klik mnohem víc. */
+      for(let r = 1; r <= 20 && nej < 0; r++)
         for(let dy = -r; dy <= r; dy++)
           for(let dx = -r; dx <= r; dx++){
             const nx = cx+dx, ny = cy+dy;
@@ -10595,9 +10648,20 @@ function rozestupJednotky(){
   if(!ROZM.dalsi || ROZM.dalsi.length < n)     ROZM.dalsi = new Int32Array(n + 256);
   const hlava = ROZM.hlava, dalsi = ROZM.dalsi;
   hlava.fill(-1, 0, sl*ra);
+  /* POZOR (na přání "jak jsem prenaseci lod nalodil a nekam poslal tak
+     najednou sla strasne rychle a zacala se tam bugovat"): naloděný
+     pasažér stojí přesně NA lodi (nalod() mu nastaví x/y na lodní), ale
+     tahle funkce ho počítala jako normální jednotku, co se má od lodi
+     odstrčit. Jakmile loď o kousek popojela dřív, než se pasažér stihl
+     tenhle snímek zase přilepit zpátky (updJednotku pro pasažéry běží
+     p19.html – nastaví ho ZPĚT na loď, ale až PO tomhle rozestupu),
+     vzdálenost mezi nimi byla na chviličku titěrně malá – a vzorec níž
+     (min-d)/d se pro d blízko nuly rozjel do absurdních čísel, takže to
+     loď (nebo pasažéra) odmrštilo přes půl mapy. Pasažéři na palubě se
+     teď rozestupu vůbec neúčastní – jsou "uvnitř" lodi, ne vedle ní. */
   for(let i = 0; i < n; i++){
     const a = J[i];
-    if(a.mrtvy){ dalsi[i] = -1; continue; }
+    if(a.mrtvy || a.naPalube){ dalsi[i] = -1; continue; }
     const cx = Math.min(sl-1, Math.max(0, (a.x/c)|0));
     const cy = Math.min(ra-1, Math.max(0, (a.y/c)|0));
     const b = cy*sl + cx;
@@ -10606,7 +10670,7 @@ function rozestupJednotky(){
 
   for(let i = 0; i < n; i++){
     const a = J[i];
-    if(a.mrtvy) continue;
+    if(a.mrtvy || a.naPalube) continue;
     const cx = Math.min(sl-1, Math.max(0, (a.x/c)|0));
     const cy = Math.min(ra-1, Math.max(0, (a.y/c)|0));
     for(let ry = Math.max(0, cy-1); ry <= Math.min(ra-1, cy+1); ry++)
@@ -10658,7 +10722,7 @@ function rozestupOdBudov(){
   const c = BUDM.bunka, sl = BUDM.sl, ra = BUDM.ra;
   for(let i = 0; i < J.length; i++){
     const a = J[i];
-    if(a.mrtvy || a.kotva) continue;
+    if(a.mrtvy || a.kotva || a.naPalube) continue;
     const cx = Math.min(sl-1, Math.max(0, (a.x/c)|0));
     const cy = Math.min(ra-1, Math.max(0, (a.y/c)|0));
     for(let ry = Math.max(0, cy-1); ry <= Math.min(ra-1, cy+1); ry++)
@@ -10701,7 +10765,7 @@ function rozestupOdBudov(){
 function rozestupZTerenu(){
   if(typeof TEREN === "undefined" || !TEREN.pripraven) return;
   for(const u of G.jednotky){
-    if(u.mrtvy || TEREN.smiTam(u, u.x, u.y)) continue;
+    if(u.mrtvy || u.naPalube || TEREN.smiTam(u, u.x, u.y)) continue;
     let uteklo = false;
     for(let r = TEREN.krok; r <= TEREN.krok*6 && !uteklo; r += TEREN.krok)
       for(let a = 0; a < Math.PI*2; a += Math.PI/6){
@@ -15477,7 +15541,38 @@ NET.posli = function(m){
    hru, žádné zaseknutí (3000 kroků ~3,9 ms/krok), neprozkoumané věci
    se přes KULISY neodkrývají. Beze změny na ostatních mapách (headless
    regrese čisté). */
-VERZE = "v127";
+/* v128 = na přání "jak jsem prenaseci lod nalodil a nekam poslal tak
+   najednou sla strasne rychle a zacala se tam bugovat" – po dlouhém
+   hledání se ukázalo, že to NENÍ o lodích samotných:
+   1) SKUTEČNÁ PŘÍČINA (p23.html rozestupJednotky/rozestupOdBudov/
+      rozestupZTerenu): naloděný pasažér stojí přesně NA lodi, ale
+      rozestup ho počítal jako normální jednotku vedle lodi. Jakmile
+      loď o kousek popojela dřív, než se pasažér stihl ten snímek
+      zase přilepit zpátky, vzdálenost mezi nimi byla na chviličku
+      titěrně malá – a vzorec (min-d)/d se pro d blízko nuly rozjel do
+      absurdních čísel, což loď (nebo pasažéra) odmrštilo přes kus
+      mapy. Pasažéři na palubě se teď rozestupu vůbec neúčastní.
+   2) Loď navíc počítala celou cestu okolo překážek (hledání cesty, na obří
+      mapě klidně přes milion políček) VŽDYCKY HNED CELOU v jednom
+      snímku – hostitele to na okamžik zaseklo, a to klientovi
+      dohnávala "duchová" interpolace polohy (SYNC.dokresli) tak, že
+      to vypadalo jako by loď najednou letěla mnohonásobně rychleji.
+      Teď se cesta počítá se stejným rozpočtem jako u panáčků (max pár
+      hledání za snímek), ne všechno najednou.
+   3) Lodě na dlouhé plavbě kolem členitého pobřeží dostávají 3× víc
+      trpělivosti, než než to vzdají (p18.html, ZASEK_DOBA) a hledání
+      "nejbližší vody u cíle" (p20.html, TEREN.cesta) má mnohem větší
+      dosah – klik jen o kousek vedle skutečného pobřeží dřív cestu
+      rovnou vzdal.
+   4) "u mapy sveta musis mit na zacatku na radnici abys ji mohl
+      postavit" – výchozí zásoba dřeva na Antarktidě (p3.html) teď
+      pokryje radnici i první domek, ne že by na radnici o pár kousků
+      dřeva nedosáhla.
+   Ověřeno: naložená loď se 3 pasažéry doplula přes celou mapu (z
+   Antarktidy až k africkému pobřeží, ~22 000 jednotek) bez jediného
+   výkyvu rychlosti (pořád přesně 96 px/s) a bez jediné chyby, i s
+   více loděmi najednou. Headless regrese na obou mapách čisté. */
+VERZE = "v128";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
