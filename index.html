@@ -3197,11 +3197,19 @@ function zabij(e, kdo){
     }
   }
   /* POJISTKA proti nedohratelné partii (mimo cíl "vse", ten svoje řeší sám
-     níž) – na ostrovní mapě se k cizímu králi/radnici nemusí nikdo dostat
-     (lodě nevozí pěchotu a AI o nich neví), hra by jinak nikdy neskončila.
+     níž, a mimo cíl "kral" – u toho už rozhoduje jen král, viz níž) – na
+     ostrovní mapě se k cizímu králi/radnici nemusí nikdo dostat (lodě
+     nevozí pěchotu a AI o nich neví), hra by jinak nikdy neskončila.
      Kdo přišel o VŠECHNY budovy i o všechny vesničany, už si nic nepostaví
-     a je vyřazený taky. */
-  if(cil!=="vse" && H && !H.porazen && (e.druh==="budova" || e.kind==="vesnican")){
+     a je vyřazený taky.
+     POZOR (na přání "znicili mi vsechno krome krale a stejne jsem
+     prohral, a to jsem mel nastaveny ze kdyz mi znici krale nebo ja
+     jim"): tahle pojistka dřív platila i pro cíl "kral" – hráč s
+     nulou budov a vesničanů byl vyřazen OKAMŽITĚ, i když měl krále
+     pořád naživu a hra na krále má svůj vlastní, vždycky platný konec
+     (padne král = konec). U cíle "kral" proto teď pojistka mlčí – kdo
+     má krále, ještě neprohrál, ať přijde o cokoli jiného. */
+  if(cil!=="vse" && cil!=="kral" && H && !H.porazen && (e.druh==="budova" || e.kind==="vesnican")){
     const budov = G.budovy.filter(b=>b.side===e.side && !b.mrtvy).length;
     const vesnicanu = G.jednotky.filter(j=>j.side===e.side && j.kind==="vesnican" && !j.mrtvy).length;
     if(budov===0 && vesnicanu===0){
@@ -5267,6 +5275,7 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
+    • <b>👑 Oprava „vítězí jen král"</b> – když jsi měl nastavené, že hra končí až smrtí krále, dřív tě hra i tak mohla prohlásit za poraženého, kdyby ti nepřítel zničil všechny budovy a vesničany. Teď dokud král žije, hra pokračuje, přesně jak sis vybral(a).<br>
     • <b>🌍 Celá Zeměkoule</b> – opravena naložená loď, co po vyplutí najednou letěla šíleně rychle a bugovala se. Na Antarktidě vůbec nestavíš, jen sedíš s výpravou (král, 3 vesničané, zvěd, loď se zásobou dřeva i na radnici) a rovnou vyrazíš lodí, kam chceš (třeba do Afriky) – prvních 5 minut se navíc vůbec nedá bojovat. Opravena i "duchová" mlha – to, co jsi nikdy neobjevila, se ti už neukazuje samo od sebe. Zvěd si líp poradí s obeplouváním moře, mnohem víc zlata i železa na souši. A pořád platí: podle skutečné Země, jen moře mezi světadíly, bez lodí nikam!<br>
     • <b>Karavan</b> – vycvič ho v tržišti a pošli na SPOJENCOVO tržiště – bude jezdit tam a zpátky a vydělávat zlato<br>
     • <b>Sklad</b> – levná menší budova, kam vesničané taky můžou nosit suroviny, ne jen do radnice<br>
@@ -15572,7 +15581,20 @@ NET.posli = function(m){
    Antarktidy až k africkému pobřeží, ~22 000 jednotek) bez jediného
    výkyvu rychlosti (pořád přesně 96 px/s) a bez jediné chyby, i s
    více loděmi najednou. Headless regrese na obou mapách čisté. */
-VERZE = "v128";
+/* v129 = na přání "oni mi znicili vsechno krome krale a stejne jsem
+   prohral a to jsem mel nastaveny ze kdyz mi znici krale nebo ja jim"
+   (p4a.html – zabij()): skrytá "pojistka proti nedohratelné partii"
+   (vyřadí hráče, který přišel o VŠECHNY budovy i vesničany, ať hra
+   nezůstane trčet navěky na ostrovní mapě) dřív platila i pro cíl
+   "kral" – hráč byl vyřazen OKAMŽITĚ, i když měl krále pořád naživu,
+   přestože si sám vybral pravidlo "rozhoduje jen král". Teď u cíle
+   "kral" tahle pojistka mlčí – dokud žije král, hra pokračuje, ať
+   přijde o cokoli jiného. Pojistka dál normálně platí pro "radnice"
+   a další cíle, jen ne pro "kral" a "vse" (ten měl výjimku už dřív).
+   Ověřeno: hráč s 0 budovami, 0 vesničany a živým králem v režimu
+   "kral" už NENÍ prohlášen za poraženého; smrt krále konec hry
+   pořád spustí správně; cíl "radnice" má pojistku beze změny. */
+VERZE = "v129";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
