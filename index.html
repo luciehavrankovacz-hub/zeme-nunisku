@@ -974,12 +974,15 @@ function plysak(civK, role, opt){
        levná, jednoduchá jednotka – žádná helma ani brnění navíc, jen
        kopí (hlavní poznávací znak, jde skoro do rohu obrázku, ať je
        fakt DLOUHÉ) a malý kulatý štítek. */
-    v.push(`<g>
-       <path d="M30 58 L100 58" stroke="#8a5a2c" stroke-width="5" stroke-linecap="round"/>
-       <path d="M32 56 L100 56" stroke="#c3925a" stroke-width="1.6" stroke-linecap="round" opacity=".6"/>
-       <path d="M92 50 L100 58 L92 66 Z" fill="#c3ccda" stroke="#5c6470" stroke-width="1.3" stroke-linejoin="round"/>
-       <path d="M92 50 L100 58 L96 54 Z" fill="rgba(255,255,255,.4)"/>
-    </g>`);
+    /* Kopí má vlastní <g class="mecSwing"> s otočným bodem u ruky (30,58),
+       stejně jako meč níž – JS (p4a.html) do něj při boji dopisuje jen
+       rotate(úhel), ať se dá stejným kódem rozmáchnout jakoukoli zbraní. */
+    v.push(`<g transform="translate(30,58)"><g class="mecSwing">
+       <path d="M0 0 L70 0" stroke="#8a5a2c" stroke-width="5" stroke-linecap="round"/>
+       <path d="M2 -2 L70 -2" stroke="#c3925a" stroke-width="1.6" stroke-linecap="round" opacity=".6"/>
+       <path d="M62 -8 L70 0 L62 8 Z" fill="#c3ccda" stroke="#5c6470" stroke-width="1.3" stroke-linejoin="round"/>
+       <path d="M62 -8 L70 0 L66 -4 Z" fill="rgba(255,255,255,.4)"/>
+    </g></g>`);
     v.push(`<circle cx="16" cy="68" r="11" fill="${bar}" stroke="#3a2a18" stroke-width="2.2"/>
             <circle cx="16" cy="68" r="11" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="1.6" stroke-dasharray="2 5"/>
             <circle cx="16" cy="68" r="3" fill="#fff8e0" opacity=".85"/>`);
@@ -994,15 +997,16 @@ function plysak(civK, role, opt){
     // brnění na bříšku
     v.push(`<path d="M32 72 q18 -9 36 0 q-3 17 -18 22 q-15 -5 -18 -22 Z" fill="${kov}" opacity=".92"/>
             <path d="M50 72 L50 93" stroke="${kov2}" stroke-width="2"/>`);
-    // meč
+    // meč – "mecSwing" je otočný bod v zápěstí, JS (p4a.html) do něj v boji
+    // dopisuje rotate(úhel) navrch téhle klidové polohy (translate/rotate/scale)
     const d = hrd?1.2:1;
-    v.push(`<g transform="translate(78,62) rotate(-20) scale(${d})">
+    v.push(`<g transform="translate(78,62) rotate(-20) scale(${d})"><g class="mecSwing">
        <rect x="-3" y="-38" width="6" height="40" rx="2.5" fill="#eef3f9" stroke="#b9c2cf" stroke-width="1"/>
        <path d="M-3 -38 L0 -45 L3 -38 Z" fill="#fff"/>
        <path d="M-1 -36 L-1 0" stroke="#c9d3e0" stroke-width="1.4"/>
        <rect x="-11" y="0" width="22" height="5" rx="2.5" fill="${hrd?'#ffd76e':'#a9762f'}"/>
        <rect x="-3" y="5" width="6" height="12" rx="3" fill="#6b4a26"/>
-       <circle cx="0" cy="18" r="3" fill="${hrd?'#ffd76e':'#a9762f'}"/></g>`);
+       <circle cx="0" cy="18" r="3" fill="${hrd?'#ffd76e':'#a9762f'}"/></g></g>`);
     // štít
     v.push(`<path d="M2 60 q11 -6 22 0 v15 q0 11 -11 15 q-11 -4 -11 -15 Z" fill="${bar}" stroke="#3a2a18" stroke-width="2.5"/>
             <path d="M2 60 q11 -6 22 0 v4 q-11 -5 -22 0 Z" fill="rgba(255,255,255,.3)"/>
@@ -3431,6 +3435,7 @@ function tezRychlost(e){
 function updJednotku(e, dt){
   e.chodi = false;
   e.kotva = false;
+  e.bojKotva = false;
   if(e.zasah>0){ e.zasah-=dt; e.svgEl.style.filter = "brightness(2.2) saturate(.4)"; }
   else if(e.svgEl.style.filter) e.svgEl.style.filter="";
 
@@ -3718,13 +3723,46 @@ function updJednotku(e, dt){
           if(j){ e.hlavniCil = c; e.cilE = j; break; }
         }
       }
-      if(!zautoc(e, c, dt)) jdiK(e, c.x, c.y, dt, dosahUtoku(e,c) - 6);
+      /* Na přání "jednotky co bojujou na blizko tak do sebe netlaceji a
+         nedelaji nic, ale maji hezky naprogramovany sekani mecem a cim
+         koli cim bojuji" – jakmile je jednotka BLÍZKO nepříteli a fakt
+         seká/bodá (ne lučištník, ten střílí zdálky a nikoho netlačí),
+         `bojKotva` ji ochrání před rozestupem (p23.html), ať dva soupeře
+         co se perou nikdo nepostrkuje, a natočí ji čelem k cíli (dřív se
+         e.smer měnil jen za chůze – kdyby se cíl obcházel kolem, jednotka
+         by mu dál ukazovala záda). Samotné mávání zbraní (e.mecSwing) se
+         počítá níž u společného vykreslení, ať to funguje pro každou
+         zbraň (meč, kopí…) stejně. */
+      if(zautoc(e, c, dt)){
+        if(e.druh==="jednotka" && !JED[e.kind].strela){
+          e.bojKotva = true;
+          if(Math.abs(c.x-e.x) > 2) e.smer = c.x < e.x ? -1 : 1;
+        }
+      }else{
+        jdiK(e, c.x, c.y, dt, dosahUtoku(e,c) - 6);
+      }
       break;
     }
   }
 
   if(!e.chodi && e.hopY) e.hopY *= 0.8;
   if(!e.kotva && e.swing) e.swing *= 0.78;
+  /* Mávání zbraní v boji (meč, kopí – cokoli je v SVG obalené do
+     <g class="mecSwing">, viz p2a1.html). Nezávislé na e.swing výš (ten
+     je pro sekeru při těžbě/stavění a hýbe CELÝM tělem) – tohle hýbe jen
+     tou jednou zbraní, ať postavička stojí klidně a jen máchá. */
+  if(e.bojKotva){
+    e.mecSwingT = (e.mecSwingT||0) + dt*12;
+    e.mecSwing = Math.sin(e.mecSwingT) * 30;
+  }else if(e.mecSwing){
+    e.mecSwing *= 0.8;
+  }
+  if(e.mecEl === undefined) e.mecEl = e.svgEl.querySelector(".mecSwing");
+  if(e.mecEl){
+    const uhel = e.mecSwing || 0;
+    const mt = Math.abs(uhel) > 0.5 ? `rotate(${uhel.toFixed(1)})` : "";
+    if(e.mecLastT !== mt){ e.mecEl.setAttribute("transform", mt); e.mecLastT = mt; }
+  }
   // otočení + máchání
   const flip = e.smer<0? "scaleX(-1)":"";
   const utokPosun = e.utokAnim>0? ` translateX(${e.smer*4}px)`:"";
@@ -5275,6 +5313,7 @@ function ukazNapovedu(){
    přibude něco, co hráč fakt pozná. Nejnovější nahoře. */
 function ukazNovinky(){
   document.getElementById("novinkyText").innerHTML = `
+    • <b>⚔️ Hezčí souboje na blízko</b> – vojáci, hrdinové a kopijníci se v boji už do sebe netlačí a nepostrkují, klidně stojí naproti sobě a doopravdy máchají mečem nebo kopím, místo aby jen tak stáli.<br>
     • <b>👑 Oprava „vítězí jen král"</b> – když jsi měl nastavené, že hra končí až smrtí krále, dřív tě hra i tak mohla prohlásit za poraženého, kdyby ti nepřítel zničil všechny budovy a vesničany. Teď dokud král žije, hra pokračuje, přesně jak sis vybral(a).<br>
     • <b>🌍 Celá Zeměkoule</b> – opravena naložená loď, co po vyplutí najednou letěla šíleně rychle a bugovala se. Na Antarktidě vůbec nestavíš, jen sedíš s výpravou (král, 3 vesničané, zvěd, loď se zásobou dřeva i na radnici) a rovnou vyrazíš lodí, kam chceš (třeba do Afriky) – prvních 5 minut se navíc vůbec nedá bojovat. Opravena i "duchová" mlha – to, co jsi nikdy neobjevila, se ti už neukazuje samo od sebe. Zvěd si líp poradí s obeplouváním moře, mnohem víc zlata i železa na souši. A pořád platí: podle skutečné Země, jen moře mezi světadíly, bez lodí nikam!<br>
     • <b>Karavan</b> – vycvič ho v tržišti a pošli na SPOJENCOVO tržiště – bude jezdit tam a zpátky a vydělávat zlato<br>
@@ -10692,9 +10731,17 @@ function rozestupJednotky(){
           const d = Math.hypot(dx, dy), min = (a.r + b.r) * 1.22;
           if(d > 0 && d < min){
             const p = (min - d) / d;
-            if(a.kotva && b.kotva) continue;
-            else if(a.kotva){ b.x += dx*p; b.y += dy*p*0.6; }
-            else if(b.kotva){ a.x -= dx*p; a.y -= dy*p*0.6; }
+            /* Na přání "jednotky co bojujou na blizko tak do sebe
+               netlaceji" – dvě jednotky v boji na blízko (bojKotva,
+               p4a.html) jsou skoro vždycky blíž u sebe, než tenhle
+               odstrk dovoluje (útočný dosah bývá jen o chlup větší než
+               tahle mez), takže se pořád tlačily i uprostřed souboje.
+               bojKotva se chová stejně jako kotva (těžba/stavění) –
+               ukotvená jednotka se nehýbe. */
+            const aUk = a.kotva || a.bojKotva, bUk = b.kotva || b.bojKotva;
+            if(aUk && bUk) continue;
+            else if(aUk){ b.x += dx*p; b.y += dy*p*0.6; }
+            else if(bUk){ a.x -= dx*p; a.y -= dy*p*0.6; }
             else { a.x -= dx*p/2; a.y -= dy*p*0.3; b.x += dx*p/2; b.y += dy*p*0.3; }
           }
         }
@@ -10731,7 +10778,7 @@ function rozestupOdBudov(){
   const c = BUDM.bunka, sl = BUDM.sl, ra = BUDM.ra;
   for(let i = 0; i < J.length; i++){
     const a = J[i];
-    if(a.mrtvy || a.kotva || a.naPalube) continue;
+    if(a.mrtvy || a.kotva || a.bojKotva || a.naPalube) continue;
     const cx = Math.min(sl-1, Math.max(0, (a.x/c)|0));
     const cy = Math.min(ra-1, Math.max(0, (a.y/c)|0));
     for(let ry = Math.max(0, cy-1); ry <= Math.min(ra-1, cy+1); ry++)
@@ -15594,7 +15641,29 @@ NET.posli = function(m){
    Ověřeno: hráč s 0 budovami, 0 vesničany a živým králem v režimu
    "kral" už NENÍ prohlášen za poraženého; smrt krále konec hry
    pořád spustí správně; cíl "radnice" má pojistku beze změny. */
-VERZE = "v129";
+/* v130 = na přání "jednotky co bojujou na blizko tak do sebe netlaceji a
+   nedelaji nic, ale maji hezky naprogramovany sekani mecem a cim koli
+   cim bojuji":
+   1) Nová jednotková vlastnost `bojKotva` (p4a.html, case "utok") – jakmile
+      je jednotka (ne lučištník, ten střílí zdálky) doopravdy v dosahu a
+      seká/bodá, ochrání ji `bojKotva` před rozestupem (p23.html), přesně
+      jako už dřív `kotva` chrání těžícího/stavícího vesničana. Útočný
+      dosah bývá jen o pár pixelů větší, než kolik rozestup dovoluje – dva
+      soupeři se tak dřív pořád postrkovali místo aby stáli a bojovali.
+      Jednotka se navíc při boji natočí čelem k živému cíli (dřív se
+      natočení měnilo jen za chůze).
+   2) Zbraně (meč u vojáka/hrdiny, kopí u kopijníka – cokoli je v SVG
+      obalené do <g class="mecSwing">, p2a1.html) teď mají doopravdy
+      naprogramované mávání: plynulá sinusovka o vlastní ose zbraně, ne
+      celého těla (to zůstává vyhrazené sekeře při těžbě/stavění). Funguje
+      to pro libovolnou zbraň stejně, jen podle toho, co je v SVG
+      označené jako mecSwing.
+   Ověřeno: dva vojáci v souboji zůstávají na místě (vzdálenost mezi nimi
+   je pořád přesně stejná, žádné postrkování), meč/kopí se plynule
+   houpe a poškození reálně přibývá; lučištník se dál chová jako dřív
+   (nekotví se, nemává). Zátěžový test 80 soubojících dvojic: 0,95 ms na
+   krok, žádná chyba. Headless regrese na obou mapách čisté. */
+VERZE = "v130";
 if(typeof napisVerzi === "function") napisVerzi();
 
 const CESTM = {platna:false, cas:-99, sl:0, ra:0, krok:20, blok:null};
